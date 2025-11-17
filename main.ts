@@ -7,6 +7,7 @@ type TrackerSettings = {
   dateFormat: string;          // "YYYY-MM-DD"
   timeFormat: string;          // "HH:mm"
   daysToShow: number;          // количество дней для отображения графиков
+  hideNumbering: boolean;      // скрывать нумерацию в начале названий (например, "1. [[Название]]")
 };
 
 const DEFAULT_SETTINGS: TrackerSettings = {
@@ -14,7 +15,17 @@ const DEFAULT_SETTINGS: TrackerSettings = {
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
   daysToShow: 30,
+  hideNumbering: false,
 };
+
+// Интерфейс для представления узла дерева папок
+interface FolderNode {
+  name: string;
+  path: string;
+  level: number;
+  files: TFile[];
+  children: FolderNode[];
+}
 
 // Класс для управления жизненным циклом блоков tracker
 class TrackerBlockRenderChild extends MarkdownRenderChild {
@@ -35,8 +46,8 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
     this.containerEl.empty();
     
     try {
-      const files = this.getFilesFromFolder(this.folderPath);
-      if (files.length === 0) {
+      const folderTree = this.getFilesFromFolder(this.folderPath);
+      if (!folderTree || (folderTree.files.length === 0 && folderTree.children.length === 0)) {
         this.containerEl.createEl("div", { 
           text: `tracker: в папке ${this.folderPath} не найдено трекеров`, 
           cls: "tracker-notes__error" 
@@ -65,7 +76,7 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
           dateInput.value = newDateIso;
           dateIso = newDateIso;
           
-          // Обновляем все трекеры в блоке с новой датой
+          // Обновляем все трекеры в блоке с новой датой (работает с вложенными контейнерами)
           const trackerItems = mainContainer.querySelectorAll(".tracker-notes__tracker");
           for (const trackerItem of Array.from(trackerItems)) {
             const filePath = (trackerItem as HTMLElement).dataset.filePath;
@@ -83,13 +94,11 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
         todayBtn.onclick = () => updateDate("today");
       }
 
-      // Создаем контейнер для трекеров
-      const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__trackers" });
+      // Создаем контейнер для иерархии трекеров
+      const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__hierarchy" });
 
-      // Рендерим все трекеры внутри общего контейнера
-      for (const file of files) {
-        await this.plugin.renderTracker(trackersContainer, file, dateIso, view, this.opts);
-      }
+      // Рендерим иерархическую структуру
+      await this.renderFolderNode(folderTree, trackersContainer, dateIso, view, this.opts);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.containerEl.createEl("div", { 
@@ -100,39 +109,113 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
     }
   }
 
-  private getFilesFromFolder(folderPath: string): TFile[] {
+  private getFilesFromFolder(folderPath: string): FolderNode | null {
     const folder = this.plugin.app.vault.getAbstractFileByPath(folderPath);
     if (!folder) {
       this.containerEl.createEl("div", { 
         text: `tracker: папка не найдена: ${folderPath}`, 
         cls: "tracker-notes__error" 
       });
-      return [];
+      return null;
     }
 
     if (folder instanceof TFile) {
-      return [folder];
+      // Если это файл, возвращаем узел с одним файлом
+      return {
+        name: folder.basename,
+        path: folder.path,
+        level: 0,
+        files: [folder],
+        children: []
+      };
     }
 
     if (folder instanceof TFolder) {
-      return this.getAllMarkdownFiles(folder);
+      return this.buildFolderTree(folder, 2, 0);
     }
 
-    // Fallback: поиск по пути
-    const allFiles = this.plugin.app.vault.getMarkdownFiles();
-    return allFiles.filter(f => f.path.startsWith(folderPath + "/"));
+    return null;
   }
 
-  private getAllMarkdownFiles(folder: TFolder): TFile[] {
-    const result: TFile[] = [];
+  private buildFolderTree(folder: TFolder, maxDepth: number, currentLevel: number): FolderNode {
+    const node: FolderNode = {
+      name: folder.name,
+      path: folder.path,
+      level: currentLevel,
+      files: [],
+      children: []
+    };
+
+    // Собираем файлы из текущей папки
     for (const child of folder.children) {
       if (child instanceof TFile && child.extension === "md") {
-        result.push(child);
-      } else if (child instanceof TFolder) {
-        result.push(...this.getAllMarkdownFiles(child));
+        node.files.push(child);
       }
     }
-    return result;
+
+    // Сортируем файлы по названию (ascending)
+    node.files.sort((a, b) => a.basename.localeCompare(b.basename, undefined, { sensitivity: 'base' }));
+
+    // Рекурсивно обрабатываем подпапки, если не достигнут максимальный уровень
+    if (currentLevel < maxDepth) {
+      for (const child of folder.children) {
+        if (child instanceof TFolder) {
+          const childNode = this.buildFolderTree(child, maxDepth, currentLevel + 1);
+          // Добавляем дочерний узел только если в нем есть файлы или подпапки с файлами
+          if (childNode.files.length > 0 || childNode.children.length > 0) {
+            node.children.push(childNode);
+          }
+        }
+      }
+      
+      // Сортируем дочерние папки по названию (ascending)
+      node.children.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    }
+
+    return node;
+  }
+
+  private async renderFolderNode(
+    node: FolderNode, 
+    parentEl: HTMLElement, 
+    dateIso: string, 
+    view: string, 
+    opts: Record<string, string>
+  ): Promise<void> {
+    // Создаем контейнер для этого узла папки с классом уровня
+    const nodeContainer = parentEl.createDiv({ 
+      cls: `tracker-notes__folder-node level-${node.level}` 
+    });
+    
+    // Показываем заголовок папки только если есть файлы или это не корневая папка (level > 0)
+    // Для корневой папки без файлов заголовок не показываем, чтобы не дублировать название
+    const shouldShowHeader = node.files.length > 0 || (node.level > 0 && node.children.length > 0);
+    
+    if (shouldShowHeader) {
+      // Создаем заголовок папки с классом уровня
+      const folderHeader = nodeContainer.createDiv({ 
+        cls: `tracker-notes__folder-header level-${node.level}` 
+      });
+      const displayName = this.plugin.settings.hideNumbering 
+        ? this.plugin.removeNumbering(node.name) 
+        : node.name;
+      folderHeader.setText(displayName);
+    }
+
+    // Если есть файлы в этой папке, создаем контейнер для трекеров
+    if (node.files.length > 0) {
+      const trackersContainer = nodeContainer.createDiv({ cls: "tracker-notes__trackers" });
+
+      // Рендерим все трекеры из этой папки
+      for (const file of node.files) {
+        await this.plugin.renderTracker(trackersContainer, file, dateIso, view, opts);
+      }
+    }
+
+    // Рекурсивно рендерим дочерние папки
+    for (const childNode of node.children) {
+      await this.renderFolderNode(childNode, nodeContainer, dateIso, view, opts);
+    }
   }
 
   getFolderPath(): string {
@@ -207,6 +290,19 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
       .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
       .tracker-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }
+      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }
+      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }
+      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }
+      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }
+      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; z-index: 0; }
+      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 2; white-space: nowrap; }
+      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }
+      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }
       .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
       .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       .tracker-notes button:active { transform: scale(0.95) translateY(0); }
@@ -246,6 +342,12 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
       .tracker-notes__heatmap { transition: opacity 0.15s ease; }
       .tracker-notes__chart { transition: opacity 0.15s ease; }
+      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }
+      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }
+      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
+      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
+      .tracker-notes__folder-header.level-1 { font-size: 1.2em; }
+      .tracker-notes__folder-header.level-2 { font-size: 1.1em; }
       
       /* Медиа-запросы для мобильных устройств */
       @media (max-width: 768px) {
@@ -265,6 +367,9 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__calendar-day { font-size: 0.7em; }
         .tracker-notes__chart { height: 180px; }
         .tracker-notes__chart canvas { height: 160px !important; }
+        .tracker-notes__folder-header.level-0 { font-size: 1.2em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
+        .tracker-notes__folder-header.level-2 { font-size: 1em; }
       }
       
       @media (max-width: 480px) {
@@ -275,6 +380,9 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__calendar-day { font-size: 0.65em; }
         .tracker-notes__chart { height: 160px; }
         .tracker-notes__chart canvas { height: 140px !important; }
+        .tracker-notes__folder-header.level-0 { font-size: 1.1em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -337,6 +445,21 @@ export default class TrackerPlugin extends Plugin {
         const maxRatingMatch = frontmatter.match(/^maxRating:\s*(\d+)/m);
         if (maxRatingMatch) {
           fileOpts.maxRating = maxRatingMatch[1];
+        }
+        // Ищем minValue на верхнем уровне
+        const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
+        if (minValueMatch) {
+          fileOpts.minValue = minValueMatch[1];
+        }
+        // Ищем maxValue на верхнем уровне
+        const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);
+        if (maxValueMatch) {
+          fileOpts.maxValue = maxValueMatch[1];
+        }
+        // Ищем step на верхнем уровне
+        const stepMatch = frontmatter.match(/^step:\s*([\d.]+)/m);
+        if (stepMatch) {
+          fileOpts.step = stepMatch[1];
         }
       } else {
         fileOpts.mode = "good-habit"; // значение по умолчанию, если frontmatter нет
@@ -402,7 +525,10 @@ export default class TrackerPlugin extends Plugin {
     // Заголовок с названием трекера
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     const fileName = file.basename;
-    header.createEl("div", { text: fileName, cls: "tracker-notes__tracker-title" });
+    const displayName = this.settings.hideNumbering 
+      ? this.removeNumbering(fileName) 
+      : fileName;
+    header.createEl("div", { text: displayName, cls: "tracker-notes__tracker-title" });
     
     const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
 
@@ -446,6 +572,9 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async renderControlsForDate(container: HTMLElement, file: TFile, dateIso: string, opts: Record<string, string>) {
+    // Очищаем контейнер перед созданием новых элементов
+    container.empty();
+    
     const mode = (opts.mode ?? "good-habit").toLowerCase();
     
     // Находим родительский контейнер для обновления визуализаций
@@ -586,8 +715,193 @@ export default class TrackerPlugin extends Plugin {
         // Обновляем визуализации
         await updateVisualizations();
       };
+    } else if (mode === "scale") {
+      const minValue = parseFloat(opts.minValue || "0");
+      const maxValue = parseFloat(opts.maxValue || "10");
+      const step = parseFloat(opts.step || "1");
+      const current = await this.readValueForDate(file, dateIso);
+      let currentValue = minValue;
+      if (current != null && !isNaN(Number(current))) {
+        const numVal = Number(current);
+        currentValue = Math.max(minValue, Math.min(maxValue, numVal));
+      }
+      
+      // Создаем контейнер для progress bar slider
+      const wrapper = container.createDiv({ cls: "tracker-notes__progress-bar-wrapper" });
+      wrapper.setAttribute("data-internal-value", String(currentValue));
+      
+      // Основной интерактивный контейнер
+      const progressBarInput = wrapper.createDiv({ cls: "tracker-notes__progress-bar-input" });
+      progressBarInput.setAttribute("tabindex", "0");
+      progressBarInput.setAttribute("role", "button");
+      progressBarInput.setAttribute("aria-label", String(currentValue));
+      progressBarInput.setAttribute("aria-valuemin", String(minValue));
+      progressBarInput.setAttribute("aria-valuemax", String(maxValue));
+      progressBarInput.setAttribute("aria-valuenow", String(currentValue));
+      
+      // Элемент прогресса (заполненная часть)
+      const progressBar = progressBarInput.createDiv({ cls: "tracker-notes__progress-bar-progress" });
+      progressBar.setAttribute("role", "slider");
+      progressBar.setAttribute("tabindex", "0");
+      progressBar.setAttribute("aria-valuemin", String(minValue));
+      progressBar.setAttribute("aria-valuemax", String(maxValue));
+      progressBar.setAttribute("aria-valuenow", String(currentValue));
+      
+      // Текущее значение (по центру)
+      const valueDisplay = progressBarInput.createEl("span", {
+        text: String(currentValue),
+        cls: "tracker-notes__progress-bar-value"
+      });
+      
+      // Минимальное значение (слева)
+      const labelLeft = progressBarInput.createEl("span", {
+        text: String(minValue),
+        cls: "tracker-notes__progress-bar-label-left"
+      });
+      
+      // Максимальное значение (справа)
+      const labelRight = progressBarInput.createEl("span", {
+        text: String(maxValue),
+        cls: "tracker-notes__progress-bar-label-right"
+      });
+      
+      // Функция для расчета значения из позиции клика
+      const calculateValueFromPosition = (clientX: number): number => {
+        const rect = progressBarInput.getBoundingClientRect();
+        const clickX = clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+        const rawValue = minValue + (maxValue - minValue) * percentage;
+        // Округляем до ближайшего шага
+        const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
+        return Math.max(minValue, Math.min(maxValue, steppedValue));
+      };
+      
+      // Функция для обновления визуального отображения
+      const updateProgressBar = (value: number) => {
+        const percentage = ((value - minValue) / (maxValue - minValue)) * 100;
+        progressBar.style.width = `${percentage}%`;
+        valueDisplay.setText(String(value));
+        progressBarInput.setAttribute("aria-valuenow", String(value));
+        progressBarInput.setAttribute("aria-label", String(value));
+        progressBar.setAttribute("aria-valuenow", String(value));
+        wrapper.setAttribute("data-internal-value", String(value));
+      };
+      
+      // Инициализация прогресс бара
+      updateProgressBar(currentValue);
+      
+      let isDragging = false;
+      let hasMoved = false;
+      
+      // Обработчик начала перетаскивания
+      const handleMouseDown = (e: MouseEvent) => {
+        if (e.button !== 0) return; // Только левая кнопка мыши
+        isDragging = true;
+        hasMoved = false;
+        progressBarInput.style.cursor = "col-resize";
+        const newValue = calculateValueFromPosition(e.clientX);
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+        e.preventDefault();
+      };
+      
+      // Обработчик движения мыши при перетаскивании
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!isDragging) return;
+        hasMoved = true;
+        const newValue = calculateValueFromPosition(e.clientX);
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+      };
+      
+      // Обработчик окончания перетаскивания
+      const handleMouseUp = async () => {
+        if (isDragging) {
+          isDragging = false;
+          progressBarInput.style.cursor = "";
+          if (hasMoved) {
+            await this.writeLogLine(file, dateIso, String(currentValue));
+            new Notice(`✓ Записано: ${dateIso}: ${currentValue}`, 2000);
+            await updateVisualizations();
+          }
+        }
+      };
+      
+      // Обработчик клика (сохранение при клике, если не было перетаскивания)
+      const handleClick = async (e: MouseEvent) => {
+        // Игнорируем клики, если было перетаскивание
+        if (hasMoved) {
+          hasMoved = false;
+          return;
+        }
+        // Игнорируем клики по самому progress элементу
+        if (e.target === progressBar || e.target === valueDisplay || e.target === labelLeft || e.target === labelRight) {
+          return;
+        }
+        const newValue = calculateValueFromPosition(e.clientX);
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+        // Сохранение при клике
+        await this.writeLogLine(file, dateIso, String(currentValue));
+        new Notice(`✓ Записано: ${dateIso}: ${currentValue}`, 2000);
+        await updateVisualizations();
+      };
+      
+      // Поддержка клавиатуры
+      const handleKeyDown = (e: KeyboardEvent) => {
+        let newValue = currentValue;
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+          e.preventDefault();
+          newValue = Math.max(minValue, currentValue - step);
+        } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+          e.preventDefault();
+          newValue = Math.min(maxValue, currentValue + step);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          newValue = minValue;
+        } else if (e.key === "End") {
+          e.preventDefault();
+          newValue = maxValue;
+        } else {
+          return;
+        }
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+      };
+      
+      const handleKeyUp = async (e: KeyboardEvent) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+          await this.writeLogLine(file, dateIso, String(currentValue));
+          new Notice(`✓ Записано: ${dateIso}: ${currentValue}`, 2000);
+          await updateVisualizations();
+        }
+      };
+      
+      // Добавляем обработчики событий
+      progressBarInput.addEventListener("click", handleClick);
+      progressBarInput.addEventListener("mousedown", handleMouseDown);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      progressBarInput.addEventListener("keydown", handleKeyDown);
+      progressBarInput.addEventListener("keyup", handleKeyUp);
+      
+      // Очистка обработчиков при удалении элемента (используем MutationObserver)
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.removedNodes.forEach((node) => {
+            if (node === wrapper || (node instanceof Node && wrapper.contains(node))) {
+              document.removeEventListener("mousemove", handleMouseMove);
+              document.removeEventListener("mouseup", handleMouseUp);
+              observer.disconnect();
+            }
+          });
+        });
+      });
+      if (wrapper.parentNode) {
+        observer.observe(wrapper.parentNode, { childList: true, subtree: true });
+      }
     } else {
-      container.createEl("div", { text: `Неизвестный mode: ${mode}. Доступны: good-habit, bad-habit, number, plusminus, rating, text` });
+      container.createEl("div", { text: `Неизвестный mode: ${mode}. Доступны: good-habit, bad-habit, number, plusminus, rating, text, scale` });
     }
   }
 
@@ -731,12 +1045,37 @@ export default class TrackerPlugin extends Plugin {
     }
     
     // Восстанавливаем позицию скролла или прокручиваем в конец если это первый рендер
-    requestAnimationFrame(() => {
+    // Используем двойной requestAnimationFrame для гарантии, что layout завершен
+    const performScroll = () => {
       if (scrollPosition > 0) {
         heatmapDiv.scrollLeft = scrollPosition;
       } else {
-        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
+        const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+        if (maxScroll > 0) {
+          // Используем scrollTo для более надежного скролла
+          heatmapDiv.scrollTo({
+            left: heatmapDiv.scrollWidth,
+            behavior: 'auto'
+          });
+        } else {
+          // Если размеры еще не вычислены, повторяем попытку
+          setTimeout(() => {
+            const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+            if (retryMaxScroll > 0) {
+              heatmapDiv.scrollTo({
+                left: heatmapDiv.scrollWidth,
+                behavior: 'auto'
+              });
+            }
+          }, 50);
+        }
       }
+    };
+    
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        performScroll();
+      });
     });
   }
 
@@ -862,9 +1201,33 @@ export default class TrackerPlugin extends Plugin {
     }
     
     // Прокручиваем хитмап в конец, чтобы был виден текущий день
-    // Используем requestAnimationFrame для гарантии, что DOM полностью отрендерен
+    // Используем двойной requestAnimationFrame для гарантии, что layout завершен и размеры вычислены
+    const performScroll = () => {
+      const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+      if (maxScroll > 0) {
+        // Используем scrollTo для более надежного скролла
+        heatmapDiv.scrollTo({
+          left: heatmapDiv.scrollWidth,
+          behavior: 'auto'
+        });
+      } else {
+        // Если размеры еще не вычислены, повторяем попытку
+        setTimeout(() => {
+          const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+          if (retryMaxScroll > 0) {
+            heatmapDiv.scrollTo({
+              left: heatmapDiv.scrollWidth,
+              behavior: 'auto'
+            });
+          }
+        }, 50);
+      }
+    };
+    
     requestAnimationFrame(() => {
-      heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
+      requestAnimationFrame(() => {
+        performScroll();
+      });
     });
   }
 
@@ -1658,6 +2021,17 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async saveSettings() { await this.saveData(this.settings); }
+
+  // Удаляет нумерацию из начала названия (например, "1. [[Название]]" -> "[[Название]]")
+  removeNumbering(name: string): string {
+    // Паттерн для поиска: цифра(ы), точка, пробел (опционально), затем текст
+    // Поддерживает форматы: "1. [[Название]]", "1.[[Название]]", "123. Название"
+    const match = name.match(/^\d+\.\s*(.+)$/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return name;
+  }
 }
 
 // ---- UI: Settings -----------------------------------------------------------
@@ -1694,6 +2068,15 @@ class TrackerSettingsTab extends PluginSettingTab {
             this.plugin.settings.daysToShow = num;
             await this.plugin.saveSettings();
           }
+        }));
+
+    new Setting(containerEl).setName("Скрывать нумерацию трекеров")
+      .setDesc("Если включено, убирает нумерацию в начале названий папок и трекеров (например, '1. [[Название]]' → '[[Название]]')")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.hideNumbering)
+        .onChange(async (v) => {
+          this.plugin.settings.hideNumbering = v;
+          await this.plugin.saveSettings();
         }));
   }
 }
@@ -1789,15 +2172,69 @@ class CreateTrackerModal extends Modal {
     const typeSetting = new Setting(contentEl)
       .setName("Тип")
       .addDropdown(dropdown => {
-        dropdown
-          .addOption("good-habit", "Хорошая привычка")
-          .addOption("bad-habit", "Плохая привычка")
-          .addOption("number", "Число")
-          .addOption("plusminus", "Счётчик (+/-)")
-          .addOption("rating", "Оценка (звёзды)")
-          .addOption("text", "Текст")
-          .setValue("good-habit");
+        // Привычки
+        dropdown.addOption("good-habit", "Хорошая привычка");
+        dropdown.addOption("bad-habit", "Плохая привычка");
+        // Метрики
+        dropdown.addOption("number", "Число");
+        dropdown.addOption("plusminus", "Счётчик (+/-)");
+        dropdown.addOption("rating", "Оценка (звёзды)");
+        dropdown.addOption("text", "Текст");
+        dropdown.addOption("checkbox", "Чекбокс");
+        dropdown.setValue("good-habit");
       });
+    
+    // Добавляем optgroup для группировки опций
+    const typeDropdown = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
+    if (typeDropdown) {
+      // Очищаем существующие опции
+      typeDropdown.innerHTML = "";
+      
+      // Группа "Привычки"
+      const habitsGroup = document.createElement("optgroup");
+      habitsGroup.label = "Привычки";
+      const goodHabitOption = document.createElement("option");
+      goodHabitOption.value = "good-habit";
+      goodHabitOption.textContent = "Хорошая привычка";
+      habitsGroup.appendChild(goodHabitOption);
+      const badHabitOption = document.createElement("option");
+      badHabitOption.value = "bad-habit";
+      badHabitOption.textContent = "Плохая привычка";
+      habitsGroup.appendChild(badHabitOption);
+      typeDropdown.appendChild(habitsGroup);
+      
+      // Группа "Метрики"
+      const metricsGroup = document.createElement("optgroup");
+      metricsGroup.label = "Метрики";
+      const numberOption = document.createElement("option");
+      numberOption.value = "number";
+      numberOption.textContent = "Число";
+      metricsGroup.appendChild(numberOption);
+      const plusminusOption = document.createElement("option");
+      plusminusOption.value = "plusminus";
+      plusminusOption.textContent = "Счётчик (+/-)";
+      metricsGroup.appendChild(plusminusOption);
+      const ratingOption = document.createElement("option");
+      ratingOption.value = "rating";
+      ratingOption.textContent = "Оценка (звёзды)";
+      metricsGroup.appendChild(ratingOption);
+      const textOption = document.createElement("option");
+      textOption.value = "text";
+      textOption.textContent = "Текст";
+      metricsGroup.appendChild(textOption);
+      const checkboxOption = document.createElement("option");
+      checkboxOption.value = "checkbox";
+      checkboxOption.textContent = "Чекбокс";
+      metricsGroup.appendChild(checkboxOption);
+      const scaleOption = document.createElement("option");
+      scaleOption.value = "scale";
+      scaleOption.textContent = "Шкала";
+      metricsGroup.appendChild(scaleOption);
+      typeDropdown.appendChild(metricsGroup);
+      
+      // Устанавливаем значение по умолчанию
+      typeDropdown.value = "good-habit";
+    }
     
     const maxRatingSetting = new Setting(contentEl)
       .setName("Максимальная оценка")
@@ -1811,14 +2248,61 @@ class CreateTrackerModal extends Modal {
     // Скрываем maxRatingSetting по умолчанию
     maxRatingSetting.settingEl.style.display = "none";
     
-    const typeDropdown = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
-    typeDropdown.onchange = () => {
-      if (typeDropdown.value === "rating") {
-        maxRatingSetting.settingEl.style.display = "";
-      } else {
-        maxRatingSetting.settingEl.style.display = "none";
-      }
-    };
+    const minValueSetting = new Setting(contentEl)
+      .setName("Значение \"от\"")
+      .addText(text => {
+        text.setPlaceholder("0")
+          .setValue("0")
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const maxValueSetting = new Setting(contentEl)
+      .setName("Значение \"до\"")
+      .addText(text => {
+        text.setPlaceholder("10")
+          .setValue("10")
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const stepSetting = new Setting(contentEl)
+      .setName("Шаг")
+      .addText(text => {
+        text.setPlaceholder("1")
+          .setValue("1")
+          .inputEl.type = "number";
+        text.inputEl.step = "any";
+        text.inputEl.style.width = "100%";
+      });
+    
+    // Скрываем настройки scale по умолчанию
+    minValueSetting.settingEl.style.display = "none";
+    maxValueSetting.settingEl.style.display = "none";
+    stepSetting.settingEl.style.display = "none";
+    
+    // Получаем select элемент (если еще не получен выше)
+    const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
+    if (typeDropdownSelect) {
+      typeDropdownSelect.onchange = () => {
+        if (typeDropdownSelect.value === "rating") {
+          maxRatingSetting.settingEl.style.display = "";
+          minValueSetting.settingEl.style.display = "none";
+          maxValueSetting.settingEl.style.display = "none";
+          stepSetting.settingEl.style.display = "none";
+        } else if (typeDropdownSelect.value === "scale") {
+          maxRatingSetting.settingEl.style.display = "none";
+          minValueSetting.settingEl.style.display = "";
+          maxValueSetting.settingEl.style.display = "";
+          stepSetting.settingEl.style.display = "";
+        } else {
+          maxRatingSetting.settingEl.style.display = "none";
+          minValueSetting.settingEl.style.display = "none";
+          maxValueSetting.settingEl.style.display = "none";
+          stepSetting.settingEl.style.display = "none";
+        }
+      };
+    }
     
     new Setting(contentEl)
       .addButton(button => {
@@ -1833,10 +2317,20 @@ class CreateTrackerModal extends Modal {
               return;
             }
             
-            const type = typeDropdown.value;
+            const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
+            const type = typeDropdownSelect ? typeDropdownSelect.value : "good-habit";
             const maxRating = type === "rating" 
               ? (maxRatingSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "5"
               : "5";
+            const minValue = type === "scale"
+              ? (minValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "0"
+              : "0";
+            const maxValue = type === "scale"
+              ? (maxValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "10"
+              : "10";
+            const step = type === "scale"
+              ? (stepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
+              : "1";
             
             const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
             const filePath = `${this.plugin.settings.trackersFolder}/${fileName}`;
@@ -1854,6 +2348,11 @@ class CreateTrackerModal extends Modal {
               let newFrontmatter = `name: "${escapedName}"\ntype: "${type}"\n`;
               if (type === "rating") {
                 newFrontmatter += `maxRating: ${parseInt(maxRating) || 5}\n`;
+              }
+              if (type === "scale") {
+                newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
+                newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
+                newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
               }
               newFrontmatter += `data: {}\n`;
               

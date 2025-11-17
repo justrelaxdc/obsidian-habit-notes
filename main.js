@@ -14503,7 +14503,8 @@ var DEFAULT_SETTINGS = {
   trackersFolder: "0. Files/Trackers",
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
-  daysToShow: 30
+  daysToShow: 30,
+  hideNumbering: false
 };
 var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild {
   constructor(plugin, source, containerEl, ctx) {
@@ -14516,8 +14517,8 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
   async render() {
     this.containerEl.empty();
     try {
-      const files = this.getFilesFromFolder(this.folderPath);
-      if (files.length === 0) {
+      const folderTree = this.getFilesFromFolder(this.folderPath);
+      if (!folderTree || folderTree.files.length === 0 && folderTree.children.length === 0) {
         this.containerEl.createEl("div", {
           text: `tracker: \u0432 \u043F\u0430\u043F\u043A\u0435 ${this.folderPath} \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432`,
           cls: "tracker-notes__error"
@@ -14554,10 +14555,8 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
         const todayBtn = datePicker.createEl("button", { text: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F", cls: "tracker-notes__date-btn" });
         todayBtn.onclick = () => updateDate("today");
       }
-      const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__trackers" });
-      for (const file of files) {
-        await this.plugin.renderTracker(trackersContainer, file, dateIso, view, this.opts);
-      }
+      const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__hierarchy" });
+      await this.renderFolderNode(folderTree, trackersContainer, dateIso, view, this.opts);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.containerEl.createEl("div", {
@@ -14574,27 +14573,70 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
         text: `tracker: \u043F\u0430\u043F\u043A\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430: ${folderPath}`,
         cls: "tracker-notes__error"
       });
-      return [];
+      return null;
     }
     if (folder instanceof import_obsidian.TFile) {
-      return [folder];
+      return {
+        name: folder.basename,
+        path: folder.path,
+        level: 0,
+        files: [folder],
+        children: []
+      };
     }
     if (folder instanceof import_obsidian.TFolder) {
-      return this.getAllMarkdownFiles(folder);
+      return this.buildFolderTree(folder, 2, 0);
     }
-    const allFiles = this.plugin.app.vault.getMarkdownFiles();
-    return allFiles.filter((f) => f.path.startsWith(folderPath + "/"));
+    return null;
   }
-  getAllMarkdownFiles(folder) {
-    const result = [];
+  buildFolderTree(folder, maxDepth, currentLevel) {
+    const node = {
+      name: folder.name,
+      path: folder.path,
+      level: currentLevel,
+      files: [],
+      children: []
+    };
     for (const child of folder.children) {
       if (child instanceof import_obsidian.TFile && child.extension === "md") {
-        result.push(child);
-      } else if (child instanceof import_obsidian.TFolder) {
-        result.push(...this.getAllMarkdownFiles(child));
+        node.files.push(child);
       }
     }
-    return result;
+    node.files.sort((a, b) => a.basename.localeCompare(b.basename, void 0, { sensitivity: "base" }));
+    if (currentLevel < maxDepth) {
+      for (const child of folder.children) {
+        if (child instanceof import_obsidian.TFolder) {
+          const childNode = this.buildFolderTree(child, maxDepth, currentLevel + 1);
+          if (childNode.files.length > 0 || childNode.children.length > 0) {
+            node.children.push(childNode);
+          }
+        }
+      }
+      node.children.sort((a, b) => a.name.localeCompare(b.name, void 0, { sensitivity: "base" }));
+    }
+    return node;
+  }
+  async renderFolderNode(node, parentEl, dateIso, view, opts) {
+    const nodeContainer = parentEl.createDiv({
+      cls: `tracker-notes__folder-node level-${node.level}`
+    });
+    const shouldShowHeader = node.files.length > 0 || node.level > 0 && node.children.length > 0;
+    if (shouldShowHeader) {
+      const folderHeader = nodeContainer.createDiv({
+        cls: `tracker-notes__folder-header level-${node.level}`
+      });
+      const displayName = this.plugin.settings.hideNumbering ? this.plugin.removeNumbering(node.name) : node.name;
+      folderHeader.setText(displayName);
+    }
+    if (node.files.length > 0) {
+      const trackersContainer = nodeContainer.createDiv({ cls: "tracker-notes__trackers" });
+      for (const file of node.files) {
+        await this.plugin.renderTracker(trackersContainer, file, dateIso, view, opts);
+      }
+    }
+    for (const childNode of node.children) {
+      await this.renderFolderNode(childNode, nodeContainer, dateIso, view, opts);
+    }
   }
   getFolderPath() {
     return this.folderPath;
@@ -14658,6 +14700,19 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
       .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
       .tracker-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }
+      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }
+      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }
+      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }
+      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }
+      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; z-index: 0; }
+      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 2; white-space: nowrap; }
+      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }
+      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }
       .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
       .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       .tracker-notes button:active { transform: scale(0.95) translateY(0); }
@@ -14697,6 +14752,12 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
       .tracker-notes__heatmap { transition: opacity 0.15s ease; }
       .tracker-notes__chart { transition: opacity 0.15s ease; }
+      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }
+      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }
+      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
+      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
+      .tracker-notes__folder-header.level-1 { font-size: 1.2em; }
+      .tracker-notes__folder-header.level-2 { font-size: 1.1em; }
       
       /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */
       @media (max-width: 768px) {
@@ -14716,6 +14777,9 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__calendar-day { font-size: 0.7em; }
         .tracker-notes__chart { height: 180px; }
         .tracker-notes__chart canvas { height: 160px !important; }
+        .tracker-notes__folder-header.level-0 { font-size: 1.2em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
+        .tracker-notes__folder-header.level-2 { font-size: 1em; }
       }
       
       @media (max-width: 480px) {
@@ -14726,6 +14790,9 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__calendar-day { font-size: 0.65em; }
         .tracker-notes__chart { height: 160px; }
         .tracker-notes__chart canvas { height: 140px !important; }
+        .tracker-notes__folder-header.level-0 { font-size: 1.1em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -14778,6 +14845,18 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         if (maxRatingMatch) {
           fileOpts.maxRating = maxRatingMatch[1];
         }
+        const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
+        if (minValueMatch) {
+          fileOpts.minValue = minValueMatch[1];
+        }
+        const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);
+        if (maxValueMatch) {
+          fileOpts.maxValue = maxValueMatch[1];
+        }
+        const stepMatch = frontmatter.match(/^step:\s*([\d.]+)/m);
+        if (stepMatch) {
+          fileOpts.step = stepMatch[1];
+        }
       } else {
         fileOpts.mode = "good-habit";
       }
@@ -14823,7 +14902,8 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     trackerItem.dataset.filePath = file.path;
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     const fileName = file.basename;
-    header.createEl("div", { text: fileName, cls: "tracker-notes__tracker-title" });
+    const displayName = this.settings.hideNumbering ? this.removeNumbering(fileName) : fileName;
+    header.createEl("div", { text: displayName, cls: "tracker-notes__tracker-title" });
     const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
     if (view === "display") {
       const value = await this.readValueForDate(file, dateIso);
@@ -14853,6 +14933,7 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     }
   }
   async renderControlsForDate(container, file, dateIso, opts) {
+    container.empty();
     const mode = (opts.mode ?? "good-habit").toLowerCase();
     const trackerItem = container.closest(".tracker-notes__tracker");
     const mainContainer = trackerItem?.closest(".tracker-notes");
@@ -14972,8 +15053,155 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         setTimeout(() => btn.style.transform = "", 200);
         await updateVisualizations();
       };
+    } else if (mode === "scale") {
+      const minValue = parseFloat(opts.minValue || "0");
+      const maxValue = parseFloat(opts.maxValue || "10");
+      const step = parseFloat(opts.step || "1");
+      const current = await this.readValueForDate(file, dateIso);
+      let currentValue = minValue;
+      if (current != null && !isNaN(Number(current))) {
+        const numVal = Number(current);
+        currentValue = Math.max(minValue, Math.min(maxValue, numVal));
+      }
+      const wrapper = container.createDiv({ cls: "tracker-notes__progress-bar-wrapper" });
+      wrapper.setAttribute("data-internal-value", String(currentValue));
+      const progressBarInput = wrapper.createDiv({ cls: "tracker-notes__progress-bar-input" });
+      progressBarInput.setAttribute("tabindex", "0");
+      progressBarInput.setAttribute("role", "button");
+      progressBarInput.setAttribute("aria-label", String(currentValue));
+      progressBarInput.setAttribute("aria-valuemin", String(minValue));
+      progressBarInput.setAttribute("aria-valuemax", String(maxValue));
+      progressBarInput.setAttribute("aria-valuenow", String(currentValue));
+      const progressBar = progressBarInput.createDiv({ cls: "tracker-notes__progress-bar-progress" });
+      progressBar.setAttribute("role", "slider");
+      progressBar.setAttribute("tabindex", "0");
+      progressBar.setAttribute("aria-valuemin", String(minValue));
+      progressBar.setAttribute("aria-valuemax", String(maxValue));
+      progressBar.setAttribute("aria-valuenow", String(currentValue));
+      const valueDisplay = progressBarInput.createEl("span", {
+        text: String(currentValue),
+        cls: "tracker-notes__progress-bar-value"
+      });
+      const labelLeft = progressBarInput.createEl("span", {
+        text: String(minValue),
+        cls: "tracker-notes__progress-bar-label-left"
+      });
+      const labelRight = progressBarInput.createEl("span", {
+        text: String(maxValue),
+        cls: "tracker-notes__progress-bar-label-right"
+      });
+      const calculateValueFromPosition = (clientX) => {
+        const rect = progressBarInput.getBoundingClientRect();
+        const clickX = clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+        const rawValue = minValue + (maxValue - minValue) * percentage;
+        const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
+        return Math.max(minValue, Math.min(maxValue, steppedValue));
+      };
+      const updateProgressBar = (value) => {
+        const percentage = (value - minValue) / (maxValue - minValue) * 100;
+        progressBar.style.width = `${percentage}%`;
+        valueDisplay.setText(String(value));
+        progressBarInput.setAttribute("aria-valuenow", String(value));
+        progressBarInput.setAttribute("aria-label", String(value));
+        progressBar.setAttribute("aria-valuenow", String(value));
+        wrapper.setAttribute("data-internal-value", String(value));
+      };
+      updateProgressBar(currentValue);
+      let isDragging = false;
+      let hasMoved = false;
+      const handleMouseDown = (e) => {
+        if (e.button !== 0) return;
+        isDragging = true;
+        hasMoved = false;
+        progressBarInput.style.cursor = "col-resize";
+        const newValue = calculateValueFromPosition(e.clientX);
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+        e.preventDefault();
+      };
+      const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        hasMoved = true;
+        const newValue = calculateValueFromPosition(e.clientX);
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+      };
+      const handleMouseUp = async () => {
+        if (isDragging) {
+          isDragging = false;
+          progressBarInput.style.cursor = "";
+          if (hasMoved) {
+            await this.writeLogLine(file, dateIso, String(currentValue));
+            new import_obsidian.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
+            await updateVisualizations();
+          }
+        }
+      };
+      const handleClick = async (e) => {
+        if (hasMoved) {
+          hasMoved = false;
+          return;
+        }
+        if (e.target === progressBar || e.target === valueDisplay || e.target === labelLeft || e.target === labelRight) {
+          return;
+        }
+        const newValue = calculateValueFromPosition(e.clientX);
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+        await this.writeLogLine(file, dateIso, String(currentValue));
+        new import_obsidian.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
+        await updateVisualizations();
+      };
+      const handleKeyDown = (e) => {
+        let newValue = currentValue;
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+          e.preventDefault();
+          newValue = Math.max(minValue, currentValue - step);
+        } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+          e.preventDefault();
+          newValue = Math.min(maxValue, currentValue + step);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          newValue = minValue;
+        } else if (e.key === "End") {
+          e.preventDefault();
+          newValue = maxValue;
+        } else {
+          return;
+        }
+        currentValue = newValue;
+        updateProgressBar(currentValue);
+      };
+      const handleKeyUp = async (e) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+          await this.writeLogLine(file, dateIso, String(currentValue));
+          new import_obsidian.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
+          await updateVisualizations();
+        }
+      };
+      progressBarInput.addEventListener("click", handleClick);
+      progressBarInput.addEventListener("mousedown", handleMouseDown);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      progressBarInput.addEventListener("keydown", handleKeyDown);
+      progressBarInput.addEventListener("keyup", handleKeyUp);
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.removedNodes.forEach((node) => {
+            if (node === wrapper || node instanceof Node && wrapper.contains(node)) {
+              document.removeEventListener("mousemove", handleMouseMove);
+              document.removeEventListener("mouseup", handleMouseUp);
+              observer.disconnect();
+            }
+          });
+        });
+      });
+      if (wrapper.parentNode) {
+        observer.observe(wrapper.parentNode, { childList: true, subtree: true });
+      }
     } else {
-      container.createEl("div", { text: `\u041D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0439 mode: ${mode}. \u0414\u043E\u0441\u0442\u0443\u043F\u043D\u044B: good-habit, bad-habit, number, plusminus, rating, text` });
+      container.createEl("div", { text: `\u041D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0439 mode: ${mode}. \u0414\u043E\u0441\u0442\u0443\u043F\u043D\u044B: good-habit, bad-habit, number, plusminus, rating, text, scale` });
     }
   }
   // ---- Визуализация ---------------------------------------------------------
@@ -15070,12 +15298,33 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       dayElements[dayElements.length - 1].remove();
       dayElements.pop();
     }
-    requestAnimationFrame(() => {
+    const performScroll = () => {
       if (scrollPosition > 0) {
         heatmapDiv.scrollLeft = scrollPosition;
       } else {
-        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
+        const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+        if (maxScroll > 0) {
+          heatmapDiv.scrollTo({
+            left: heatmapDiv.scrollWidth,
+            behavior: "auto"
+          });
+        } else {
+          setTimeout(() => {
+            const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+            if (retryMaxScroll > 0) {
+              heatmapDiv.scrollTo({
+                left: heatmapDiv.scrollWidth,
+                behavior: "auto"
+              });
+            }
+          }, 50);
+        }
       }
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        performScroll();
+      });
     });
   }
   async renderTrackerHeatmap(container, file, dateIso, daysToShow, trackerType) {
@@ -15160,8 +15409,29 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         await updateVisualizations(dateStr, dayDiv);
       };
     }
+    const performScroll = () => {
+      const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+      if (maxScroll > 0) {
+        heatmapDiv.scrollTo({
+          left: heatmapDiv.scrollWidth,
+          behavior: "auto"
+        });
+      } else {
+        setTimeout(() => {
+          const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+          if (retryMaxScroll > 0) {
+            heatmapDiv.scrollTo({
+              left: heatmapDiv.scrollWidth,
+              behavior: "auto"
+            });
+          }
+        }, 50);
+      }
+    };
     requestAnimationFrame(() => {
-      heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
+      requestAnimationFrame(() => {
+        performScroll();
+      });
     });
   }
   // Вспомогательная функция для подсчета слов в тексте
@@ -15777,6 +16047,14 @@ ${newFrontmatter}---${body}`;
   async saveSettings() {
     await this.saveData(this.settings);
   }
+  // Удаляет нумерацию из начала названия (например, "1. [[Название]]" -> "[[Название]]")
+  removeNumbering(name) {
+    const match = name.match(/^\d+\.\s*(.+)$/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return name;
+  }
 };
 var TrackerSettingsTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
@@ -15804,6 +16082,10 @@ var TrackerSettingsTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.daysToShow = num;
         await this.plugin.saveSettings();
       }
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u0421\u043A\u0440\u044B\u0432\u0430\u0442\u044C \u043D\u0443\u043C\u0435\u0440\u0430\u0446\u0438\u044E \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432").setDesc("\u0415\u0441\u043B\u0438 \u0432\u043A\u043B\u044E\u0447\u0435\u043D\u043E, \u0443\u0431\u0438\u0440\u0430\u0435\u0442 \u043D\u0443\u043C\u0435\u0440\u0430\u0446\u0438\u044E \u0432 \u043D\u0430\u0447\u0430\u043B\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0439 \u043F\u0430\u043F\u043E\u043A \u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432 (\u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440, '1. [[\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435]]' \u2192 '[[\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435]]')").addToggle((t) => t.setValue(this.plugin.settings.hideNumbering).onChange(async (v) => {
+      this.plugin.settings.hideNumbering = v;
+      await this.plugin.saveSettings();
     }));
   }
 };
@@ -15873,20 +16155,99 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
       text.inputEl.style.width = "100%";
     });
     const typeSetting = new import_obsidian.Setting(contentEl).setName("\u0422\u0438\u043F").addDropdown((dropdown) => {
-      dropdown.addOption("good-habit", "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430").addOption("bad-habit", "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430").addOption("number", "\u0427\u0438\u0441\u043B\u043E").addOption("plusminus", "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)").addOption("rating", "\u041E\u0446\u0435\u043D\u043A\u0430 (\u0437\u0432\u0451\u0437\u0434\u044B)").addOption("text", "\u0422\u0435\u043A\u0441\u0442").setValue("good-habit");
+      dropdown.addOption("good-habit", "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
+      dropdown.addOption("bad-habit", "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
+      dropdown.addOption("number", "\u0427\u0438\u0441\u043B\u043E");
+      dropdown.addOption("plusminus", "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)");
+      dropdown.addOption("rating", "\u041E\u0446\u0435\u043D\u043A\u0430 (\u0437\u0432\u0451\u0437\u0434\u044B)");
+      dropdown.addOption("text", "\u0422\u0435\u043A\u0441\u0442");
+      dropdown.addOption("checkbox", "\u0427\u0435\u043A\u0431\u043E\u043A\u0441");
+      dropdown.setValue("good-habit");
     });
+    const typeDropdown = typeSetting.controlEl.querySelector("select");
+    if (typeDropdown) {
+      typeDropdown.innerHTML = "";
+      const habitsGroup = document.createElement("optgroup");
+      habitsGroup.label = "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438";
+      const goodHabitOption = document.createElement("option");
+      goodHabitOption.value = "good-habit";
+      goodHabitOption.textContent = "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430";
+      habitsGroup.appendChild(goodHabitOption);
+      const badHabitOption = document.createElement("option");
+      badHabitOption.value = "bad-habit";
+      badHabitOption.textContent = "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430";
+      habitsGroup.appendChild(badHabitOption);
+      typeDropdown.appendChild(habitsGroup);
+      const metricsGroup = document.createElement("optgroup");
+      metricsGroup.label = "\u041C\u0435\u0442\u0440\u0438\u043A\u0438";
+      const numberOption = document.createElement("option");
+      numberOption.value = "number";
+      numberOption.textContent = "\u0427\u0438\u0441\u043B\u043E";
+      metricsGroup.appendChild(numberOption);
+      const plusminusOption = document.createElement("option");
+      plusminusOption.value = "plusminus";
+      plusminusOption.textContent = "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)";
+      metricsGroup.appendChild(plusminusOption);
+      const ratingOption = document.createElement("option");
+      ratingOption.value = "rating";
+      ratingOption.textContent = "\u041E\u0446\u0435\u043D\u043A\u0430 (\u0437\u0432\u0451\u0437\u0434\u044B)";
+      metricsGroup.appendChild(ratingOption);
+      const textOption = document.createElement("option");
+      textOption.value = "text";
+      textOption.textContent = "\u0422\u0435\u043A\u0441\u0442";
+      metricsGroup.appendChild(textOption);
+      const checkboxOption = document.createElement("option");
+      checkboxOption.value = "checkbox";
+      checkboxOption.textContent = "\u0427\u0435\u043A\u0431\u043E\u043A\u0441";
+      metricsGroup.appendChild(checkboxOption);
+      const scaleOption = document.createElement("option");
+      scaleOption.value = "scale";
+      scaleOption.textContent = "\u0428\u043A\u0430\u043B\u0430";
+      metricsGroup.appendChild(scaleOption);
+      typeDropdown.appendChild(metricsGroup);
+      typeDropdown.value = "good-habit";
+    }
     const maxRatingSetting = new import_obsidian.Setting(contentEl).setName("\u041C\u0430\u043A\u0441\u0438\u043C\u0430\u043B\u044C\u043D\u0430\u044F \u043E\u0446\u0435\u043D\u043A\u0430").addSlider((slider) => {
       slider.setLimits(3, 10, 1).setValue(5).setDynamicTooltip();
     });
     maxRatingSetting.settingEl.style.display = "none";
-    const typeDropdown = typeSetting.controlEl.querySelector("select");
-    typeDropdown.onchange = () => {
-      if (typeDropdown.value === "rating") {
-        maxRatingSetting.settingEl.style.display = "";
-      } else {
-        maxRatingSetting.settingEl.style.display = "none";
-      }
-    };
+    const minValueSetting = new import_obsidian.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u043E\u0442"').addText((text) => {
+      text.setPlaceholder("0").setValue("0").inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const maxValueSetting = new import_obsidian.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u0434\u043E"').addText((text) => {
+      text.setPlaceholder("10").setValue("10").inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const stepSetting = new import_obsidian.Setting(contentEl).setName("\u0428\u0430\u0433").addText((text) => {
+      text.setPlaceholder("1").setValue("1").inputEl.type = "number";
+      text.inputEl.step = "any";
+      text.inputEl.style.width = "100%";
+    });
+    minValueSetting.settingEl.style.display = "none";
+    maxValueSetting.settingEl.style.display = "none";
+    stepSetting.settingEl.style.display = "none";
+    const typeDropdownSelect = typeSetting.controlEl.querySelector("select");
+    if (typeDropdownSelect) {
+      typeDropdownSelect.onchange = () => {
+        if (typeDropdownSelect.value === "rating") {
+          maxRatingSetting.settingEl.style.display = "";
+          minValueSetting.settingEl.style.display = "none";
+          maxValueSetting.settingEl.style.display = "none";
+          stepSetting.settingEl.style.display = "none";
+        } else if (typeDropdownSelect.value === "scale") {
+          maxRatingSetting.settingEl.style.display = "none";
+          minValueSetting.settingEl.style.display = "";
+          maxValueSetting.settingEl.style.display = "";
+          stepSetting.settingEl.style.display = "";
+        } else {
+          maxRatingSetting.settingEl.style.display = "none";
+          minValueSetting.settingEl.style.display = "none";
+          maxValueSetting.settingEl.style.display = "none";
+          stepSetting.settingEl.style.display = "none";
+        }
+      };
+    }
     new import_obsidian.Setting(contentEl).addButton((button) => {
       button.setButtonText("\u0421\u043E\u0437\u0434\u0430\u0442\u044C").setCta().onClick(async () => {
         const nameInput = nameSetting.controlEl.querySelector("input");
@@ -15895,8 +16256,12 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
           new import_obsidian.Notice("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435");
           return;
         }
-        const type = typeDropdown.value;
+        const typeDropdownSelect2 = typeSetting.controlEl.querySelector("select");
+        const type = typeDropdownSelect2 ? typeDropdownSelect2.value : "good-habit";
         const maxRating = type === "rating" ? maxRatingSetting.controlEl.querySelector("input")?.value || "5" : "5";
+        const minValue = type === "scale" ? minValueSetting.controlEl.querySelector("input")?.value || "0" : "0";
+        const maxValue = type === "scale" ? maxValueSetting.controlEl.querySelector("input")?.value || "10" : "10";
+        const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : "1";
         const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
         const filePath = `${this.plugin.settings.trackersFolder}/${fileName}`;
         try {
@@ -15909,6 +16274,14 @@ type: "${type}"
 `;
           if (type === "rating") {
             newFrontmatter += `maxRating: ${parseInt(maxRating) || 5}
+`;
+          }
+          if (type === "scale") {
+            newFrontmatter += `minValue: ${parseFloat(minValue) || 0}
+`;
+            newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}
+`;
+            newFrontmatter += `step: ${parseFloat(step) || 1}
 `;
           }
           newFrontmatter += `data: {}
