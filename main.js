@@ -14529,13 +14529,13 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
       let dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
       const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
       if (view === "control") {
-        const blockHeader = mainContainer.createDiv({ cls: "tracker-notes__header" });
-        const datePicker = blockHeader.createDiv({ cls: "tracker-notes__date-picker" });
-        const dateInput = datePicker.createEl("input", {
-          type: "date",
-          cls: "tracker-notes__date-input",
-          value: dateIso
-        });
+        const blockHeader = this.containerEl.createDiv({ cls: "tracker-notes__header" });
+        this.containerEl.insertBefore(blockHeader, mainContainer);
+        const headerTitle = blockHeader.createDiv({ cls: "tracker-notes__header-title" });
+        const folderName = this.folderPath.split("/").pop() || this.folderPath;
+        headerTitle.createEl("span", { text: folderName, cls: "tracker-notes__header-label" });
+        const datePickerContainer = blockHeader.createDiv({ cls: "tracker-notes__date-picker-container" });
+        const datePicker = datePickerContainer.createDiv({ cls: "tracker-notes__date-picker" });
         const updateDate = async (newDate) => {
           const newDateIso = resolveDateIso(newDate, this.plugin.settings.dateFormat);
           dateInput.value = newDateIso;
@@ -14551,9 +14551,25 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
             }
           }
         };
+        const navigateDate = async (days) => {
+          const m = window.moment;
+          const currentDateObj = m ? m(dateIso, this.plugin.settings.dateFormat) : parseDate(dateIso, this.plugin.settings.dateFormat);
+          const newDate = m ? currentDateObj.clone().add(days, "days") : addDays(new Date(currentDateObj.getTime()), days);
+          const newDateStr = m ? newDate.format(this.plugin.settings.dateFormat) : formatDate(newDate, this.plugin.settings.dateFormat);
+          await updateDate(newDateStr);
+        };
+        const dayBackBtn = datePicker.createEl("button", { text: "\u25C0", cls: "tracker-notes__date-nav-btn tracker-notes__date-nav-btn-left" });
+        dayBackBtn.onclick = () => navigateDate(-1);
+        dayBackBtn.title = "\u0412\u0447\u0435\u0440\u0430";
+        const dateInput = datePicker.createEl("input", {
+          type: "date",
+          cls: "tracker-notes__date-input",
+          value: dateIso
+        });
         dateInput.onchange = () => updateDate(dateInput.value);
-        const todayBtn = datePicker.createEl("button", { text: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F", cls: "tracker-notes__date-btn" });
-        todayBtn.onclick = () => updateDate("today");
+        const dayForwardBtn = datePicker.createEl("button", { text: "\u25B6", cls: "tracker-notes__date-nav-btn tracker-notes__date-nav-btn-right" });
+        dayForwardBtn.onclick = () => navigateDate(1);
+        dayForwardBtn.title = "\u0417\u0430\u0432\u0442\u0440\u0430";
       }
       const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__hierarchy" });
       await this.renderFolderNode(folderTree, trackersContainer, dateIso, view, this.opts);
@@ -14685,13 +14701,18 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
   addStyleSheet() {
     const styleEl = document.createElement("style");
     styleEl.textContent = `
-      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__header { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 1em; padding-bottom: 0.75em; border-bottom: 2px solid var(--background-modifier-border); flex-wrap: wrap; gap: 0.5em; }
+      .markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,
+      .markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }
+      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }
+      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }
+      .tracker-notes__header-icon { font-size: 1.3em; }
+      .tracker-notes__header-label { }
+      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }
       .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
       .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__tracker:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
       .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none; }
       .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
       .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes__value.updated { animation: pulse 0.3s ease; }
@@ -14730,13 +14751,18 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes__calendar-day:hover { transform: scale(1.1); }
       .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }
       .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }
-      .tracker-notes__date-picker { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
-      .tracker-notes__date-input { padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; min-width: 0; flex: 1 1 auto; max-width: 100%; box-sizing: border-box; }
-      .tracker-notes__date-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .tracker-notes__date-btn { padding: 0.4em 0.8em; font-size: 0.85em; white-space: nowrap; flex-shrink: 0; }
-      .tracker-notes__error { color: var(--text-error); padding: 0.5em; background: var(--background-modifier-error); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }
+      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }
+      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }
+      .tracker-notes__date-input:focus { outline: none; box-shadow: 0 0 0 2px var(--background-modifier-border-focus, hsla(var(--interactive-accent-hsl), 0.2)); }
+      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }
+      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }
+      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }
-      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: smooth; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
+      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
       .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }
       .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
       .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
@@ -14754,19 +14780,22 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes__chart { transition: opacity 0.15s ease; }
       .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }
       .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }
+      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }
+      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }
+      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }
       .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
       .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
-      .tracker-notes__folder-header.level-1 { font-size: 1.2em; }
-      .tracker-notes__folder-header.level-2 { font-size: 1.1em; }
+      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }
+      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
       
       /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */
       @media (max-width: 768px) {
         .tracker-notes { padding: 0.75em; margin: 0.75em 0; }
         .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.75em; }
         .tracker-notes__tracker { padding: 0.75em; }
-        .tracker-notes__header { flex-direction: column; align-items: stretch; }
-        .tracker-notes__date-picker { width: 100%; }
-        .tracker-notes__date-input { width: 100%; }
+        .tracker-notes__header { padding: 0.75em; }
+        .tracker-notes__date-picker { flex-wrap: wrap; justify-content: center; }
+        .tracker-notes__date-input { max-width: 100%; flex: 1 1 100%; }
         .tracker-notes__row { flex-direction: column; align-items: stretch; gap: 0.5em; }
         .tracker-notes__row > * { width: 100%; }
         .tracker-notes input[type="number"] { width: 100%; }
@@ -14777,9 +14806,11 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__calendar-day { font-size: 0.7em; }
         .tracker-notes__chart { height: 180px; }
         .tracker-notes__chart canvas { height: 160px !important; }
+        .tracker-notes__folder-node.level-1 { padding-left: 1em; }
+        .tracker-notes__folder-node.level-2 { padding-left: 2em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.2em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
-        .tracker-notes__folder-header.level-2 { font-size: 1em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.15em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
       }
       
       @media (max-width: 480px) {
@@ -14790,9 +14821,11 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__calendar-day { font-size: 0.65em; }
         .tracker-notes__chart { height: 160px; }
         .tracker-notes__chart canvas { height: 140px !important; }
+        .tracker-notes__folder-node.level-1 { padding-left: 0.75em; }
+        .tracker-notes__folder-node.level-2 { padding-left: 1.5em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.1em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1em; }
-        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.05em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.85em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -14903,7 +14936,12 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     const fileName = file.basename;
     const displayName = this.settings.hideNumbering ? this.removeNumbering(fileName) : fileName;
-    header.createEl("div", { text: displayName, cls: "tracker-notes__tracker-title" });
+    const titleLink = header.createEl("a", {
+      text: displayName,
+      cls: "tracker-notes__tracker-title internal-link",
+      href: file.path
+    });
+    titleLink.setAttribute("data-href", file.path);
     const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
     if (view === "display") {
       const value = await this.readValueForDate(file, dateIso);
@@ -14975,22 +15013,21 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       const input = wrap.createEl("input", { type: "number", placeholder: "0" });
       const current = await this.readValueForDate(file, dateIso);
       if (current != null && !isNaN(Number(current))) input.value = String(current);
-      const btn = wrap.createEl("button", { text: "Set" });
-      btn.onclick = async () => {
+      const updateValue = async () => {
         const val = Number(input.value);
-        if (isNaN(val)) {
-          new import_obsidian.Notice("\u274C \u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u043E\u0435 \u0447\u0438\u0441\u043B\u043E");
-          return;
-        }
+        if (input.value === "" || isNaN(val)) return;
         await this.writeLogLine(file, dateIso, String(val));
         new import_obsidian.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${val}`, 2e3);
         input.value = String(val);
-        btn.style.transform = "scale(0.95)";
-        setTimeout(() => btn.style.transform = "", 200);
+        input.style.transform = "scale(0.98)";
+        setTimeout(() => input.style.transform = "", 200);
         await updateVisualizations();
       };
+      input.onchange = updateValue;
       input.onkeypress = async (e) => {
-        if (e.key === "Enter") btn.click();
+        if (e.key === "Enter") {
+          await updateValue();
+        }
       };
     } else if (mode === "plusminus") {
       const wrap = container.createDiv({ cls: "tracker-notes__row" });
@@ -15211,7 +15248,6 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     const startDate = m ? m(endDate).subtract(daysToShow - 1, "days") : addDays(endDate, -(daysToShow - 1));
     const entries = await this.readAllEntries(file);
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-    const scrollPosition = heatmapDiv.scrollLeft;
     const trackerItem = heatmapDiv.closest(".tracker-notes__tracker");
     const mainContainer = trackerItem?.closest(".tracker-notes");
     const updateHeatmapDay = async (dateStr, dayDiv) => {
@@ -15299,26 +15335,16 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       dayElements.pop();
     }
     const performScroll = () => {
-      if (scrollPosition > 0) {
-        heatmapDiv.scrollLeft = scrollPosition;
+      const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+      if (maxScroll > 0) {
+        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
       } else {
-        const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-        if (maxScroll > 0) {
-          heatmapDiv.scrollTo({
-            left: heatmapDiv.scrollWidth,
-            behavior: "auto"
-          });
-        } else {
-          setTimeout(() => {
-            const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-            if (retryMaxScroll > 0) {
-              heatmapDiv.scrollTo({
-                left: heatmapDiv.scrollWidth,
-                behavior: "auto"
-              });
-            }
-          }, 50);
-        }
+        setTimeout(() => {
+          const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+          if (retryMaxScroll > 0) {
+            heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
+          }
+        }, 50);
       }
     };
     requestAnimationFrame(() => {
@@ -15412,18 +15438,12 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     const performScroll = () => {
       const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
       if (maxScroll > 0) {
-        heatmapDiv.scrollTo({
-          left: heatmapDiv.scrollWidth,
-          behavior: "auto"
-        });
+        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
       } else {
         setTimeout(() => {
           const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
           if (retryMaxScroll > 0) {
-            heatmapDiv.scrollTo({
-              left: heatmapDiv.scrollWidth,
-              behavior: "auto"
-            });
+            heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
           }
         }, 50);
       }

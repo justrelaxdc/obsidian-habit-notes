@@ -58,18 +58,23 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
       const view = (this.opts.view ?? "control").toLowerCase();
       let dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
 
-      // Создаем один общий контейнер для всех трекеров
+      // Создаем один общий контейнер для всех трекеров (создаем заранее, чтобы был доступен в updateDate)
       const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
-      
-      // Создаем общий header с date picker только для control view
+
+      // Создаем общий header с date picker только для control view (отдельно от трекеров)
+      // Вставляем header перед mainContainer, чтобы он отображался первым
       if (view === "control") {
-        const blockHeader = mainContainer.createDiv({ cls: "tracker-notes__header" });
-        const datePicker = blockHeader.createDiv({ cls: "tracker-notes__date-picker" });
-        const dateInput = datePicker.createEl("input", { 
-          type: "date", 
-          cls: "tracker-notes__date-input",
-          value: dateIso 
-        }) as HTMLInputElement;
+        const blockHeader = this.containerEl.createDiv({ cls: "tracker-notes__header" });
+        this.containerEl.insertBefore(blockHeader, mainContainer);
+        
+        // Красивый заголовок с названием корневой папки
+        const headerTitle = blockHeader.createDiv({ cls: "tracker-notes__header-title" });
+        const folderName = this.folderPath.split('/').pop() || this.folderPath;
+        headerTitle.createEl("span", { text: folderName, cls: "tracker-notes__header-label" });
+        
+        // Компактный контейнер для date picker
+        const datePickerContainer = blockHeader.createDiv({ cls: "tracker-notes__date-picker-container" });
+        const datePicker = datePickerContainer.createDiv({ cls: "tracker-notes__date-picker" });
         
         const updateDate = async (newDate: string) => {
           const newDateIso = resolveDateIso(newDate, this.plugin.settings.dateFormat);
@@ -89,9 +94,31 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
           }
         };
         
+        const navigateDate = async (days: number) => {
+          const m = (window as any).moment;
+          const currentDateObj = m ? m(dateIso, this.plugin.settings.dateFormat) : parseDate(dateIso, this.plugin.settings.dateFormat);
+          const newDate = m ? currentDateObj.clone().add(days, 'days') : addDays(new Date(currentDateObj.getTime()), days);
+          const newDateStr = m ? newDate.format(this.plugin.settings.dateFormat) : formatDate(newDate, this.plugin.settings.dateFormat);
+          await updateDate(newDateStr);
+        };
+        
+        // Кнопка "Вчера" слева
+        const dayBackBtn = datePicker.createEl("button", { text: "◀", cls: "tracker-notes__date-nav-btn tracker-notes__date-nav-btn-left" });
+        dayBackBtn.onclick = () => navigateDate(-1);
+        dayBackBtn.title = "Вчера";
+        
+        // Input даты по центру
+        const dateInput = datePicker.createEl("input", { 
+          type: "date", 
+          cls: "tracker-notes__date-input",
+          value: dateIso 
+        }) as HTMLInputElement;
         dateInput.onchange = () => updateDate(dateInput.value);
-        const todayBtn = datePicker.createEl("button", { text: "Сегодня", cls: "tracker-notes__date-btn" });
-        todayBtn.onclick = () => updateDate("today");
+        
+        // Кнопка "Завтра" справа
+        const dayForwardBtn = datePicker.createEl("button", { text: "▶", cls: "tracker-notes__date-nav-btn tracker-notes__date-nav-btn-right" });
+        dayForwardBtn.onclick = () => navigateDate(1);
+        dayForwardBtn.title = "Завтра";
       }
 
       // Создаем контейнер для иерархии трекеров
@@ -275,13 +302,18 @@ export default class TrackerPlugin extends Plugin {
   addStyleSheet() {
     const styleEl = document.createElement("style");
     styleEl.textContent = `
-      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__header { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 1em; padding-bottom: 0.75em; border-bottom: 2px solid var(--background-modifier-border); flex-wrap: wrap; gap: 0.5em; }
+      .markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,
+      .markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }
+      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }
+      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }
+      .tracker-notes__header-icon { font-size: 1.3em; }
+      .tracker-notes__header-label { }
+      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }
       .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
       .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__tracker:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
       .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none; }
       .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
       .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes__value.updated { animation: pulse 0.3s ease; }
@@ -320,13 +352,18 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__calendar-day:hover { transform: scale(1.1); }
       .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }
       .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }
-      .tracker-notes__date-picker { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
-      .tracker-notes__date-input { padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; min-width: 0; flex: 1 1 auto; max-width: 100%; box-sizing: border-box; }
-      .tracker-notes__date-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .tracker-notes__date-btn { padding: 0.4em 0.8em; font-size: 0.85em; white-space: nowrap; flex-shrink: 0; }
-      .tracker-notes__error { color: var(--text-error); padding: 0.5em; background: var(--background-modifier-error); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }
+      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }
+      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }
+      .tracker-notes__date-input:focus { outline: none; box-shadow: 0 0 0 2px var(--background-modifier-border-focus, hsla(var(--interactive-accent-hsl), 0.2)); }
+      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }
+      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }
+      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }
-      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: smooth; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
+      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
       .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }
       .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
       .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
@@ -344,19 +381,22 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__chart { transition: opacity 0.15s ease; }
       .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }
       .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }
+      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }
+      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }
+      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }
       .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
       .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
-      .tracker-notes__folder-header.level-1 { font-size: 1.2em; }
-      .tracker-notes__folder-header.level-2 { font-size: 1.1em; }
+      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }
+      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
       
       /* Медиа-запросы для мобильных устройств */
       @media (max-width: 768px) {
         .tracker-notes { padding: 0.75em; margin: 0.75em 0; }
         .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.75em; }
         .tracker-notes__tracker { padding: 0.75em; }
-        .tracker-notes__header { flex-direction: column; align-items: stretch; }
-        .tracker-notes__date-picker { width: 100%; }
-        .tracker-notes__date-input { width: 100%; }
+        .tracker-notes__header { padding: 0.75em; }
+        .tracker-notes__date-picker { flex-wrap: wrap; justify-content: center; }
+        .tracker-notes__date-input { max-width: 100%; flex: 1 1 100%; }
         .tracker-notes__row { flex-direction: column; align-items: stretch; gap: 0.5em; }
         .tracker-notes__row > * { width: 100%; }
         .tracker-notes input[type="number"] { width: 100%; }
@@ -367,9 +407,11 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__calendar-day { font-size: 0.7em; }
         .tracker-notes__chart { height: 180px; }
         .tracker-notes__chart canvas { height: 160px !important; }
+        .tracker-notes__folder-node.level-1 { padding-left: 1em; }
+        .tracker-notes__folder-node.level-2 { padding-left: 2em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.2em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
-        .tracker-notes__folder-header.level-2 { font-size: 1em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.15em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
       }
       
       @media (max-width: 480px) {
@@ -380,9 +422,11 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__calendar-day { font-size: 0.65em; }
         .tracker-notes__chart { height: 160px; }
         .tracker-notes__chart canvas { height: 140px !important; }
+        .tracker-notes__folder-node.level-1 { padding-left: 0.75em; }
+        .tracker-notes__folder-node.level-2 { padding-left: 1.5em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.1em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1em; }
-        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.05em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.85em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -528,7 +572,12 @@ export default class TrackerPlugin extends Plugin {
     const displayName = this.settings.hideNumbering 
       ? this.removeNumbering(fileName) 
       : fileName;
-    header.createEl("div", { text: displayName, cls: "tracker-notes__tracker-title" });
+    const titleLink = header.createEl("a", { 
+      text: displayName, 
+      cls: "tracker-notes__tracker-title internal-link",
+      href: file.path
+    });
+    titleLink.setAttribute("data-href", file.path);
     
     const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
 
@@ -632,21 +681,25 @@ export default class TrackerPlugin extends Plugin {
       const input = wrap.createEl("input", { type: "number", placeholder: "0" }) as HTMLInputElement;
       const current = await this.readValueForDate(file, dateIso);
       if (current != null && !isNaN(Number(current))) input.value = String(current);
-      const btn = wrap.createEl("button", { text: "Set" });
-      btn.onclick = async () => {
+      
+      const updateValue = async () => {
         const val = Number(input.value);
-        if (isNaN(val)) { new Notice("❌ Некорректное число"); return; }
+        if (input.value === "" || isNaN(val)) return;
         await this.writeLogLine(file, dateIso, String(val));
         new Notice(`✓ Записано: ${dateIso}: ${val}`, 2000);
         input.value = String(val);
         // Визуальная обратная связь
-        btn.style.transform = "scale(0.95)";
-        setTimeout(() => btn.style.transform = "", 200);
+        input.style.transform = "scale(0.98)";
+        setTimeout(() => input.style.transform = "", 200);
         // Обновляем визуализации
         await updateVisualizations();
       };
+      
+      input.onchange = updateValue;
       input.onkeypress = async (e) => {
-        if (e.key === "Enter") btn.click();
+        if (e.key === "Enter") {
+          await updateValue();
+        }
       };
     } else if (mode === "plusminus") {
       const wrap = container.createDiv({ cls: "tracker-notes__row" });
@@ -917,9 +970,6 @@ export default class TrackerPlugin extends Plugin {
     // Получаем дату начала отслеживания
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     
-    // Сохраняем текущую позицию скролла
-    const scrollPosition = heatmapDiv.scrollLeft;
-    
     // Находим родительский контейнер для обновления визуализаций
     const trackerItem = heatmapDiv.closest(".tracker-notes__tracker") as HTMLElement;
     const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
@@ -1044,31 +1094,21 @@ export default class TrackerPlugin extends Plugin {
       dayElements.pop();
     }
     
-    // Восстанавливаем позицию скролла или прокручиваем в конец если это первый рендер
+    // Прокручиваем в конец, чтобы был виден текущий день
     // Используем двойной requestAnimationFrame для гарантии, что layout завершен
     const performScroll = () => {
-      if (scrollPosition > 0) {
-        heatmapDiv.scrollLeft = scrollPosition;
+      const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+      if (maxScroll > 0) {
+        // Всегда скроллим в конец для отображения текущего дня
+        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
       } else {
-        const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-        if (maxScroll > 0) {
-          // Используем scrollTo для более надежного скролла
-          heatmapDiv.scrollTo({
-            left: heatmapDiv.scrollWidth,
-            behavior: 'auto'
-          });
-        } else {
-          // Если размеры еще не вычислены, повторяем попытку
-          setTimeout(() => {
-            const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-            if (retryMaxScroll > 0) {
-              heatmapDiv.scrollTo({
-                left: heatmapDiv.scrollWidth,
-                behavior: 'auto'
-              });
-            }
-          }, 50);
-        }
+        // Если размеры еще не вычислены, повторяем попытку
+        setTimeout(() => {
+          const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
+          if (retryMaxScroll > 0) {
+            heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
+          }
+        }, 50);
       }
     };
     
@@ -1205,20 +1245,14 @@ export default class TrackerPlugin extends Plugin {
     const performScroll = () => {
       const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
       if (maxScroll > 0) {
-        // Используем scrollTo для более надежного скролла
-        heatmapDiv.scrollTo({
-          left: heatmapDiv.scrollWidth,
-          behavior: 'auto'
-        });
+        // Всегда скроллим в конец для отображения текущего дня
+        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
       } else {
         // Если размеры еще не вычислены, повторяем попытку
         setTimeout(() => {
           const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
           if (retryMaxScroll > 0) {
-            heatmapDiv.scrollTo({
-              left: heatmapDiv.scrollWidth,
-              behavior: 'auto'
-            });
+            heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
           }
         }, 50);
       }
