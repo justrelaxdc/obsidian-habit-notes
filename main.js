@@ -21,7 +21,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 // main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => HabitNotesPlugin
+  default: () => TrackerPlugin
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
@@ -14500,18 +14500,18 @@ var registerables = [
 // main.ts
 Chart.register(...registerables);
 var DEFAULT_SETTINGS = {
-  habitsFolder: "0. Files/Habits and Metrics",
+  trackersFolder: "0. Files/Trackers",
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
   daysToShow: 30
 };
-var HabitBlockRenderChild = class extends import_obsidian.MarkdownRenderChild {
+var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild {
   constructor(plugin, source, containerEl, ctx) {
     super(containerEl);
     this.plugin = plugin;
     this.source = source;
     this.opts = parseOptions(source);
-    this.folderPath = this.opts.folder || plugin.settings.habitsFolder;
+    this.folderPath = this.opts.folder || plugin.settings.trackersFolder;
   }
   async render() {
     this.containerEl.empty();
@@ -14519,31 +14519,60 @@ var HabitBlockRenderChild = class extends import_obsidian.MarkdownRenderChild {
       const files = this.getFilesFromFolder(this.folderPath);
       if (files.length === 0) {
         this.containerEl.createEl("div", {
-          text: `habit: \u0432 \u043F\u0430\u043F\u043A\u0435 ${this.folderPath} \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043C\u0435\u0442\u0440\u0438\u043A`,
-          cls: "habit-notes__error"
+          text: `tracker: \u0432 \u043F\u0430\u043F\u043A\u0435 ${this.folderPath} \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432`,
+          cls: "tracker-notes__error"
         });
         return;
       }
       const view = (this.opts.view ?? "control").toLowerCase();
-      const dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
+      let dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
+      const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
+      if (view === "control") {
+        const blockHeader = mainContainer.createDiv({ cls: "tracker-notes__header" });
+        const datePicker = blockHeader.createDiv({ cls: "tracker-notes__date-picker" });
+        const dateInput = datePicker.createEl("input", {
+          type: "date",
+          cls: "tracker-notes__date-input",
+          value: dateIso
+        });
+        const updateDate = async (newDate) => {
+          const newDateIso = resolveDateIso(newDate, this.plugin.settings.dateFormat);
+          dateInput.value = newDateIso;
+          dateIso = newDateIso;
+          const trackerItems = mainContainer.querySelectorAll(".tracker-notes__tracker");
+          for (const trackerItem of Array.from(trackerItems)) {
+            const filePath = trackerItem.dataset.filePath;
+            if (filePath) {
+              const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+              if (file instanceof import_obsidian.TFile) {
+                await this.plugin.updateTrackerDate(trackerItem, file, newDateIso, this.opts);
+              }
+            }
+          }
+        };
+        dateInput.onchange = () => updateDate(dateInput.value);
+        const todayBtn = datePicker.createEl("button", { text: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F", cls: "tracker-notes__date-btn" });
+        todayBtn.onclick = () => updateDate("today");
+      }
+      const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__trackers" });
       for (const file of files) {
-        await this.plugin.renderHabitMetric(this.containerEl, file, dateIso, view, this.opts);
+        await this.plugin.renderTracker(trackersContainer, file, dateIso, view, this.opts);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.containerEl.createEl("div", {
-        text: `habit: \u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0435 \u0431\u043B\u043E\u043A\u0430: ${errorMsg}`,
-        cls: "habit-notes__error"
+        text: `tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0435 \u0431\u043B\u043E\u043A\u0430: ${errorMsg}`,
+        cls: "tracker-notes__error"
       });
-      console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0438 \u0431\u043B\u043E\u043A\u0430", error);
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0438 \u0431\u043B\u043E\u043A\u0430", error);
     }
   }
   getFilesFromFolder(folderPath) {
     const folder = this.plugin.app.vault.getAbstractFileByPath(folderPath);
     if (!folder) {
       this.containerEl.createEl("div", {
-        text: `habit: \u043F\u0430\u043F\u043A\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430: ${folderPath}`,
-        cls: "habit-notes__error"
+        text: `tracker: \u043F\u0430\u043F\u043A\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430: ${folderPath}`,
+        cls: "tracker-notes__error"
       });
       return [];
     }
@@ -14576,7 +14605,7 @@ var HabitBlockRenderChild = class extends import_obsidian.MarkdownRenderChild {
     this.plugin.removeActiveBlock(this);
   }
 };
-var HabitNotesPlugin = class extends import_obsidian.Plugin {
+var TrackerPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
     this.activeBlocks = /* @__PURE__ */ new Set();
@@ -14584,16 +14613,17 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addStyleSheet();
-    this.addSettingTab(new HabitSettingsTab(this.app, this));
-    this.registerMarkdownCodeBlockProcessor("habit", this.processHabitBlock.bind(this));
+    this.addSettingTab(new TrackerSettingsTab(this.app, this));
+    this.registerMarkdownCodeBlockProcessor("tracker", this.processTrackerBlock.bind(this));
+    this.registerMarkdownCodeBlockProcessor("habit", this.processTrackerBlock.bind(this));
     this.addCommand({
-      id: "habit-create",
-      name: "Create new habit/metric",
-      callback: () => this.createNewHabit()
+      id: "tracker-create",
+      name: "Create new tracker",
+      callback: () => this.createNewTracker()
     });
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        if (file instanceof import_obsidian.TFile && file.extension === "md" && this.isFileInHabitsFolder(file)) {
+        if (file instanceof import_obsidian.TFile && file.extension === "md" && this.isFileInTrackersFolder(file)) {
           const fileFolderPath = this.getFolderPathFromFile(file.path);
           setTimeout(() => {
             this.refreshBlocksForFolder(fileFolderPath);
@@ -14602,10 +14632,10 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       })
     );
   }
-  isFileInHabitsFolder(file) {
+  isFileInTrackersFolder(file) {
     const fileFolderPath = this.normalizePath(this.getFolderPathFromFile(file.path));
-    const habitsFolderPath = this.normalizePath(this.settings.habitsFolder);
-    return fileFolderPath === habitsFolderPath || file.path.startsWith(this.settings.habitsFolder + "/");
+    const trackersFolderPath = this.normalizePath(this.settings.trackersFolder);
+    return fileFolderPath === trackersFolderPath || file.path.startsWith(this.settings.trackersFolder + "/");
   }
   getFolderPathFromFile(filePath) {
     return filePath.substring(0, filePath.lastIndexOf("/"));
@@ -14613,56 +14643,90 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
   addStyleSheet() {
     const styleEl = document.createElement("style");
     styleEl.textContent = `
-      .habit-notes { margin: 1em 0; padding: 1em; border-radius: 8px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-      .habit-notes__row { display: flex; align-items: center; gap: 0.75em; padding: 0.5em 0; }
-      .habit-notes__value { min-width: 3em; text-align: center; font-weight: 600; font-size: 1.1em; color: var(--text-normal); transition: transform 0.2s ease; }
-      .habit-notes__value.updated { animation: pulse 0.3s ease; }
+      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+      .tracker-notes__header { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 1em; padding-bottom: 0.75em; border-bottom: 2px solid var(--background-modifier-border); flex-wrap: wrap; gap: 0.5em; }
+      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
+      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+      .tracker-notes__tracker:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
+      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
+      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
+      .tracker-notes__value.updated { animation: pulse 0.3s ease; }
       @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-      .habit-notes input[type="checkbox"] { width: 1.5em; height: 1.5em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; }
-      .habit-notes input[type="checkbox"]:hover { transform: scale(1.1); }
-      .habit-notes input[type="number"] { width: 5em; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); transition: border-color 0.2s ease; }
-      .habit-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .habit-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; }
-      .habit-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-      .habit-notes button:active { transform: scale(0.95) translateY(0); }
-      .habit-notes__rating { display: flex; gap: 0.3em; align-items: center; }
-      .habit-notes__rating-star { font-size: 1.5em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; }
-      .habit-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }
-      .habit-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
-      .habit-notes__text-input { width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; }
-      .habit-notes__text-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .habit-notes__stats { margin-top: 1em; margin-bottom: 0.5em; padding-top: 1em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.9em; color: var(--text-muted); line-height: 1.6; }
-      .habit-notes__stats > div { margin: 0.3em 0; }
-      .habit-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 1em; }
-      .habit-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; }
-      .habit-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-      .habit-notes__calendar-day:hover { transform: scale(1.1); }
-      .habit-notes__chart { margin-top: 1em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; position: relative; height: 200px; }
-      .habit-notes__chart canvas { max-width: 100%; height: 180px !important; }
-      .habit-notes__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .habit-notes__title { font-weight: 600; color: var(--text-normal); margin: 0; }
-      .habit-notes__date-picker { display: flex; gap: 0.5em; align-items: center; }
-      .habit-notes__date-input { padding: 0.3em 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; }
-      .habit-notes__date-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .habit-notes__date-btn { padding: 0.3em 0.6em; font-size: 0.85em; }
-      .habit-notes__error { color: var(--text-error); padding: 0.5em; background: var(--background-modifier-error); border-radius: 4px; margin: 0.5em 0; }
-      .habit-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.3em 0.5em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 4px; margin: 0.3em 0; font-size: 0.9em; }
-      .habit-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: smooth; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; }
-      .habit-notes__heatmap::-webkit-scrollbar { height: 6px; }
-      .habit-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
-      .habit-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
-      .habit-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
-      .habit-notes__heatmap-day { aspect-ratio: 1; min-width: 2em; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.75em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; }
-      .habit-notes__heatmap-day:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-      .habit-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .habit-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
-      .habit-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .habit-notes__heatmap-day.start-day { border: 2px solid var(--text-accent, var(--interactive-accent)) !important; }
-      .habit-notes__calendar-day.start-day { position: relative; border: 2px solid var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; box-shadow: 0 0 0 1px var(--text-accent, var(--interactive-accent)); }
-      .habit-notes__stats > div { transition: opacity 0.2s ease; }
-      .habit-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
-      .habit-notes__heatmap { transition: opacity 0.15s ease; }
-      .habit-notes__chart { transition: opacity 0.15s ease; }
+      .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }
+      .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
+      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
+      .tracker-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .tracker-notes button:active { transform: scale(0.95) translateY(0); }
+      .tracker-notes__rating { display: flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }
+      .tracker-notes__rating-star { font-size: 1.4em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; flex-shrink: 0; }
+      .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }
+      .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
+      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }
+      .tracker-notes__text-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__stats > div { margin: 0.3em 0; }
+      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }
+      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }
+      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+      .tracker-notes__calendar-day:hover { transform: scale(1.1); }
+      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }
+      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }
+      .tracker-notes__date-picker { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
+      .tracker-notes__date-input { padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; min-width: 0; flex: 1 1 auto; max-width: 100%; box-sizing: border-box; }
+      .tracker-notes__date-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes__date-btn { padding: 0.4em 0.8em; font-size: 0.85em; white-space: nowrap; flex-shrink: 0; }
+      .tracker-notes__error { color: var(--text-error); padding: 0.5em; background: var(--background-modifier-error); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: smooth; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
+      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }
+      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
+      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
+      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }
+      .tracker-notes__heatmap-day:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
+      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
+      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
+      .tracker-notes__heatmap-day.start-day { box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; }
+      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }
+      .tracker-notes__stats > div { transition: opacity 0.2s ease; }
+      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
+      .tracker-notes__heatmap { transition: opacity 0.15s ease; }
+      .tracker-notes__chart { transition: opacity 0.15s ease; }
+      
+      /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */
+      @media (max-width: 768px) {
+        .tracker-notes { padding: 0.75em; margin: 0.75em 0; }
+        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.75em; }
+        .tracker-notes__tracker { padding: 0.75em; }
+        .tracker-notes__header { flex-direction: column; align-items: stretch; }
+        .tracker-notes__date-picker { width: 100%; }
+        .tracker-notes__date-input { width: 100%; }
+        .tracker-notes__row { flex-direction: column; align-items: stretch; gap: 0.5em; }
+        .tracker-notes__row > * { width: 100%; }
+        .tracker-notes input[type="number"] { width: 100%; }
+        .tracker-notes button { width: 100%; }
+        .tracker-notes__rating { justify-content: center; }
+        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3.2em; font-size: 0.9em; }
+        .tracker-notes__calendar { gap: 0.2em; }
+        .tracker-notes__calendar-day { font-size: 0.7em; }
+        .tracker-notes__chart { height: 180px; }
+        .tracker-notes__chart canvas { height: 160px !important; }
+      }
+      
+      @media (max-width: 480px) {
+        .tracker-notes { padding: 0.5em; margin: 0.5em 0; }
+        .tracker-notes__tracker { padding: 0.5em; }
+        .tracker-notes__tracker-title { font-size: 0.9em; }
+        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 3em; font-size: 0.85em; }
+        .tracker-notes__calendar-day { font-size: 0.65em; }
+        .tracker-notes__chart { height: 160px; }
+        .tracker-notes__chart canvas { height: 140px !important; }
+      }
     `;
     document.head.appendChild(styleEl);
   }
@@ -14671,8 +14735,8 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
     this.activeBlocks.clear();
   }
   // ---- Код-блоки ------------------------------------------------------------
-  async processHabitBlock(source, el, ctx) {
-    const block = new HabitBlockRenderChild(this, source, el, ctx);
+  async processTrackerBlock(source, el, ctx) {
+    const block = new TrackerBlockRenderChild(this, source, el, ctx);
     ctx.addChild(block);
     this.activeBlocks.add(block);
     await block.render();
@@ -14689,7 +14753,7 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       try {
         await block.render();
       } catch (error) {
-        console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0431\u043B\u043E\u043A\u0430", error);
+        console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0431\u043B\u043E\u043A\u0430", error);
       }
     }
   }
@@ -14718,75 +14782,60 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         fileOpts.mode = "good-habit";
       }
     } catch (error) {
-      console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F frontmatter", error);
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F frontmatter", error);
       fileOpts.mode = "good-habit";
     }
     return fileOpts;
   }
-  async renderHabitMetric(parentEl, file, dateIso, view, opts) {
-    const container = parentEl.createDiv({ cls: "habit-notes" });
-    const header = container.createDiv({ cls: "habit-notes__header" });
-    const fileName = file.basename;
-    header.createEl("div", { text: fileName, cls: "habit-notes__title" });
-    const datePicker = header.createDiv({ cls: "habit-notes__date-picker" });
-    const dateInput = datePicker.createEl("input", {
-      type: "date",
-      cls: "habit-notes__date-input",
-      value: dateIso
-    });
-    const controlsContainer = container.createDiv();
-    const updateDate = async (newDate) => {
-      const newDateIso = resolveDateIso(newDate, this.settings.dateFormat);
-      dateInput.value = newDateIso;
-      const fileOpts2 = await this.getFileTypeFromFrontmatter(file);
-      const habitType2 = (fileOpts2.mode ?? "good-habit").toLowerCase();
-      const daysToShow2 = parseInt(opts.days) || this.settings.daysToShow;
-      const existingHeatmap = controlsContainer.querySelector(".habit-notes__heatmap");
-      if (habitType2 === "good-habit" || habitType2 === "bad-habit") {
-        if (existingHeatmap) {
-          await this.updateHabitHeatmap(existingHeatmap, file, newDateIso, daysToShow2, habitType2);
-        } else {
-          controlsContainer.empty();
-          const { mode: mode2, ...optsWithoutMode2 } = opts;
-          const mergedOpts2 = { ...optsWithoutMode2, ...fileOpts2 };
-          await this.renderControlsForDate(controlsContainer, file, newDateIso, mergedOpts2);
-        }
+  async updateTrackerDate(trackerItem, file, dateIso, opts) {
+    const controlsContainerEl = trackerItem.querySelector(".tracker-notes__controls");
+    const controlsContainer = controlsContainerEl || trackerItem;
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
+    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
+    const existingHeatmap = controlsContainer.querySelector(".tracker-notes__heatmap");
+    if (trackerType === "good-habit" || trackerType === "bad-habit") {
+      if (existingHeatmap) {
+        await this.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
       } else {
         controlsContainer.empty();
-        const { mode: mode2, ...optsWithoutMode2 } = opts;
-        const mergedOpts2 = { ...optsWithoutMode2, ...fileOpts2 };
-        await this.renderControlsForDate(controlsContainer, file, newDateIso, mergedOpts2);
+        const { mode, ...optsWithoutMode } = opts;
+        const mergedOpts = { ...optsWithoutMode, ...fileOpts };
+        await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
       }
-      const calendarDiv = container.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        await this.updateCalendar(calendarDiv, file, newDateIso, daysToShow2);
-      }
-      const chartDiv = container.querySelector(".habit-notes__chart");
-      if (chartDiv) {
-        await this.updateChart(chartDiv, file, newDateIso, daysToShow2);
-      }
-      const statsDiv = container.querySelector(".habit-notes__stats");
-      if (statsDiv) {
-        await this.updateStats(statsDiv, file, newDateIso, daysToShow2, habitType2);
-      }
-    };
-    dateInput.onchange = () => updateDate(dateInput.value);
-    const todayBtn = datePicker.createEl("button", { text: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F", cls: "habit-notes__date-btn" });
-    todayBtn.onclick = () => updateDate("today");
+    } else {
+      controlsContainer.empty();
+      const { mode, ...optsWithoutMode } = opts;
+      const mergedOpts = { ...optsWithoutMode, ...fileOpts };
+      await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+    }
+    const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
+    if (chartDiv) {
+      await this.updateChart(chartDiv, file, dateIso, daysToShow);
+    }
+    const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
+    if (statsDiv) {
+      await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType);
+    }
+  }
+  async renderTracker(parentEl, file, dateIso, view, opts) {
+    const trackerItem = parentEl.createDiv({ cls: "tracker-notes__tracker" });
+    trackerItem.dataset.filePath = file.path;
+    const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
+    const fileName = file.basename;
+    header.createEl("div", { text: fileName, cls: "tracker-notes__tracker-title" });
+    const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
     if (view === "display") {
       const value = await this.readValueForDate(file, dateIso);
-      container.createEl("div", { text: `${dateIso}: ${value ?? "\u2014"}` });
+      trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "\u2014"}` });
       const daysToShow2 = parseInt(opts.days) || this.settings.daysToShow;
       const fileOpts2 = await this.getFileTypeFromFrontmatter(file);
-      const habitType2 = (fileOpts2.mode ?? "good-habit").toLowerCase();
-      if (opts.showCalendar === "true") {
-        await this.renderCalendar(container, file, dateIso, daysToShow2);
-      }
+      const trackerType2 = (fileOpts2.mode ?? "good-habit").toLowerCase();
       if (opts.showChart === "true") {
-        await this.renderChart(container, file, dateIso, daysToShow2);
+        await this.renderChart(trackerItem, file, dateIso, daysToShow2);
       }
       if (opts.showStats === "true") {
-        await this.renderStats(container, file, dateIso, daysToShow2, habitType2);
+        await this.renderStats(trackerItem, file, dateIso, daysToShow2, trackerType2);
       }
       return;
     }
@@ -14795,44 +14844,38 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
     const mergedOpts = { ...optsWithoutMode, ...fileOpts };
     await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    const habitType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    if (opts.showCalendar === "true") {
-      await this.renderCalendar(container, file, dateIso, daysToShow);
-    }
+    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
     if (opts.showChart === "true") {
-      await this.renderChart(container, file, dateIso, daysToShow);
+      await this.renderChart(trackerItem, file, dateIso, daysToShow);
     }
     if (opts.showStats === "true") {
-      await this.renderStats(container, file, dateIso, daysToShow, habitType);
+      await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
     }
   }
   async renderControlsForDate(container, file, dateIso, opts) {
     const mode = (opts.mode ?? "good-habit").toLowerCase();
-    const habitContainer = container.closest(".habit-notes");
+    const trackerItem = container.closest(".tracker-notes__tracker");
+    const mainContainer = trackerItem?.closest(".tracker-notes");
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
     const updateVisualizations = async () => {
-      if (!habitContainer) return;
-      const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-      const calendarDiv = habitContainer.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        await this.updateCalendar(calendarDiv, file, currentDateIso, daysToShow);
-      }
+      if (!trackerItem) return;
+      const currentDateIso = mainContainer?.querySelector(".tracker-notes__date-input")?.value || dateIso;
       const fileOptsForViz = await this.getFileTypeFromFrontmatter(file);
-      const habitTypeForViz = (fileOptsForViz.mode ?? "good-habit").toLowerCase();
-      const chartDiv = habitContainer.querySelector(".habit-notes__chart");
-      const heatmapDiv = habitContainer.querySelector(".habit-notes__heatmap");
+      const trackerTypeForViz = (fileOptsForViz.mode ?? "good-habit").toLowerCase();
+      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
+      const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
       if (chartDiv) {
         await this.updateChart(chartDiv, file, currentDateIso, daysToShow);
       }
-      const statsDiv = habitContainer.querySelector(".habit-notes__stats");
+      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
       if (statsDiv) {
-        await this.updateStats(statsDiv, file, currentDateIso, daysToShow, habitTypeForViz);
+        await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerTypeForViz);
       }
     };
     if (mode === "good-habit" || mode === "bad-habit") {
-      await this.renderHabitHeatmap(container, file, dateIso, daysToShow, mode);
+      await this.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
     } else if (mode === "checkbox") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const label = wrap.createEl("label", { text: "\u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E" });
       const input = wrap.createEl("input", { type: "checkbox" });
       label.prepend(input);
@@ -14847,7 +14890,7 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         await updateVisualizations();
       };
     } else if (mode === "number") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const input = wrap.createEl("input", { type: "number", placeholder: "0" });
       const current = await this.readValueForDate(file, dateIso);
       if (current != null && !isNaN(Number(current))) input.value = String(current);
@@ -14869,9 +14912,9 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         if (e.key === "Enter") btn.click();
       };
     } else if (mode === "plusminus") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const minus = wrap.createEl("button", { text: "\u2212" });
-      const valEl = wrap.createEl("span", { text: "0", cls: "habit-notes__value" });
+      const valEl = wrap.createEl("span", { text: "0", cls: "tracker-notes__value" });
       const plus = wrap.createEl("button", { text: "+" });
       let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
       if (!isNaN(current)) valEl.setText(String(current));
@@ -14892,18 +14935,18 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         await updateVisualizations();
       };
     } else if (mode === "rating") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
-      const ratingDiv = wrap.createDiv({ cls: "habit-notes__rating" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
+      const ratingDiv = wrap.createDiv({ cls: "tracker-notes__rating" });
       const maxRating = parseInt(opts.maxRating || "5");
       const current = await this.readValueForDate(file, dateIso);
       let currentRating = typeof current === "number" ? current : current ? parseInt(String(current)) : 0;
       if (isNaN(currentRating)) currentRating = 0;
       for (let i = 1; i <= maxRating; i++) {
-        const star = ratingDiv.createEl("span", { text: "\u2605", cls: "habit-notes__rating-star" });
+        const star = ratingDiv.createEl("span", { text: "\u2605", cls: "tracker-notes__rating-star" });
         if (i <= currentRating) star.addClass("active");
         star.onclick = async () => {
           currentRating = i;
-          ratingDiv.querySelectorAll(".habit-notes__rating-star").forEach((s, idx) => {
+          ratingDiv.querySelectorAll(".tracker-notes__rating-star").forEach((s, idx) => {
             if (idx + 1 <= i) s.addClass("active");
             else s.removeClass("active");
           });
@@ -14913,9 +14956,9 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         };
       }
     } else if (mode === "text") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const input = wrap.createEl("textarea", {
-        cls: "habit-notes__text-input",
+        cls: "tracker-notes__text-input",
         placeholder: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0442\u0435\u043A\u0441\u0442..."
       });
       const current = await this.readValueForDate(file, dateIso);
@@ -14934,14 +14977,15 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
     }
   }
   // ---- Визуализация ---------------------------------------------------------
-  async updateHabitHeatmap(heatmapDiv, file, dateIso, daysToShow, habitType) {
+  async updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType) {
     const m = window.moment;
     const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
     const startDate = m ? m(endDate).subtract(daysToShow - 1, "days") : addDays(endDate, -(daysToShow - 1));
     const entries = await this.readAllEntries(file);
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     const scrollPosition = heatmapDiv.scrollLeft;
-    const habitContainer = heatmapDiv.closest(".habit-notes");
+    const trackerItem = heatmapDiv.closest(".tracker-notes__tracker");
+    const mainContainer = trackerItem?.closest(".tracker-notes");
     const updateHeatmapDay = async (dateStr, dayDiv) => {
       const entries2 = await this.readAllEntries(file);
       const hasValue = entries2.has(dateStr) && (entries2.get(dateStr) === 1 || entries2.get(dateStr) === "1" || String(entries2.get(dateStr)) === "true");
@@ -14967,28 +15011,21 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       }
     };
     const updateVisualizations = async (updatedDateStr, updatedDayDiv) => {
-      if (!habitContainer) return;
+      if (!trackerItem) return;
       if (updatedDateStr && updatedDayDiv) {
         await updateHeatmapDay(updatedDateStr, updatedDayDiv);
         await updateAllStartDays();
       }
-      const calendarDiv = habitContainer.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-        const days = parseInt(habitContainer.daysToShow) || daysToShow;
-        await this.updateCalendar(calendarDiv, file, currentDateIso, days);
-      }
-      const chartDiv = habitContainer.querySelector(".habit-notes__chart");
+      const currentDateIso = mainContainer?.querySelector(".tracker-notes__date-input")?.value || dateIso;
+      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
       if (chartDiv) {
-        const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-        const days = parseInt(habitContainer.daysToShow) || daysToShow;
+        const days = parseInt(trackerItem.daysToShow) || daysToShow;
         await this.updateChart(chartDiv, file, currentDateIso, days);
       }
-      const statsDiv = habitContainer.querySelector(".habit-notes__stats");
+      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
       if (statsDiv) {
-        const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-        const days = parseInt(habitContainer.daysToShow) || daysToShow;
-        await this.updateStats(statsDiv, file, currentDateIso, days, habitType);
+        const days = parseInt(trackerItem.daysToShow) || daysToShow;
+        await this.updateStats(statsDiv, file, currentDateIso, days, trackerType);
       }
     };
     const dayElements = Array.from(heatmapDiv.children);
@@ -15002,11 +15039,11 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         dayDiv.setText(dayNum.toString());
         dayDiv.removeClass("good-habit");
         dayDiv.removeClass("bad-habit");
-        dayDiv.addClass(habitType);
+        dayDiv.addClass(trackerType);
       } else {
-        dayDiv = heatmapDiv.createDiv({ cls: "habit-notes__heatmap-day" });
+        dayDiv = heatmapDiv.createDiv({ cls: "tracker-notes__heatmap-day" });
         dayDiv.setText(dayNum.toString());
-        dayDiv.addClass(habitType);
+        dayDiv.addClass(trackerType);
       }
       dayDiv.dataset.dateStr = dateStr;
       dayDiv.onclick = async () => {
@@ -15041,21 +15078,22 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       }
     });
   }
-  async renderHabitHeatmap(container, file, dateIso, daysToShow, habitType) {
-    const existingHeatmap = container.querySelector(".habit-notes__heatmap");
+  async renderTrackerHeatmap(container, file, dateIso, daysToShow, trackerType) {
+    const existingHeatmap = container.querySelector(".tracker-notes__heatmap");
     let heatmapDiv;
     if (existingHeatmap) {
       heatmapDiv = existingHeatmap;
-      await this.updateHabitHeatmap(heatmapDiv, file, dateIso, daysToShow, habitType);
+      await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
       return;
     }
-    heatmapDiv = container.createDiv({ cls: "habit-notes__heatmap" });
+    heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
     const m = window.moment;
     const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
     const startDate = m ? m(endDate).subtract(daysToShow - 1, "days") : addDays(endDate, -(daysToShow - 1));
     const entries = await this.readAllEntries(file);
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-    const habitContainer = container.closest(".habit-notes");
+    const trackerItem = container.closest(".tracker-notes__tracker");
+    const mainContainer = trackerItem?.closest(".tracker-notes");
     const updateHeatmapDay = async (dateStr, dayDiv) => {
       const entries2 = await this.readAllEntries(file);
       const hasValue = entries2.has(dateStr) && (entries2.get(dateStr) === 1 || entries2.get(dateStr) === "1" || String(entries2.get(dateStr)) === "true");
@@ -15081,37 +15119,30 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       }
     };
     const updateVisualizations = async (updatedDateStr, updatedDayDiv) => {
-      if (!habitContainer) return;
+      if (!trackerItem) return;
       if (updatedDateStr && updatedDayDiv) {
         await updateHeatmapDay(updatedDateStr, updatedDayDiv);
         await updateAllStartDays();
       }
-      const calendarDiv = habitContainer.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-        const days = parseInt(habitContainer.daysToShow) || daysToShow;
-        await this.updateCalendar(calendarDiv, file, currentDateIso, days);
-      }
-      const chartDiv = habitContainer.querySelector(".habit-notes__chart");
+      const currentDateIso = mainContainer?.querySelector(".tracker-notes__date-input")?.value || dateIso;
+      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
       if (chartDiv) {
-        const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-        const days = parseInt(habitContainer.daysToShow) || daysToShow;
+        const days = parseInt(trackerItem.daysToShow) || daysToShow;
         await this.updateChart(chartDiv, file, currentDateIso, days);
       }
-      const statsDiv = habitContainer.querySelector(".habit-notes__stats");
+      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
       if (statsDiv) {
-        const currentDateIso = habitContainer.querySelector(".habit-notes__date-input")?.value || dateIso;
-        const days = parseInt(habitContainer.daysToShow) || daysToShow;
-        await this.updateStats(statsDiv, file, currentDateIso, days, habitType);
+        const days = parseInt(trackerItem.daysToShow) || daysToShow;
+        await this.updateStats(statsDiv, file, currentDateIso, days, trackerType);
       }
     };
     for (let i = 0; i < daysToShow; i++) {
       const date = m ? m(startDate).add(i, "days") : addDays(startDate, i);
       const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
       const dayNum = m ? date.date() : date.getDate();
-      const dayDiv = heatmapDiv.createDiv({ cls: "habit-notes__heatmap-day" });
+      const dayDiv = heatmapDiv.createDiv({ cls: "tracker-notes__heatmap-day" });
       dayDiv.setText(dayNum.toString());
-      dayDiv.addClass(habitType);
+      dayDiv.addClass(trackerType);
       dayDiv.dataset.dateStr = dateStr;
       const hasValue = entries.has(dateStr) && (entries.get(dateStr) === 1 || entries.get(dateStr) === "1" || String(entries.get(dateStr)) === "true");
       if (hasValue) {
@@ -15133,58 +15164,6 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
     });
   }
-  async updateCalendar(calendarDiv, file, dateIso, daysToShow) {
-    const m = window.moment;
-    const endDate = dateIso ? m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat) : m ? m() : /* @__PURE__ */ new Date();
-    const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, "days") : addDays(endDate, -(days - 1));
-    const allEntries = await this.readAllEntries(file);
-    const startTrackingDateStr = this.getStartTrackingDate(allEntries, file);
-    const dayElements = Array.from(calendarDiv.children).slice(7);
-    for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, "days") : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      let dayDiv;
-      if (i < dayElements.length) {
-        dayDiv = dayElements[i];
-      } else {
-        dayDiv = calendarDiv.createDiv({ cls: "habit-notes__calendar-day" });
-      }
-      const dayNum = m ? date.date() : date.getDate();
-      dayDiv.setText(dayNum.toString());
-      if (allEntries.has(dateStr)) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
-      if (dateStr === startTrackingDateStr) {
-        dayDiv.addClass("start-day");
-      } else {
-        dayDiv.removeClass("start-day");
-      }
-      const today = m ? m() : /* @__PURE__ */ new Date();
-      const isToday = m ? date.isSame(today, "day") : date.getTime && today.getTime ? formatDate(date, this.settings.dateFormat) === formatDate(today, this.settings.dateFormat) : false;
-      if (isToday) {
-        dayDiv.style.border = "2px solid var(--interactive-accent)";
-      } else {
-        dayDiv.style.border = "";
-      }
-    }
-    while (dayElements.length > days) {
-      dayElements[dayElements.length - 1].remove();
-      dayElements.pop();
-    }
-  }
-  async renderCalendar(container, file, dateIso, daysToShow) {
-    const calendarDiv = container.createDiv({ cls: "habit-notes__calendar" });
-    const weekDays = ["\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u0412\u0441"];
-    weekDays.forEach((day) => {
-      const dayHeader = calendarDiv.createDiv({ cls: "habit-notes__calendar-day" });
-      dayHeader.style.fontWeight = "600";
-      dayHeader.setText(day);
-    });
-    await this.updateCalendar(calendarDiv, file, dateIso, daysToShow);
-  }
   // Вспомогательная функция для подсчета слов в тексте
   countWords(text) {
     const trimmed = text.trim();
@@ -15197,10 +15176,10 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
     if (metricType === "good-habit" || metricType === "bad-habit") {
       const endDate2 = dateIso || resolveDateIso("today", this.settings.dateFormat);
       const days2 = daysToShow || this.settings.daysToShow;
-      await this.renderHabitHeatmap(container, file, endDate2, days2, metricType);
+      await this.renderTrackerHeatmap(container, file, endDate2, days2, metricType);
       return;
     }
-    const existingChart = container.querySelector(".habit-notes__chart");
+    const existingChart = container.querySelector(".tracker-notes__chart");
     if (existingChart) {
       const chartInstance = existingChart.chartInstance;
       if (chartInstance) {
@@ -15208,7 +15187,7 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       }
       existingChart.remove();
     }
-    const chartDiv = container.createDiv({ cls: "habit-notes__chart" });
+    const chartDiv = container.createDiv({ cls: "tracker-notes__chart" });
     const canvas = chartDiv.createEl("canvas");
     const root = document.documentElement;
     const getCSSVar = (varName, fallback = "#000000") => {
@@ -15403,7 +15382,7 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       chartInstance.startTrackingIndex = startTrackingIndex;
       chartInstance.startLineColor = startLineColor;
     } catch (error) {
-      console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u0430", error);
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u0430", error);
       chartDiv.setText("\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u0430");
     }
   }
@@ -15471,10 +15450,10 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
     chartInstance.data.datasets[0].data = values;
     chartInstance.update("none");
   }
-  async updateStats(statsDiv, file, dateIso, daysToShow, habitType) {
+  async updateStats(statsDiv, file, dateIso, daysToShow, trackerType) {
     const entries = await this.readAllEntries(file);
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const metricType = habitType || (fileOpts.mode ?? "good-habit").toLowerCase();
+    const metricType = trackerType || (fileOpts.mode ?? "good-habit").toLowerCase();
     const m = window.moment;
     const endDate = dateIso ? m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat) : m ? m() : /* @__PURE__ */ new Date();
     const days = daysToShow || this.settings.daysToShow;
@@ -15531,9 +15510,9 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
       children[2].remove();
     }
   }
-  async renderStats(container, file, dateIso, daysToShow, habitType) {
-    const statsDiv = container.createDiv({ cls: "habit-notes__stats" });
-    await this.updateStats(statsDiv, file, dateIso, daysToShow, habitType);
+  async renderStats(container, file, dateIso, daysToShow, trackerType) {
+    const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
+    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType);
   }
   getStartTrackingDate(entries, file) {
     const m = window.moment;
@@ -15562,10 +15541,10 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
     }
     return m ? startTrackingDate.format(this.settings.dateFormat) : formatDate(startTrackingDate, this.settings.dateFormat);
   }
-  calculateStreak(entries, m, endDate, habitType, file) {
+  calculateStreak(entries, m, endDate, trackerType, file) {
     let streak = 0;
     let currentDate = m ? m(endDate) : new Date(endDate);
-    const metricType = (habitType || "good-habit").toLowerCase();
+    const metricType = (trackerType || "good-habit").toLowerCase();
     const isBadHabit = metricType === "bad-habit";
     let startTrackingDate = null;
     if (file) {
@@ -15647,15 +15626,15 @@ var HabitNotesPlugin = class extends import_obsidian.Plugin {
         entries.set(date, value);
       });
     } catch (error) {
-      console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F \u0432\u0441\u0435\u0445 \u0437\u0430\u043F\u0438\u0441\u0435\u0439", error);
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F \u0432\u0441\u0435\u0445 \u0437\u0430\u043F\u0438\u0441\u0435\u0439", error);
     }
     return entries;
   }
   // ---- Создание привычки ----------------------------------------------------
-  async createNewHabit() {
-    new CreateHabitModal(this.app, this).open();
+  async createNewTracker() {
+    new CreateTrackerModal(this.app, this).open();
   }
-  async onHabitCreated(folderPath) {
+  async onTrackerCreated(folderPath) {
     await this.refreshBlocksForFolder(folderPath);
   }
   // ---- Чтение/запись --------------------------------------------------------
@@ -15744,7 +15723,7 @@ data: {}
       const data = this.parseFrontmatterData(frontmatter);
       return data[dateIso] ?? null;
     } catch (error) {
-      console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F", error);
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F", error);
       return null;
     }
   }
@@ -15779,15 +15758,15 @@ ${newFrontmatter}---${body}`;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new import_obsidian.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438: ${errorMsg}`);
-      console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", error);
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", error);
       throw error;
     }
   }
   // Простейший «пикер» файла: предлагает последние открытые/подходящие
-  async pickHabitFile() {
-    const files = this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(this.settings.habitsFolder + "/"));
+  async pickTrackerFile() {
+    const files = this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(this.settings.trackersFolder + "/"));
     if (files.length === 0) {
-      new import_obsidian.Notice("\u041D\u0435\u0442 \u0437\u0430\u043C\u0435\u0442\u043E\u043A \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A");
+      new import_obsidian.Notice("\u041D\u0435\u0442 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432");
       return null;
     }
     if (files.length === 1) return files[0];
@@ -15799,7 +15778,7 @@ ${newFrontmatter}---${body}`;
     await this.saveData(this.settings);
   }
 };
-var HabitSettingsTab = class extends import_obsidian.PluginSettingTab {
+var TrackerSettingsTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -15807,8 +15786,8 @@ var HabitSettingsTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian.Setting(containerEl).setName("\u041F\u0430\u043F\u043A\u0430 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A").addText((t) => t.setPlaceholder("3. Metrics/Habits").setValue(this.plugin.settings.habitsFolder).onChange(async (v) => {
-      this.plugin.settings.habitsFolder = v.trim();
+    new import_obsidian.Setting(containerEl).setName("\u041F\u0430\u043F\u043A\u0430 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432").addText((t) => t.setPlaceholder("0. Files/Trackers").setValue(this.plugin.settings.trackersFolder).onChange(async (v) => {
+      this.plugin.settings.trackersFolder = v.trim();
       await this.plugin.saveSettings();
     }));
     new import_obsidian.Setting(containerEl).setName("\u0424\u043E\u0440\u043C\u0430\u0442 \u0434\u0430\u0442\u044B").addText((t) => t.setPlaceholder("YYYY-MM-DD").setValue(this.plugin.settings.dateFormat).onChange(async (v) => {
@@ -15880,7 +15859,7 @@ function parseMaybeNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : v;
 }
-var CreateHabitModal = class extends import_obsidian.Modal {
+var CreateTrackerModal = class extends import_obsidian.Modal {
   constructor(app, plugin) {
     super(app);
     this.plugin = plugin;
@@ -15888,7 +15867,7 @@ var CreateHabitModal = class extends import_obsidian.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043D\u043E\u0432\u0443\u044E \u043C\u0435\u0442\u0440\u0438\u043A\u0443/\u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443" });
+    contentEl.createEl("h2", { text: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043D\u043E\u0432\u044B\u0439 \u0442\u0440\u0435\u043A\u0435\u0440" });
     const nameSetting = new import_obsidian.Setting(contentEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435").addText((text) => {
       text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u0442\u0440\u0435\u043D\u043D\u044F\u044F \u0437\u0430\u0440\u044F\u0434\u043A\u0430");
       text.inputEl.style.width = "100%";
@@ -15919,7 +15898,7 @@ var CreateHabitModal = class extends import_obsidian.Modal {
         const type = typeDropdown.value;
         const maxRating = type === "rating" ? maxRatingSetting.controlEl.querySelector("input")?.value || "5" : "5";
         const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-        const filePath = `${this.plugin.settings.habitsFolder}/${fileName}`;
+        const filePath = `${this.plugin.settings.trackersFolder}/${fileName}`;
         try {
           const file = await this.plugin.ensureFileWithHeading(filePath, type);
           const content = await this.app.vault.read(file);
@@ -15940,16 +15919,16 @@ ${newFrontmatter}---${body ? `
 
 ${body}` : ""}`;
           await this.app.vault.modify(file, newContent);
-          new import_obsidian.Notice(`\u0421\u043E\u0437\u0434\u0430\u043D\u0430 \u043C\u0435\u0442\u0440\u0438\u043A\u0430: ${name}`);
+          new import_obsidian.Notice(`\u0421\u043E\u0437\u0434\u0430\u043D \u0442\u0440\u0435\u043A\u0435\u0440: ${name}`);
           const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
           setTimeout(async () => {
-            await this.plugin.onHabitCreated(fileFolderPath);
+            await this.plugin.onTrackerCreated(fileFolderPath);
           }, 500);
           this.close();
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          new import_obsidian.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0438 \u043C\u0435\u0442\u0440\u0438\u043A\u0438: ${errorMsg}`);
-          console.error("Habit Notes: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u043C\u0435\u0442\u0440\u0438\u043A\u0438", error);
+          new import_obsidian.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
+          console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
         }
       });
     });
@@ -15966,7 +15945,7 @@ var FilePickerModal = class extends import_obsidian.Modal {
   }
   onOpen() {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0437\u0430\u043C\u0435\u0442\u043A\u0443 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0438" });
+    contentEl.createEl("h3", { text: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043A\u0435\u0440" });
     this.files.slice(0, 200).forEach((f) => {
       const btn = contentEl.createEl("button", { text: f.path });
       btn.onclick = () => {

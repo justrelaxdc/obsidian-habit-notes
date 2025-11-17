@@ -1,6 +1,6 @@
 {
   "id": "obsidian-habit-notes",
-  "name": "Habit Notes",
+  "name": "Tracker: habits and metrics",
   "version": "0.2.0",
   "minAppVersion": "1.5.0",
   "description": "Привычки и метрики как отдельные заметки с возможностью управления из любых страниц.",

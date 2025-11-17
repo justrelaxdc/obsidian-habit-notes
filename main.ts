@@ -2,33 +2,33 @@ import { App, MarkdownRenderChild, MarkdownPostProcessorContext, Modal, Notice, 
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
-type HabitSettings = {
-  habitsFolder: string;        // папка с заметками привычек
+type TrackerSettings = {
+  trackersFolder: string;        // папка с заметками трекеров
   dateFormat: string;          // "YYYY-MM-DD"
   timeFormat: string;          // "HH:mm"
   daysToShow: number;          // количество дней для отображения графиков
 };
 
-const DEFAULT_SETTINGS: HabitSettings = {
-  habitsFolder: "0. Files/Habits and Metrics",
+const DEFAULT_SETTINGS: TrackerSettings = {
+  trackersFolder: "0. Files/Trackers",
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
   daysToShow: 30,
 };
 
-// Класс для управления жизненным циклом блоков habit
-class HabitBlockRenderChild extends MarkdownRenderChild {
-  plugin: HabitNotesPlugin;
+// Класс для управления жизненным циклом блоков tracker
+class TrackerBlockRenderChild extends MarkdownRenderChild {
+  plugin: TrackerPlugin;
   source: string;
   folderPath: string;
   opts: Record<string, string>;
 
-  constructor(plugin: HabitNotesPlugin, source: string, containerEl: HTMLElement, ctx: MarkdownPostProcessorContext) {
+  constructor(plugin: TrackerPlugin, source: string, containerEl: HTMLElement, ctx: MarkdownPostProcessorContext) {
     super(containerEl);
     this.plugin = plugin;
     this.source = source;
     this.opts = parseOptions(source);
-    this.folderPath = this.opts.folder || plugin.settings.habitsFolder;
+    this.folderPath = this.opts.folder || plugin.settings.trackersFolder;
   }
 
   async render() {
@@ -38,25 +38,65 @@ class HabitBlockRenderChild extends MarkdownRenderChild {
       const files = this.getFilesFromFolder(this.folderPath);
       if (files.length === 0) {
         this.containerEl.createEl("div", { 
-          text: `habit: в папке ${this.folderPath} не найдено метрик`, 
-          cls: "habit-notes__error" 
+          text: `tracker: в папке ${this.folderPath} не найдено трекеров`, 
+          cls: "tracker-notes__error" 
         });
         return;
       }
 
       const view = (this.opts.view ?? "control").toLowerCase();
-      const dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
+      let dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
 
+      // Создаем один общий контейнер для всех трекеров
+      const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
+      
+      // Создаем общий header с date picker только для control view
+      if (view === "control") {
+        const blockHeader = mainContainer.createDiv({ cls: "tracker-notes__header" });
+        const datePicker = blockHeader.createDiv({ cls: "tracker-notes__date-picker" });
+        const dateInput = datePicker.createEl("input", { 
+          type: "date", 
+          cls: "tracker-notes__date-input",
+          value: dateIso 
+        }) as HTMLInputElement;
+        
+        const updateDate = async (newDate: string) => {
+          const newDateIso = resolveDateIso(newDate, this.plugin.settings.dateFormat);
+          dateInput.value = newDateIso;
+          dateIso = newDateIso;
+          
+          // Обновляем все трекеры в блоке с новой датой
+          const trackerItems = mainContainer.querySelectorAll(".tracker-notes__tracker");
+          for (const trackerItem of Array.from(trackerItems)) {
+            const filePath = (trackerItem as HTMLElement).dataset.filePath;
+            if (filePath) {
+              const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+              if (file instanceof TFile) {
+                await this.plugin.updateTrackerDate(trackerItem as HTMLElement, file, newDateIso, this.opts);
+              }
+            }
+          }
+        };
+        
+        dateInput.onchange = () => updateDate(dateInput.value);
+        const todayBtn = datePicker.createEl("button", { text: "Сегодня", cls: "tracker-notes__date-btn" });
+        todayBtn.onclick = () => updateDate("today");
+      }
+
+      // Создаем контейнер для трекеров
+      const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__trackers" });
+
+      // Рендерим все трекеры внутри общего контейнера
       for (const file of files) {
-        await this.plugin.renderHabitMetric(this.containerEl, file, dateIso, view, this.opts);
+        await this.plugin.renderTracker(trackersContainer, file, dateIso, view, this.opts);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.containerEl.createEl("div", { 
-        text: `habit: ошибка при обработке блока: ${errorMsg}`, 
-        cls: "habit-notes__error" 
+        text: `tracker: ошибка при обработке блока: ${errorMsg}`, 
+        cls: "tracker-notes__error" 
       });
-      console.error("Habit Notes: ошибка обработки блока", error);
+      console.error("Tracker: ошибка обработки блока", error);
     }
   }
 
@@ -64,8 +104,8 @@ class HabitBlockRenderChild extends MarkdownRenderChild {
     const folder = this.plugin.app.vault.getAbstractFileByPath(folderPath);
     if (!folder) {
       this.containerEl.createEl("div", { 
-        text: `habit: папка не найдена: ${folderPath}`, 
-        cls: "habit-notes__error" 
+        text: `tracker: папка не найдена: ${folderPath}`, 
+        cls: "tracker-notes__error" 
       });
       return [];
     }
@@ -109,26 +149,27 @@ class HabitBlockRenderChild extends MarkdownRenderChild {
   }
 }
 
-export default class HabitNotesPlugin extends Plugin {
-  settings: HabitSettings;
-  activeBlocks: Set<HabitBlockRenderChild> = new Set();
+export default class TrackerPlugin extends Plugin {
+  settings: TrackerSettings;
+  activeBlocks: Set<TrackerBlockRenderChild> = new Set();
 
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addStyleSheet();
-    this.addSettingTab(new HabitSettingsTab(this.app, this));
-    this.registerMarkdownCodeBlockProcessor("habit", this.processHabitBlock.bind(this));
+    this.addSettingTab(new TrackerSettingsTab(this.app, this));
+    this.registerMarkdownCodeBlockProcessor("tracker", this.processTrackerBlock.bind(this));
+    this.registerMarkdownCodeBlockProcessor("habit", this.processTrackerBlock.bind(this));
 
     this.addCommand({
-      id: "habit-create",
-      name: "Create new habit/metric",
-      callback: () => this.createNewHabit()
+      id: "tracker-create",
+      name: "Create new tracker",
+      callback: () => this.createNewTracker()
     });
 
     // Слушаем события создания файлов для автоматического обновления блоков
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        if (file instanceof TFile && file.extension === "md" && this.isFileInHabitsFolder(file)) {
+        if (file instanceof TFile && file.extension === "md" && this.isFileInTrackersFolder(file)) {
           const fileFolderPath = this.getFolderPathFromFile(file.path);
           setTimeout(() => {
             this.refreshBlocksForFolder(fileFolderPath);
@@ -138,10 +179,10 @@ export default class HabitNotesPlugin extends Plugin {
     );
   }
 
-  private isFileInHabitsFolder(file: TFile): boolean {
+  private isFileInTrackersFolder(file: TFile): boolean {
     const fileFolderPath = this.normalizePath(this.getFolderPathFromFile(file.path));
-    const habitsFolderPath = this.normalizePath(this.settings.habitsFolder);
-    return fileFolderPath === habitsFolderPath || file.path.startsWith(this.settings.habitsFolder + "/");
+    const trackersFolderPath = this.normalizePath(this.settings.trackersFolder);
+    return fileFolderPath === trackersFolderPath || file.path.startsWith(this.settings.trackersFolder + "/");
   }
 
   getFolderPathFromFile(filePath: string): string {
@@ -151,56 +192,90 @@ export default class HabitNotesPlugin extends Plugin {
   addStyleSheet() {
     const styleEl = document.createElement("style");
     styleEl.textContent = `
-      .habit-notes { margin: 1em 0; padding: 1em; border-radius: 8px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-      .habit-notes__row { display: flex; align-items: center; gap: 0.75em; padding: 0.5em 0; }
-      .habit-notes__value { min-width: 3em; text-align: center; font-weight: 600; font-size: 1.1em; color: var(--text-normal); transition: transform 0.2s ease; }
-      .habit-notes__value.updated { animation: pulse 0.3s ease; }
+      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+      .tracker-notes__header { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 1em; padding-bottom: 0.75em; border-bottom: 2px solid var(--background-modifier-border); flex-wrap: wrap; gap: 0.5em; }
+      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
+      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+      .tracker-notes__tracker:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
+      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
+      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
+      .tracker-notes__value.updated { animation: pulse 0.3s ease; }
       @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-      .habit-notes input[type="checkbox"] { width: 1.5em; height: 1.5em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; }
-      .habit-notes input[type="checkbox"]:hover { transform: scale(1.1); }
-      .habit-notes input[type="number"] { width: 5em; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); transition: border-color 0.2s ease; }
-      .habit-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .habit-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; }
-      .habit-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-      .habit-notes button:active { transform: scale(0.95) translateY(0); }
-      .habit-notes__rating { display: flex; gap: 0.3em; align-items: center; }
-      .habit-notes__rating-star { font-size: 1.5em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; }
-      .habit-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }
-      .habit-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
-      .habit-notes__text-input { width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; }
-      .habit-notes__text-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .habit-notes__stats { margin-top: 1em; margin-bottom: 0.5em; padding-top: 1em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.9em; color: var(--text-muted); line-height: 1.6; }
-      .habit-notes__stats > div { margin: 0.3em 0; }
-      .habit-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 1em; }
-      .habit-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; }
-      .habit-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-      .habit-notes__calendar-day:hover { transform: scale(1.1); }
-      .habit-notes__chart { margin-top: 1em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; position: relative; height: 200px; }
-      .habit-notes__chart canvas { max-width: 100%; height: 180px !important; }
-      .habit-notes__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .habit-notes__title { font-weight: 600; color: var(--text-normal); margin: 0; }
-      .habit-notes__date-picker { display: flex; gap: 0.5em; align-items: center; }
-      .habit-notes__date-input { padding: 0.3em 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; }
-      .habit-notes__date-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
-      .habit-notes__date-btn { padding: 0.3em 0.6em; font-size: 0.85em; }
-      .habit-notes__error { color: var(--text-error); padding: 0.5em; background: var(--background-modifier-error); border-radius: 4px; margin: 0.5em 0; }
-      .habit-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.3em 0.5em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 4px; margin: 0.3em 0; font-size: 0.9em; }
-      .habit-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: smooth; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; }
-      .habit-notes__heatmap::-webkit-scrollbar { height: 6px; }
-      .habit-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
-      .habit-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
-      .habit-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
-      .habit-notes__heatmap-day { aspect-ratio: 1; min-width: 2em; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.75em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; }
-      .habit-notes__heatmap-day:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-      .habit-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .habit-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
-      .habit-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .habit-notes__heatmap-day.start-day { border: 2px solid var(--text-accent, var(--interactive-accent)) !important; }
-      .habit-notes__calendar-day.start-day { position: relative; border: 2px solid var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; box-shadow: 0 0 0 1px var(--text-accent, var(--interactive-accent)); }
-      .habit-notes__stats > div { transition: opacity 0.2s ease; }
-      .habit-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
-      .habit-notes__heatmap { transition: opacity 0.15s ease; }
-      .habit-notes__chart { transition: opacity 0.15s ease; }
+      .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }
+      .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
+      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
+      .tracker-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .tracker-notes button:active { transform: scale(0.95) translateY(0); }
+      .tracker-notes__rating { display: flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }
+      .tracker-notes__rating-star { font-size: 1.4em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; flex-shrink: 0; }
+      .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }
+      .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
+      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }
+      .tracker-notes__text-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__stats > div { margin: 0.3em 0; }
+      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }
+      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }
+      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+      .tracker-notes__calendar-day:hover { transform: scale(1.1); }
+      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }
+      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }
+      .tracker-notes__date-picker { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
+      .tracker-notes__date-input { padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; min-width: 0; flex: 1 1 auto; max-width: 100%; box-sizing: border-box; }
+      .tracker-notes__date-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes__date-btn { padding: 0.4em 0.8em; font-size: 0.85em; white-space: nowrap; flex-shrink: 0; }
+      .tracker-notes__error { color: var(--text-error); padding: 0.5em; background: var(--background-modifier-error); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }
+      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: smooth; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
+      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }
+      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
+      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
+      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }
+      .tracker-notes__heatmap-day:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
+      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
+      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
+      .tracker-notes__heatmap-day.start-day { box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; }
+      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }
+      .tracker-notes__stats > div { transition: opacity 0.2s ease; }
+      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
+      .tracker-notes__heatmap { transition: opacity 0.15s ease; }
+      .tracker-notes__chart { transition: opacity 0.15s ease; }
+      
+      /* Медиа-запросы для мобильных устройств */
+      @media (max-width: 768px) {
+        .tracker-notes { padding: 0.75em; margin: 0.75em 0; }
+        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.75em; }
+        .tracker-notes__tracker { padding: 0.75em; }
+        .tracker-notes__header { flex-direction: column; align-items: stretch; }
+        .tracker-notes__date-picker { width: 100%; }
+        .tracker-notes__date-input { width: 100%; }
+        .tracker-notes__row { flex-direction: column; align-items: stretch; gap: 0.5em; }
+        .tracker-notes__row > * { width: 100%; }
+        .tracker-notes input[type="number"] { width: 100%; }
+        .tracker-notes button { width: 100%; }
+        .tracker-notes__rating { justify-content: center; }
+        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3.2em; font-size: 0.9em; }
+        .tracker-notes__calendar { gap: 0.2em; }
+        .tracker-notes__calendar-day { font-size: 0.7em; }
+        .tracker-notes__chart { height: 180px; }
+        .tracker-notes__chart canvas { height: 160px !important; }
+      }
+      
+      @media (max-width: 480px) {
+        .tracker-notes { padding: 0.5em; margin: 0.5em 0; }
+        .tracker-notes__tracker { padding: 0.5em; }
+        .tracker-notes__tracker-title { font-size: 0.9em; }
+        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 3em; font-size: 0.85em; }
+        .tracker-notes__calendar-day { font-size: 0.65em; }
+        .tracker-notes__chart { height: 160px; }
+        .tracker-notes__chart canvas { height: 140px !important; }
+      }
     `;
     document.head.appendChild(styleEl);
   }
@@ -213,14 +288,14 @@ export default class HabitNotesPlugin extends Plugin {
 
   // ---- Код-блоки ------------------------------------------------------------
 
-  async processHabitBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
-    const block = new HabitBlockRenderChild(this, source, el, ctx);
+  async processTrackerBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+    const block = new TrackerBlockRenderChild(this, source, el, ctx);
     ctx.addChild(block);
     this.activeBlocks.add(block);
     await block.render();
   }
 
-  removeActiveBlock(block: HabitBlockRenderChild) {
+  removeActiveBlock(block: TrackerBlockRenderChild) {
     this.activeBlocks.delete(block);
   }
 
@@ -234,7 +309,7 @@ export default class HabitNotesPlugin extends Plugin {
       try {
         await block.render();
       } catch (error) {
-        console.error("Habit Notes: ошибка при обновлении блока", error);
+        console.error("Tracker: ошибка при обновлении блока", error);
       }
     }
   }
@@ -267,101 +342,84 @@ export default class HabitNotesPlugin extends Plugin {
         fileOpts.mode = "good-habit"; // значение по умолчанию, если frontmatter нет
       }
     } catch (error) {
-      console.error("Habit Notes: ошибка чтения frontmatter", error);
+      console.error("Tracker: ошибка чтения frontmatter", error);
       fileOpts.mode = "good-habit"; // значение по умолчанию при ошибке
     }
     return fileOpts;
   }
 
-  async renderHabitMetric(parentEl: HTMLElement, file: TFile, dateIso: string, view: string, opts: Record<string, string>) {
-    const container = parentEl.createDiv({ cls: "habit-notes" });
+  async updateTrackerDate(trackerItem: HTMLElement, file: TFile, dateIso: string, opts: Record<string, string>) {
+    const controlsContainerEl = trackerItem.querySelector(".tracker-notes__controls") as HTMLElement;
+    const controlsContainer = controlsContainerEl || trackerItem;
     
-    // Заголовок с названием и выбором даты
-    const header = container.createDiv({ cls: "habit-notes__header" });
-    const fileName = file.basename;
-    header.createEl("div", { text: fileName, cls: "habit-notes__title" });
+    // Получаем тип из frontmatter
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
+    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
     
-    const datePicker = header.createDiv({ cls: "habit-notes__date-picker" });
-    const dateInput = datePicker.createEl("input", { 
-      type: "date", 
-      cls: "habit-notes__date-input",
-      value: dateIso 
-    }) as HTMLInputElement;
+    // Проверяем, есть ли уже хитмап (для трекеров он находится в controlsContainer)
+    const existingHeatmap = controlsContainer.querySelector(".tracker-notes__heatmap") as HTMLElement;
     
-    const controlsContainer = container.createDiv();
-    
-    const updateDate = async (newDate: string) => {
-      const newDateIso = resolveDateIso(newDate, this.settings.dateFormat);
-      dateInput.value = newDateIso;
-      
-      // Получаем тип из frontmatter каждый раз заново
-      const fileOpts = await this.getFileTypeFromFrontmatter(file);
-      const habitType = (fileOpts.mode ?? "good-habit").toLowerCase();
-      const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-      
-      // Проверяем, есть ли уже хитмап (для привычек он находится в controlsContainer)
-      const existingHeatmap = controlsContainer.querySelector(".habit-notes__heatmap") as HTMLElement;
-      
-      if (habitType === "good-habit" || habitType === "bad-habit") {
-        // Для привычек обновляем хитмап на месте, не пересоздавая контролы
-        if (existingHeatmap) {
-          await this.updateHabitHeatmap(existingHeatmap, file, newDateIso, daysToShow, habitType);
-        } else {
-          // Если хитмапа нет, пересоздаем контролы
-          controlsContainer.empty();
-          const { mode, ...optsWithoutMode } = opts;
-          const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-          await this.renderControlsForDate(controlsContainer, file, newDateIso, mergedOpts);
-        }
+    if (trackerType === "good-habit" || trackerType === "bad-habit") {
+      // Для трекеров обновляем хитмап на месте, не пересоздавая контролы
+      if (existingHeatmap) {
+        await this.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
       } else {
-        // Для других типов обновляем контролы как обычно
+        // Если хитмапа нет, пересоздаем контролы
         controlsContainer.empty();
         const { mode, ...optsWithoutMode } = opts;
         const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-        await this.renderControlsForDate(controlsContainer, file, newDateIso, mergedOpts);
+        await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
       }
-      
-      // Обновляем визуализации с новой датой
-      // Обновляем календарь если он есть
-      const calendarDiv = container.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        await this.updateCalendar(calendarDiv as HTMLElement, file, newDateIso, daysToShow);
-      }
-      
-      // Обновляем график если он есть
-      const chartDiv = container.querySelector(".habit-notes__chart");
-      if (chartDiv) {
-        await this.updateChart(chartDiv as HTMLElement, file, newDateIso, daysToShow);
-      }
-      
-      // Обновляем статистику если она есть
-      const statsDiv = container.querySelector(".habit-notes__stats");
-      if (statsDiv) {
-        await this.updateStats(statsDiv as HTMLElement, file, newDateIso, daysToShow, habitType);
-      }
-    };
+    } else {
+      // Для других типов обновляем контролы как обычно
+      controlsContainer.empty();
+      const { mode, ...optsWithoutMode } = opts;
+      const mergedOpts = { ...optsWithoutMode, ...fileOpts };
+      await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+    }
     
-    dateInput.onchange = () => updateDate(dateInput.value);
-    const todayBtn = datePicker.createEl("button", { text: "Сегодня", cls: "habit-notes__date-btn" });
-    todayBtn.onclick = () => updateDate("today");
+    // Обновляем визуализации с новой датой
+    // Обновляем график если он есть
+    const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
+    if (chartDiv) {
+      await this.updateChart(chartDiv as HTMLElement, file, dateIso, daysToShow);
+    }
+    
+    // Обновляем статистику если она есть
+    const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
+    if (statsDiv) {
+      await this.updateStats(statsDiv as HTMLElement, file, dateIso, daysToShow, trackerType);
+    }
+  }
+
+  async renderTracker(parentEl: HTMLElement, file: TFile, dateIso: string, view: string, opts: Record<string, string>) {
+    // Создаем элемент трекера внутри общего контейнера
+    const trackerItem = parentEl.createDiv({ cls: "tracker-notes__tracker" });
+    // Сохраняем путь к файлу для обновления при изменении общей даты
+    trackerItem.dataset.filePath = file.path;
+    
+    // Заголовок с названием трекера
+    const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
+    const fileName = file.basename;
+    header.createEl("div", { text: fileName, cls: "tracker-notes__tracker-title" });
+    
+    const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
 
     if (view === "display") {
       const value = await this.readValueForDate(file, dateIso);
-      container.createEl("div", { text: `${dateIso}: ${value ?? "—"}` });
+      trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "—"}` });
       
       // Показываем дополнительные визуализации если запрошено
       const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
       const fileOpts = await this.getFileTypeFromFrontmatter(file);
-      const habitType = (fileOpts.mode ?? "good-habit").toLowerCase();
+      const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
       
-      if (opts.showCalendar === "true") {
-        await this.renderCalendar(container, file, dateIso, daysToShow);
-      }
       if (opts.showChart === "true") {
-        await this.renderChart(container, file, dateIso, daysToShow);
+        await this.renderChart(trackerItem, file, dateIso, daysToShow);
       }
       if (opts.showStats === "true") {
-        await this.renderStats(container, file, dateIso, daysToShow, habitType);
+        await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
       }
       return;
     }
@@ -377,16 +435,13 @@ export default class HabitNotesPlugin extends Plugin {
 
     // Показываем дополнительные визуализации если запрошено
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    const habitType = (fileOpts.mode ?? "good-habit").toLowerCase();
+    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
     
-    if (opts.showCalendar === "true") {
-      await this.renderCalendar(container, file, dateIso, daysToShow);
-    }
     if (opts.showChart === "true") {
-      await this.renderChart(container, file, dateIso, daysToShow);
+      await this.renderChart(trackerItem, file, dateIso, daysToShow);
     }
     if (opts.showStats === "true") {
-      await this.renderStats(container, file, dateIso, daysToShow, habitType);
+      await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
     }
   }
 
@@ -394,44 +449,40 @@ export default class HabitNotesPlugin extends Plugin {
     const mode = (opts.mode ?? "good-habit").toLowerCase();
     
     // Находим родительский контейнер для обновления визуализаций
-    const habitContainer = container.closest(".habit-notes") as HTMLElement;
+    const trackerItem = container.closest(".tracker-notes__tracker") as HTMLElement;
+    const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
     
     // Функция для обновления визуализаций после записи данных
     const updateVisualizations = async () => {
-      if (!habitContainer) return;
-      const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
+      if (!trackerItem) return;
+      // Ищем date-input в общем header блока или используем переданную дату
+      const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
       
-      // Обновляем календарь если он есть
-      const calendarDiv = habitContainer.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        await this.updateCalendar(calendarDiv as HTMLElement, file, currentDateIso, daysToShow);
-      }
-      
-      // Получаем тип привычки один раз
+      // Получаем тип трекера один раз
       const fileOptsForViz = await this.getFileTypeFromFrontmatter(file);
-      const habitTypeForViz = (fileOptsForViz.mode ?? "good-habit").toLowerCase();
+      const trackerTypeForViz = (fileOptsForViz.mode ?? "good-habit").toLowerCase();
       
       // Обновляем график/хитмап если он есть
-      const chartDiv = habitContainer.querySelector(".habit-notes__chart");
-      const heatmapDiv = habitContainer.querySelector(".habit-notes__heatmap");
+      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
+      const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
       if (chartDiv) {
         await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, daysToShow);
       }
       // Хитмап обновляется через updateHeatmapDay, не нужно пересоздавать
       
       // Обновляем статистику если она есть
-      const statsDiv = habitContainer.querySelector(".habit-notes__stats");
+      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
       if (statsDiv) {
-        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, daysToShow, habitTypeForViz);
+        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, daysToShow, trackerTypeForViz);
       }
     };
     
     if (mode === "good-habit" || mode === "bad-habit") {
-      // Для привычек показываем только хитмап
-      await this.renderHabitHeatmap(container, file, dateIso, daysToShow, mode);
+      // Для трекеров показываем только хитмап
+      await this.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
     } else if (mode === "checkbox") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const label = wrap.createEl("label", { text: "Выполнено" });
       const input = wrap.createEl("input", { type: "checkbox" });
       label.prepend(input);
@@ -448,7 +499,7 @@ export default class HabitNotesPlugin extends Plugin {
         await updateVisualizations();
       };
     } else if (mode === "number") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const input = wrap.createEl("input", { type: "number", placeholder: "0" }) as HTMLInputElement;
       const current = await this.readValueForDate(file, dateIso);
       if (current != null && !isNaN(Number(current))) input.value = String(current);
@@ -469,9 +520,9 @@ export default class HabitNotesPlugin extends Plugin {
         if (e.key === "Enter") btn.click();
       };
     } else if (mode === "plusminus") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const minus = wrap.createEl("button", { text: "−" });
-      const valEl = wrap.createEl("span", { text: "0", cls: "habit-notes__value" });
+      const valEl = wrap.createEl("span", { text: "0", cls: "tracker-notes__value" });
       const plus  = wrap.createEl("button", { text: "+" });
       let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
       if (!isNaN(current)) valEl.setText(String(current));
@@ -494,19 +545,19 @@ export default class HabitNotesPlugin extends Plugin {
         await updateVisualizations();
       };
     } else if (mode === "rating") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
-      const ratingDiv = wrap.createDiv({ cls: "habit-notes__rating" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
+      const ratingDiv = wrap.createDiv({ cls: "tracker-notes__rating" });
       const maxRating = parseInt(opts.maxRating || "5");
       const current = await this.readValueForDate(file, dateIso);
       let currentRating = typeof current === "number" ? current : (current ? parseInt(String(current)) : 0);
       if (isNaN(currentRating)) currentRating = 0;
       
       for (let i = 1; i <= maxRating; i++) {
-        const star = ratingDiv.createEl("span", { text: "★", cls: "habit-notes__rating-star" });
+        const star = ratingDiv.createEl("span", { text: "★", cls: "tracker-notes__rating-star" });
         if (i <= currentRating) star.addClass("active");
         star.onclick = async () => {
           currentRating = i;
-          ratingDiv.querySelectorAll(".habit-notes__rating-star").forEach((s, idx) => {
+          ratingDiv.querySelectorAll(".tracker-notes__rating-star").forEach((s, idx) => {
             if (idx + 1 <= i) s.addClass("active");
             else s.removeClass("active");
           });
@@ -517,9 +568,9 @@ export default class HabitNotesPlugin extends Plugin {
         };
       }
     } else if (mode === "text") {
-      const wrap = container.createDiv({ cls: "habit-notes__row" });
+      const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const input = wrap.createEl("textarea", { 
-        cls: "habit-notes__text-input",
+        cls: "tracker-notes__text-input",
         placeholder: "Введите текст..."
       }) as HTMLTextAreaElement;
       const current = await this.readValueForDate(file, dateIso);
@@ -542,7 +593,7 @@ export default class HabitNotesPlugin extends Plugin {
 
   // ---- Визуализация ---------------------------------------------------------
 
-  async updateHabitHeatmap(heatmapDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, habitType: string) {
+  async updateTrackerHeatmap(heatmapDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string) {
     const m = (window as any).moment;
     const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
     const startDate = m ? m(endDate).subtract(daysToShow - 1, 'days') : addDays(endDate, -(daysToShow - 1));
@@ -556,7 +607,8 @@ export default class HabitNotesPlugin extends Plugin {
     const scrollPosition = heatmapDiv.scrollLeft;
     
     // Находим родительский контейнер для обновления визуализаций
-    const habitContainer = heatmapDiv.closest(".habit-notes") as HTMLElement;
+    const trackerItem = heatmapDiv.closest(".tracker-notes__tracker") as HTMLElement;
+    const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
     
     // Функция для обновления только конкретного дня в хитмапе
     const updateHeatmapDay = async (dateStr: string, dayDiv: HTMLElement) => {
@@ -591,7 +643,7 @@ export default class HabitNotesPlugin extends Plugin {
     
     // Функция для обновления визуализаций после записи данных
     const updateVisualizations = async (updatedDateStr?: string, updatedDayDiv?: HTMLElement) => {
-      if (!habitContainer) return;
+      if (!trackerItem) return;
       
       // Обновляем только конкретный день в хитмапе, если указан
       if (updatedDateStr && updatedDayDiv) {
@@ -600,28 +652,21 @@ export default class HabitNotesPlugin extends Plugin {
         await updateAllStartDays();
       }
       
-      // Обновляем календарь если он есть
-      const calendarDiv = habitContainer.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
-        const days = parseInt((habitContainer as any).daysToShow) || daysToShow;
-        await this.updateCalendar(calendarDiv as HTMLElement, file, currentDateIso, days);
-      }
+      // Получаем текущую дату из общего date-input блока
+      const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
       
       // Обновляем график если он есть
-      const chartDiv = habitContainer.querySelector(".habit-notes__chart");
+      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
       if (chartDiv) {
-        const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
-        const days = parseInt((habitContainer as any).daysToShow) || daysToShow;
+        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
         await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, days);
       }
       
       // Обновляем статистику если она есть
-      const statsDiv = habitContainer.querySelector(".habit-notes__stats");
+      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
       if (statsDiv) {
-        const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
-        const days = parseInt((habitContainer as any).daysToShow) || daysToShow;
-        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, days, habitType);
+        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
+        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, days, trackerType);
       }
     };
     
@@ -638,15 +683,15 @@ export default class HabitNotesPlugin extends Plugin {
         // Используем существующий элемент
         dayDiv = dayElements[i];
         dayDiv.setText(dayNum.toString());
-        // Убеждаемся, что класс типа привычки установлен
+        // Убеждаемся, что класс типа трекера установлен
         dayDiv.removeClass("good-habit");
         dayDiv.removeClass("bad-habit");
-        dayDiv.addClass(habitType);
+        dayDiv.addClass(trackerType);
       } else {
         // Создаем новый элемент
-        dayDiv = heatmapDiv.createDiv({ cls: "habit-notes__heatmap-day" });
+        dayDiv = heatmapDiv.createDiv({ cls: "tracker-notes__heatmap-day" });
         dayDiv.setText(dayNum.toString());
-        dayDiv.addClass(habitType);
+        dayDiv.addClass(trackerType);
       }
       
       // Сохраняем dateStr в data-атрибуте для последующего обновления start-day
@@ -695,20 +740,20 @@ export default class HabitNotesPlugin extends Plugin {
     });
   }
 
-  async renderHabitHeatmap(container: HTMLElement, file: TFile, dateIso: string, daysToShow: number, habitType: string) {
+  async renderTrackerHeatmap(container: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string) {
     // Проверяем, существует ли уже хитмап
-    const existingHeatmap = container.querySelector(".habit-notes__heatmap") as HTMLElement;
+    const existingHeatmap = container.querySelector(".tracker-notes__heatmap") as HTMLElement;
     let heatmapDiv: HTMLElement;
     
     if (existingHeatmap) {
       // Обновляем существующий хитмап на месте
       heatmapDiv = existingHeatmap;
-      await this.updateHabitHeatmap(heatmapDiv, file, dateIso, daysToShow, habitType);
+      await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
       return;
     }
 
     // Создаем новый хитмап
-    heatmapDiv = container.createDiv({ cls: "habit-notes__heatmap" });
+    heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
     
     const m = (window as any).moment;
     const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
@@ -720,7 +765,8 @@ export default class HabitNotesPlugin extends Plugin {
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     
     // Находим родительский контейнер для обновления визуализаций
-    const habitContainer = container.closest(".habit-notes") as HTMLElement;
+    const trackerItem = container.closest(".tracker-notes__tracker") as HTMLElement;
+    const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
     
     // Функция для обновления только конкретного дня в хитмапе
     const updateHeatmapDay = async (dateStr: string, dayDiv: HTMLElement) => {
@@ -755,7 +801,7 @@ export default class HabitNotesPlugin extends Plugin {
     
     // Функция для обновления визуализаций после записи данных
     const updateVisualizations = async (updatedDateStr?: string, updatedDayDiv?: HTMLElement) => {
-      if (!habitContainer) return;
+      if (!trackerItem) return;
       
       // Обновляем только конкретный день в хитмапе, если указан
       if (updatedDateStr && updatedDayDiv) {
@@ -764,28 +810,21 @@ export default class HabitNotesPlugin extends Plugin {
         await updateAllStartDays();
       }
       
-      // Обновляем календарь если он есть
-      const calendarDiv = habitContainer.querySelector(".habit-notes__calendar");
-      if (calendarDiv) {
-        const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
-        const days = parseInt((habitContainer as any).daysToShow) || daysToShow;
-        await this.updateCalendar(calendarDiv as HTMLElement, file, currentDateIso, days);
-      }
+      // Получаем текущую дату из общего date-input блока
+      const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
       
       // Обновляем график если он есть
-      const chartDiv = habitContainer.querySelector(".habit-notes__chart");
+      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
       if (chartDiv) {
-        const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
-        const days = parseInt((habitContainer as any).daysToShow) || daysToShow;
+        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
         await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, days);
       }
       
       // Обновляем статистику если она есть
-      const statsDiv = habitContainer.querySelector(".habit-notes__stats");
+      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
       if (statsDiv) {
-        const currentDateIso = (habitContainer.querySelector(".habit-notes__date-input") as HTMLInputElement)?.value || dateIso;
-        const days = parseInt((habitContainer as any).daysToShow) || daysToShow;
-        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, days, habitType);
+        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
+        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, days, trackerType);
       }
     };
     
@@ -794,9 +833,9 @@ export default class HabitNotesPlugin extends Plugin {
       const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
       const dayNum = m ? date.date() : date.getDate();
       
-      const dayDiv = heatmapDiv.createDiv({ cls: "habit-notes__heatmap-day" });
+      const dayDiv = heatmapDiv.createDiv({ cls: "tracker-notes__heatmap-day" });
       dayDiv.setText(dayNum.toString());
-      dayDiv.addClass(habitType);
+      dayDiv.addClass(trackerType);
       // Сохраняем dateStr в data-атрибуте для последующего обновления start-day
       (dayDiv as any).dataset.dateStr = dateStr;
       
@@ -829,81 +868,6 @@ export default class HabitNotesPlugin extends Plugin {
     });
   }
 
-  async updateCalendar(calendarDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number) {
-    const m = (window as any).moment;
-    const endDate = dateIso ? (m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat)) : (m ? m() : new Date());
-    const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, 'days') : addDays(endDate, -(days - 1));
-
-    // Получаем все записи
-    const allEntries = await this.readAllEntries(file);
-    
-    // Получаем дату начала отслеживания
-    const startTrackingDateStr = this.getStartTrackingDate(allEntries, file);
-    
-    // Пропускаем заголовки (первые 7 элементов)
-    const dayElements = Array.from(calendarDiv.children).slice(7);
-    
-    for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, 'days') : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      
-      let dayDiv: HTMLElement;
-      if (i < dayElements.length) {
-        dayDiv = dayElements[i] as HTMLElement;
-      } else {
-        dayDiv = calendarDiv.createDiv({ cls: "habit-notes__calendar-day" });
-      }
-      
-      const dayNum = m ? date.date() : date.getDate();
-      dayDiv.setText(dayNum.toString());
-      
-      if (allEntries.has(dateStr)) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
-      
-      // Добавляем класс start-day если это день начала отслеживания
-      if (dateStr === startTrackingDateStr) {
-        dayDiv.addClass("start-day");
-      } else {
-        dayDiv.removeClass("start-day");
-      }
-      
-      const today = m ? m() : new Date();
-      const isToday = m ? date.isSame(today, 'day') : 
-                     (date.getTime && today.getTime ? 
-                      formatDate(date, this.settings.dateFormat) === formatDate(today, this.settings.dateFormat) :
-                      false);
-      if (isToday) {
-        dayDiv.style.border = "2px solid var(--interactive-accent)";
-      } else {
-        dayDiv.style.border = "";
-      }
-    }
-    
-    // Удаляем лишние элементы если их больше чем нужно
-    while (dayElements.length > days) {
-      dayElements[dayElements.length - 1].remove();
-      dayElements.pop();
-    }
-  }
-
-  async renderCalendar(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number) {
-    const calendarDiv = container.createDiv({ cls: "habit-notes__calendar" });
-    
-    // Заголовки дней недели
-    const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    weekDays.forEach(day => {
-      const dayHeader = calendarDiv.createDiv({ cls: "habit-notes__calendar-day" });
-      dayHeader.style.fontWeight = "600";
-      dayHeader.setText(day);
-    });
-
-    await this.updateCalendar(calendarDiv, file, dateIso, daysToShow);
-  }
-
   // Вспомогательная функция для подсчета слов в тексте
   private countWords(text: string): number {
     const trimmed = text.trim();
@@ -920,12 +884,12 @@ export default class HabitNotesPlugin extends Plugin {
     if (metricType === "good-habit" || metricType === "bad-habit") {
       const endDate = dateIso || resolveDateIso("today", this.settings.dateFormat);
       const days = daysToShow || this.settings.daysToShow;
-      await this.renderHabitHeatmap(container, file, endDate, days, metricType);
+      await this.renderTrackerHeatmap(container, file, endDate, days, metricType);
       return;
     }
     
     // Удаляем старый график, если он существует
-    const existingChart = container.querySelector(".habit-notes__chart");
+    const existingChart = container.querySelector(".tracker-notes__chart");
     if (existingChart) {
       const chartInstance = (existingChart as any).chartInstance;
       if (chartInstance) {
@@ -934,7 +898,7 @@ export default class HabitNotesPlugin extends Plugin {
       existingChart.remove();
     }
 
-    const chartDiv = container.createDiv({ cls: "habit-notes__chart" });
+    const chartDiv = container.createDiv({ cls: "tracker-notes__chart" });
     const canvas = chartDiv.createEl("canvas");
     
     // Получаем цвета из CSS переменных Obsidian
@@ -1174,7 +1138,7 @@ export default class HabitNotesPlugin extends Plugin {
       (chartInstance as any).startTrackingIndex = startTrackingIndex;
       (chartInstance as any).startLineColor = startLineColor;
     } catch (error) {
-      console.error("Habit Notes: ошибка создания графика", error);
+      console.error("Tracker: ошибка создания графика", error);
       chartDiv.setText("Ошибка отображения графика");
     }
   }
@@ -1267,12 +1231,12 @@ export default class HabitNotesPlugin extends Plugin {
     chartInstance.update('none'); // 'none' для мгновенного обновления без анимации
   }
 
-  async updateStats(statsDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, habitType?: string) {
+  async updateStats(statsDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string) {
     const entries = await this.readAllEntries(file);
     
-    // Получаем тип метрики из frontmatter
+    // Получаем тип трекера из frontmatter
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const metricType = habitType || (fileOpts.mode ?? "good-habit").toLowerCase();
+    const metricType = trackerType || (fileOpts.mode ?? "good-habit").toLowerCase();
     
     const m = (window as any).moment;
     const endDate = dateIso ? (m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat)) : (m ? m() : new Date());
@@ -1346,9 +1310,9 @@ export default class HabitNotesPlugin extends Plugin {
     }
   }
 
-  async renderStats(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, habitType?: string) {
-    const statsDiv = container.createDiv({ cls: "habit-notes__stats" });
-    await this.updateStats(statsDiv, file, dateIso, daysToShow, habitType);
+  async renderStats(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string) {
+    const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
+    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType);
   }
   
   getStartTrackingDate(entries: Map<string, string | number>, file?: TFile): string | null {
@@ -1387,10 +1351,10 @@ export default class HabitNotesPlugin extends Plugin {
     return m ? startTrackingDate.format(this.settings.dateFormat) : formatDate(startTrackingDate, this.settings.dateFormat);
   }
 
-  calculateStreak(entries: Map<string, string | number>, m: any, endDate: Date | any, habitType?: string, file?: TFile): number {
+  calculateStreak(entries: Map<string, string | number>, m: any, endDate: Date | any, trackerType?: string, file?: TFile): number {
     let streak = 0;
     let currentDate = m ? m(endDate) : new Date(endDate);
-    const metricType = (habitType || "good-habit").toLowerCase();
+    const metricType = (trackerType || "good-habit").toLowerCase();
     const isBadHabit = metricType === "bad-habit";
     
     // Определяем дату начала отслеживания - либо дата создания файла, либо первая запись
@@ -1503,7 +1467,7 @@ export default class HabitNotesPlugin extends Plugin {
         entries.set(date, value);
       });
     } catch (error) {
-      console.error("Habit Notes: ошибка чтения всех записей", error);
+      console.error("Tracker: ошибка чтения всех записей", error);
     }
     
     return entries;
@@ -1511,11 +1475,11 @@ export default class HabitNotesPlugin extends Plugin {
 
   // ---- Создание привычки ----------------------------------------------------
 
-  async createNewHabit() {
-    new CreateHabitModal(this.app, this).open();
+  async createNewTracker() {
+    new CreateTrackerModal(this.app, this).open();
   }
 
-  async onHabitCreated(folderPath: string) {
+  async onTrackerCreated(folderPath: string) {
     await this.refreshBlocksForFolder(folderPath);
   }
 
@@ -1624,7 +1588,7 @@ export default class HabitNotesPlugin extends Plugin {
       const data = this.parseFrontmatterData(frontmatter);
       return data[dateIso] ?? null;
     } catch (error) {
-      console.error("Habit Notes: ошибка чтения значения", error);
+      console.error("Tracker: ошибка чтения значения", error);
       return null;
     }
   }
@@ -1676,16 +1640,16 @@ export default class HabitNotesPlugin extends Plugin {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new Notice(`Ошибка записи: ${errorMsg}`);
-      console.error("Habit Notes: ошибка записи", error);
+      console.error("Tracker: ошибка записи", error);
       throw error;
     }
   }
 
   // Простейший «пикер» файла: предлагает последние открытые/подходящие
-  async pickHabitFile(): Promise<TFile | null> {
+  async pickTrackerFile(): Promise<TFile | null> {
     const files = this.app.vault.getMarkdownFiles()
-      .filter(f => f.path.startsWith(this.settings.habitsFolder + "/"));
-    if (files.length === 0) { new Notice("Нет заметок привычек"); return null; }
+      .filter(f => f.path.startsWith(this.settings.trackersFolder + "/"));
+    if (files.length === 0) { new Notice("Нет трекеров"); return null; }
     if (files.length === 1) return files[0];
 
     return new Promise(resolve => {
@@ -1698,18 +1662,18 @@ export default class HabitNotesPlugin extends Plugin {
 
 // ---- UI: Settings -----------------------------------------------------------
 
-class HabitSettingsTab extends PluginSettingTab {
-  plugin: HabitNotesPlugin;
-  constructor(app: App, plugin: HabitNotesPlugin) { super(app, plugin); this.plugin = plugin; }
+class TrackerSettingsTab extends PluginSettingTab {
+  plugin: TrackerPlugin;
+  constructor(app: App, plugin: TrackerPlugin) { super(app, plugin); this.plugin = plugin; }
 
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("Папка привычек")
-      .addText(t => t.setPlaceholder("3. Metrics/Habits")
-        .setValue(this.plugin.settings.habitsFolder)
-        .onChange(async (v)=>{ this.plugin.settings.habitsFolder = v.trim(); await this.plugin.saveSettings(); }));
+    new Setting(containerEl).setName("Папка трекеров")
+      .addText(t => t.setPlaceholder("0. Files/Trackers")
+        .setValue(this.plugin.settings.trackersFolder)
+        .onChange(async (v)=>{ this.plugin.settings.trackersFolder = v.trim(); await this.plugin.saveSettings(); }));
 
     new Setting(containerEl).setName("Формат даты")
       .addText(t => t.setPlaceholder("YYYY-MM-DD")
@@ -1801,11 +1765,11 @@ function parseMaybeNumber(v: string): string | number {
 
 function escapeRegExp(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
-// --- Modal для создания новой привычки
-class CreateHabitModal extends Modal {
-  plugin: HabitNotesPlugin;
+// --- Modal для создания нового трекера
+class CreateTrackerModal extends Modal {
+  plugin: TrackerPlugin;
   
-  constructor(app: App, plugin: HabitNotesPlugin) {
+  constructor(app: App, plugin: TrackerPlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -1813,7 +1777,7 @@ class CreateHabitModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Создать новую метрику/привычку" });
+    contentEl.createEl("h2", { text: "Создать новый трекер" });
     
     const nameSetting = new Setting(contentEl)
       .setName("Название")
@@ -1875,7 +1839,7 @@ class CreateHabitModal extends Modal {
               : "5";
             
             const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-            const filePath = `${this.plugin.settings.habitsFolder}/${fileName}`;
+            const filePath = `${this.plugin.settings.trackersFolder}/${fileName}`;
             
             try {
               const file = await this.plugin.ensureFileWithHeading(filePath, type);
@@ -1902,19 +1866,19 @@ class CreateHabitModal extends Modal {
               
               await this.app.vault.modify(file, newContent);
               
-              new Notice(`Создана метрика: ${name}`);
+              new Notice(`Создан трекер: ${name}`);
               
-              // Обновляем все открытые блоки habit для этой папки
+              // Обновляем все открытые блоки tracker для этой папки
               const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
               setTimeout(async () => {
-                await this.plugin.onHabitCreated(fileFolderPath);
+                await this.plugin.onTrackerCreated(fileFolderPath);
               }, 500);
               
               this.close();
             } catch (error) {
               const errorMsg = error instanceof Error ? error.message : String(error);
-              new Notice(`Ошибка при создании метрики: ${errorMsg}`);
-              console.error("Habit Notes: ошибка создания метрики", error);
+              new Notice(`Ошибка при создании трекера: ${errorMsg}`);
+              console.error("Tracker: ошибка создания трекера", error);
             }
           });
       });
@@ -1934,7 +1898,7 @@ class FilePickerModal extends Modal {
   }
   onOpen() {
     const {contentEl} = this;
-    contentEl.createEl("h3", {text: "Выберите заметку привычки"});
+    contentEl.createEl("h3", {text: "Выберите трекер"});
     this.files.slice(0,200).forEach(f=>{
       const btn = contentEl.createEl("button", {text: f.path});
       btn.onclick = ()=>{ this.close(); this.onPick(f); };
