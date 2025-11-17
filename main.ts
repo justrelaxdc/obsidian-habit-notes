@@ -1,4 +1,4 @@
-import { App, MarkdownRenderChild, MarkdownPostProcessorContext, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from "obsidian";
+import { App, AbstractInputSuggest, MarkdownRenderChild, MarkdownPostProcessorContext, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from "obsidian";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
@@ -7,7 +7,6 @@ type TrackerSettings = {
   dateFormat: string;          // "YYYY-MM-DD"
   timeFormat: string;          // "HH:mm"
   daysToShow: number;          // количество дней для отображения графиков
-  hideNumbering: boolean;      // скрывать нумерацию в начале названий (например, "1. [[Название]]")
 };
 
 const DEFAULT_SETTINGS: TrackerSettings = {
@@ -15,7 +14,6 @@ const DEFAULT_SETTINGS: TrackerSettings = {
   dateFormat: "YYYY-MM-DD",
   timeFormat: "HH:mm",
   daysToShow: 30,
-  hideNumbering: false,
 };
 
 // Интерфейс для представления узла дерева папок
@@ -223,10 +221,7 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
       const folderHeader = nodeContainer.createDiv({ 
         cls: `tracker-notes__folder-header level-${node.level}` 
       });
-      const displayName = this.plugin.settings.hideNumbering 
-        ? this.plugin.removeNumbering(node.name) 
-        : node.name;
-      folderHeader.setText(displayName);
+      folderHeader.setText(node.name);
     }
 
     // Если есть файлы в этой папке, создаем контейнер для трекеров
@@ -313,14 +308,14 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
       .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
       .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none; }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; }
       .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
       .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes__value.updated { animation: pulse 0.3s ease; }
       @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
       .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
-      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
+      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
       .tracker-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
       .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }
       .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
@@ -391,42 +386,75 @@ export default class TrackerPlugin extends Plugin {
       
       /* Медиа-запросы для мобильных устройств */
       @media (max-width: 768px) {
-        .tracker-notes { padding: 0.75em; margin: 0.75em 0; }
-        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.75em; }
-        .tracker-notes__tracker { padding: 0.75em; }
-        .tracker-notes__header { padding: 0.75em; }
-        .tracker-notes__date-picker { flex-wrap: wrap; justify-content: center; }
-        .tracker-notes__date-input { max-width: 100%; flex: 1 1 100%; }
-        .tracker-notes__row { flex-direction: column; align-items: stretch; gap: 0.5em; }
-        .tracker-notes__row > * { width: 100%; }
-        .tracker-notes input[type="number"] { width: 100%; }
-        .tracker-notes button { width: 100%; }
-        .tracker-notes__rating { justify-content: center; }
-        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3.2em; font-size: 0.9em; }
-        .tracker-notes__calendar { gap: 0.2em; }
-        .tracker-notes__calendar-day { font-size: 0.7em; }
-        .tracker-notes__chart { height: 180px; }
-        .tracker-notes__chart canvas { height: 160px !important; }
-        .tracker-notes__folder-node.level-1 { padding-left: 1em; }
-        .tracker-notes__folder-node.level-2 { padding-left: 2em; }
-        .tracker-notes__folder-header.level-0 { font-size: 1.2em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1.15em; }
-        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
+        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }
+        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }
+        .tracker-notes__header-title { font-size: 1em; }
+        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }
+        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }
+        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; }
+        .tracker-notes__tracker-title { font-size: 0.9em; }
+        .tracker-notes__date-picker-container { padding: 0; }
+        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }
+        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; }
+        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; }
+        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }
+        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }
+        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; }
+        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; }
+        .tracker-notes__rating { gap: 0.2em; justify-content: center; }
+        .tracker-notes__rating-star { font-size: 1.2em; }
+        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; }
+        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }
+        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }
+        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }
+        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }
+        .tracker-notes__calendar-day { font-size: 0.65em; }
+        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }
+        .tracker-notes__chart canvas { height: 140px !important; }
+        .tracker-notes__hierarchy { gap: 1em; }
+        .tracker-notes__folder-node { margin-bottom: 0.75em; }
+        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }
+        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }
+        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }
+        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }
+        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
       }
       
       @media (max-width: 480px) {
-        .tracker-notes { padding: 0.5em; margin: 0.5em 0; }
-        .tracker-notes__tracker { padding: 0.5em; }
-        .tracker-notes__tracker-title { font-size: 0.9em; }
-        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 3em; font-size: 0.85em; }
-        .tracker-notes__calendar-day { font-size: 0.65em; }
-        .tracker-notes__chart { height: 160px; }
-        .tracker-notes__chart canvas { height: 140px !important; }
-        .tracker-notes__folder-node.level-1 { padding-left: 0.75em; }
-        .tracker-notes__folder-node.level-2 { padding-left: 1.5em; }
-        .tracker-notes__folder-header.level-0 { font-size: 1.1em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1.05em; }
-        .tracker-notes__folder-header.level-2 { font-size: 0.85em; }
+        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }
+        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }
+        .tracker-notes__header-title { font-size: 0.95em; }
+        .tracker-notes__trackers { gap: 0.4em; }
+        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }
+        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; }
+        .tracker-notes__tracker-title { font-size: 0.85em; }
+        .tracker-notes__date-picker { gap: 0.25em; }
+        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; }
+        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; }
+        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }
+        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }
+        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; }
+        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; }
+        .tracker-notes__rating-star { font-size: 1.1em; }
+        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; }
+        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }
+        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }
+        .tracker-notes__heatmap-day { min-width: 2.2em; max-width: 2.5em; font-size: 0.75em; }
+        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }
+        .tracker-notes__calendar-day { font-size: 0.6em; }
+        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }
+        .tracker-notes__chart canvas { height: 120px !important; }
+        .tracker-notes__hierarchy { gap: 0.75em; }
+        .tracker-notes__folder-node { margin-bottom: 0.5em; }
+        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }
+        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }
+        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }
+        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }
+        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }
+        .tracker-notes__folder-header.level-1 { font-size: 1em; }
+        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -569,11 +597,8 @@ export default class TrackerPlugin extends Plugin {
     // Заголовок с названием трекера
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     const fileName = file.basename;
-    const displayName = this.settings.hideNumbering 
-      ? this.removeNumbering(fileName) 
-      : fileName;
     const titleLink = header.createEl("a", { 
-      text: displayName, 
+      text: fileName, 
       cls: "tracker-notes__tracker-title internal-link",
       href: file.path
     });
@@ -694,6 +719,10 @@ export default class TrackerPlugin extends Plugin {
         // Обновляем визуализации
         await updateVisualizations();
       };
+      
+      // Добавляем кнопку "Set" для фиксации значения
+      const setButton = wrap.createEl("button", { text: "Set" });
+      setButton.onclick = updateValue;
       
       input.onchange = updateValue;
       input.onkeypress = async (e) => {
@@ -2055,17 +2084,6 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async saveSettings() { await this.saveData(this.settings); }
-
-  // Удаляет нумерацию из начала названия (например, "1. [[Название]]" -> "[[Название]]")
-  removeNumbering(name: string): string {
-    // Паттерн для поиска: цифра(ы), точка, пробел (опционально), затем текст
-    // Поддерживает форматы: "1. [[Название]]", "1.[[Название]]", "123. Название"
-    const match = name.match(/^\d+\.\s*(.+)$/);
-    if (match && match[1]) {
-      return match[1].trim();
-    }
-    return name;
-  }
 }
 
 // ---- UI: Settings -----------------------------------------------------------
@@ -2078,7 +2096,7 @@ class TrackerSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("Папка трекеров")
+    new Setting(containerEl).setName("Папка трекеров по умолчанию")
       .addText(t => t.setPlaceholder("0. Files/Trackers")
         .setValue(this.plugin.settings.trackersFolder)
         .onChange(async (v)=>{ this.plugin.settings.trackersFolder = v.trim(); await this.plugin.saveSettings(); }));
@@ -2093,7 +2111,8 @@ class TrackerSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.timeFormat)
         .onChange(async (v)=>{ this.plugin.settings.timeFormat = v.trim(); await this.plugin.saveSettings(); }));
 
-    new Setting(containerEl).setName("Количество дней для графиков")
+    new Setting(containerEl).setName("Количество дней")
+      .setDesc("Количество предыдущих дней, которое отображается для графиков и привычек")
       .addText(t => t.setPlaceholder("30")
         .setValue(String(this.plugin.settings.daysToShow))
         .onChange(async (v)=>{ 
@@ -2104,14 +2123,6 @@ class TrackerSettingsTab extends PluginSettingTab {
           }
         }));
 
-    new Setting(containerEl).setName("Скрывать нумерацию трекеров")
-      .setDesc("Если включено, убирает нумерацию в начале названий папок и трекеров (например, '1. [[Название]]' → '[[Название]]')")
-      .addToggle(t => t
-        .setValue(this.plugin.settings.hideNumbering)
-        .onChange(async (v) => {
-          this.plugin.settings.hideNumbering = v;
-          await this.plugin.saveSettings();
-        }));
   }
 }
 
@@ -2203,6 +2214,21 @@ class CreateTrackerModal extends Modal {
         text.inputEl.style.width = "100%";
       });
     
+    // Получаем список всех папок для автодополнения
+    const folders = this.app.vault.getAllFolders();
+    
+    const folderSetting = new Setting(contentEl)
+      .setName("Путь")
+      .addText(text => {
+        const defaultPath = this.plugin.settings.trackersFolder || DEFAULT_SETTINGS.trackersFolder;
+        text.setPlaceholder(defaultPath);
+        text.setValue("");
+        text.inputEl.style.width = "100%";
+        
+        // Подключаем нативный компонент подсказок Obsidian
+        new FolderSuggest(this.app, text.inputEl, folders);
+      });
+    
     const typeSetting = new Setting(contentEl)
       .setName("Тип")
       .addDropdown(dropdown => {
@@ -2212,9 +2238,7 @@ class CreateTrackerModal extends Modal {
         // Метрики
         dropdown.addOption("number", "Число");
         dropdown.addOption("plusminus", "Счётчик (+/-)");
-        dropdown.addOption("rating", "Оценка (звёзды)");
         dropdown.addOption("text", "Текст");
-        dropdown.addOption("checkbox", "Чекбокс");
         dropdown.setValue("good-habit");
       });
     
@@ -2248,18 +2272,10 @@ class CreateTrackerModal extends Modal {
       plusminusOption.value = "plusminus";
       plusminusOption.textContent = "Счётчик (+/-)";
       metricsGroup.appendChild(plusminusOption);
-      const ratingOption = document.createElement("option");
-      ratingOption.value = "rating";
-      ratingOption.textContent = "Оценка (звёзды)";
-      metricsGroup.appendChild(ratingOption);
       const textOption = document.createElement("option");
       textOption.value = "text";
       textOption.textContent = "Текст";
       metricsGroup.appendChild(textOption);
-      const checkboxOption = document.createElement("option");
-      checkboxOption.value = "checkbox";
-      checkboxOption.textContent = "Чекбокс";
-      metricsGroup.appendChild(checkboxOption);
       const scaleOption = document.createElement("option");
       scaleOption.value = "scale";
       scaleOption.textContent = "Шкала";
@@ -2269,18 +2285,6 @@ class CreateTrackerModal extends Modal {
       // Устанавливаем значение по умолчанию
       typeDropdown.value = "good-habit";
     }
-    
-    const maxRatingSetting = new Setting(contentEl)
-      .setName("Максимальная оценка")
-      .addSlider(slider => {
-        slider
-          .setLimits(3, 10, 1)
-          .setValue(5)
-          .setDynamicTooltip();
-      });
-    
-    // Скрываем maxRatingSetting по умолчанию
-    maxRatingSetting.settingEl.style.display = "none";
     
     const minValueSetting = new Setting(contentEl)
       .setName("Значение \"от\"")
@@ -2319,18 +2323,11 @@ class CreateTrackerModal extends Modal {
     const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
     if (typeDropdownSelect) {
       typeDropdownSelect.onchange = () => {
-        if (typeDropdownSelect.value === "rating") {
-          maxRatingSetting.settingEl.style.display = "";
-          minValueSetting.settingEl.style.display = "none";
-          maxValueSetting.settingEl.style.display = "none";
-          stepSetting.settingEl.style.display = "none";
-        } else if (typeDropdownSelect.value === "scale") {
-          maxRatingSetting.settingEl.style.display = "none";
+        if (typeDropdownSelect.value === "scale") {
           minValueSetting.settingEl.style.display = "";
           maxValueSetting.settingEl.style.display = "";
           stepSetting.settingEl.style.display = "";
         } else {
-          maxRatingSetting.settingEl.style.display = "none";
           minValueSetting.settingEl.style.display = "none";
           maxValueSetting.settingEl.style.display = "none";
           stepSetting.settingEl.style.display = "none";
@@ -2353,9 +2350,6 @@ class CreateTrackerModal extends Modal {
             
             const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
             const type = typeDropdownSelect ? typeDropdownSelect.value : "good-habit";
-            const maxRating = type === "rating" 
-              ? (maxRatingSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "5"
-              : "5";
             const minValue = type === "scale"
               ? (minValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "0"
               : "0";
@@ -2367,7 +2361,17 @@ class CreateTrackerModal extends Modal {
               : "1";
             
             const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-            const filePath = `${this.plugin.settings.trackersFolder}/${fileName}`;
+            // Получаем значение из поля ввода папки
+            const folderInput = folderSetting.controlEl.querySelector("input") as HTMLInputElement;
+            let inputFolder = folderInput?.value.trim() || "";
+            // Если пользователь ввел "/ (корневая папка)", преобразуем в пустую строку
+            if (inputFolder === "/ (корневая папка)") {
+              inputFolder = "";
+            }
+            // Используем введенную папку или папку по умолчанию
+            const targetFolder = inputFolder || this.plugin.settings.trackersFolder;
+            // Если папка пустая (корневая), путь - просто имя файла
+            const filePath = targetFolder ? `${targetFolder}/${fileName}` : fileName;
             
             try {
               const file = await this.plugin.ensureFileWithHeading(filePath, type);
@@ -2380,9 +2384,6 @@ class CreateTrackerModal extends Modal {
               const escapedName = name.replace(/"/g, '\\"');
               // Плоская структура без вложенности
               let newFrontmatter = `name: "${escapedName}"\ntype: "${type}"\n`;
-              if (type === "rating") {
-                newFrontmatter += `maxRating: ${parseInt(maxRating) || 5}\n`;
-              }
               if (type === "scale") {
                 newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
                 newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
@@ -2439,3 +2440,37 @@ class FilePickerModal extends Modal {
   }
   onClose() { this.onPick(null); this.contentEl.empty(); }
 }
+
+// --- Folder suggest для выбора папки
+class FolderSuggest extends AbstractInputSuggest<TFolder> {
+  folders: TFolder[];
+  
+  constructor(app: App, inputEl: HTMLInputElement, folders: TFolder[]) {
+    super(app, inputEl);
+    this.folders = folders;
+  }
+  
+  getSuggestions(query: string): TFolder[] {
+    const normalizedQuery = query.toLowerCase().trim();
+    if (!normalizedQuery) {
+      return this.folders.slice(0, 100);
+    }
+    
+    return this.folders.filter(folder => {
+      const path = folder.path || "";
+      return path.toLowerCase().includes(normalizedQuery);
+    }).slice(0, 100);
+  }
+  
+  renderSuggestion(folder: TFolder, el: HTMLElement): void {
+    const path = folder.path || "";
+    el.textContent = path || "/ (корневая папка)";
+  }
+  
+  selectSuggestion(folder: TFolder): void {
+    const path = folder.path || "";
+    this.setValue(path);
+    this.close();
+  }
+}
+
