@@ -5,15 +5,17 @@ Chart.register(...registerables);
 type TrackerSettings = {
   trackersFolder: string;        // папка с заметками трекеров
   dateFormat: string;          // "YYYY-MM-DD"
-  timeFormat: string;          // "HH:mm"
   daysToShow: number;          // количество дней для отображения графиков
+  showChartByDefault: boolean;  // показывать график по умолчанию
+  showStatsByDefault: boolean; // показывать статистику по умолчанию
 };
 
 const DEFAULT_SETTINGS: TrackerSettings = {
   trackersFolder: "0. Files/Trackers",
   dateFormat: "YYYY-MM-DD",
-  timeFormat: "HH:mm",
   daysToShow: 30,
+  showChartByDefault: true,
+  showStatsByDefault: false,
 };
 
 // Интерфейс для представления узла дерева папок
@@ -31,6 +33,7 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
   source: string;
   folderPath: string;
   opts: Record<string, string>;
+  ctx: MarkdownPostProcessorContext;
 
   constructor(plugin: TrackerPlugin, source: string, containerEl: HTMLElement, ctx: MarkdownPostProcessorContext) {
     super(containerEl);
@@ -38,6 +41,7 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
     this.source = source;
     this.opts = parseOptions(source);
     this.folderPath = this.opts.folder || plugin.settings.trackersFolder;
+    this.ctx = ctx;
   }
 
   async render() {
@@ -54,7 +58,82 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
       }
 
       const view = (this.opts.view ?? "control").toLowerCase();
-      let dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
+      
+      // Пытаемся получить дату из названия файла (заметки)
+      let initialDate: string | undefined = this.opts.date;
+      if (!initialDate && this.ctx.sourcePath) {
+        try {
+          const noteFile = this.plugin.app.vault.getAbstractFileByPath(this.ctx.sourcePath);
+          if (noteFile instanceof TFile) {
+            // Получаем название файла без расширения
+            const fileName = noteFile.basename;
+            
+            // Пытаемся распарсить дату из названия файла в форматах YYYY-MM-DD, YYYY/MM/DD, DD.MM.YYYY
+            // Ищем дату в любом месте названия файла
+            if (fileName) {
+              const m = (window as any).moment;
+              if (m) {
+                // Пробуем разные форматы, moment может найти дату в любом месте строки
+                const dateFormats = ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY", "YYYY-MM-DD HH:mm", "YYYY/MM/DD HH:mm"];
+                for (const fmt of dateFormats) {
+                  const parsedDate = m(fileName, fmt, true);
+                  if (parsedDate.isValid()) {
+                    initialDate = parsedDate.format(this.plugin.settings.dateFormat);
+                    break;
+                  }
+                }
+                // Если не нашли точное совпадение, пробуем найти дату в любом месте строки
+                if (!initialDate) {
+                  // Ищем паттерн даты в строке
+                  const datePattern = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}\.\d{2}\.\d{4})/;
+                  const match = fileName.match(datePattern);
+                  if (match) {
+                    const dateStr = match[0];
+                    const parsedDate = m(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
+                    if (parsedDate.isValid()) {
+                      initialDate = parsedDate.format(this.plugin.settings.dateFormat);
+                    }
+                  }
+                }
+              } else {
+                // Fallback без moment - ищем дату в любом месте строки
+                const datePatterns = [
+                  /(\d{4})-(\d{2})-(\d{2})/,  // YYYY-MM-DD
+                  /(\d{4})\/(\d{2})\/(\d{2})/, // YYYY/MM/DD
+                  /(\d{2})\.(\d{2})\.(\d{4})/  // DD.MM.YYYY
+                ];
+                for (const pattern of datePatterns) {
+                  const match = fileName.match(pattern);
+                  if (match) {
+                    let year: number, month: number, day: number;
+                    if (pattern === datePatterns[2]) {
+                      // DD.MM.YYYY
+                      day = parseInt(match[1]);
+                      month = parseInt(match[2]) - 1;
+                      year = parseInt(match[3]);
+                    } else {
+                      // YYYY-MM-DD или YYYY/MM/DD
+                      year = parseInt(match[1]);
+                      month = parseInt(match[2]) - 1;
+                      day = parseInt(match[3]);
+                    }
+                    const date = new Date(year, month, day);
+                    if (!isNaN(date.getTime())) {
+                      initialDate = formatDate(date, this.plugin.settings.dateFormat);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Если не удалось прочитать название файла, используем значение по умолчанию
+          console.error("Tracker: Error reading note filename", error);
+        }
+      }
+      
+      let dateIso = resolveDateIso(initialDate, this.plugin.settings.dateFormat);
 
       // Создаем один общий контейнер для всех трекеров (создаем заранее, чтобы был доступен в updateDate)
       const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
@@ -156,7 +235,7 @@ class TrackerBlockRenderChild extends MarkdownRenderChild {
     }
 
     if (folder instanceof TFolder) {
-      return this.buildFolderTree(folder, 2, 0);
+      return this.buildFolderTree(folder, 3, 0);
     }
 
     return null;
@@ -307,8 +386,11 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }
       .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
       .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; }
+      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }
+      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }
+      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }
       .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
       .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes__value.updated { animation: pulse 0.3s ease; }
@@ -364,11 +446,24 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
       .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
       .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }
-      .tracker-notes__heatmap-day:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }
       .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
       .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
       .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .tracker-notes__heatmap-day.start-day { box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; }
+      .tracker-notes__heatmap-day.start-day { 
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        line-height: 1;
+      }
+      .tracker-notes__heatmap-day.start-day::after {
+        content: "START";
+        font-size: 0.5em;
+        line-height: 1;
+        margin-top: 0.1em;
+        opacity: 0.7;
+        font-weight: 600;
+      }
       .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }
       .tracker-notes__stats > div { transition: opacity 0.2s ease; }
       .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
@@ -379,10 +474,12 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }
       .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }
       .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }
+      .tracker-notes__folder-node.level-3 { padding-left: 1em; margin-top: 0.5em; margin-bottom: 0.75em; }
       .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
       .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
       .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }
       .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
+      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
       
       /* Медиа-запросы для мобильных устройств */
       @media (max-width: 768px) {
@@ -391,8 +488,9 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__header-title { font-size: 1em; }
         .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }
         .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }
-        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; }
-        .tracker-notes__tracker-title { font-size: 0.9em; }
+        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }
+        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
         .tracker-notes__date-picker-container { padding: 0; }
         .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }
         .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; }
@@ -406,6 +504,10 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; }
         .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }
         .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }
+        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
         .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }
         .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }
         .tracker-notes__calendar-day { font-size: 0.65em; }
@@ -416,10 +518,12 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }
         .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }
         .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }
         .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }
         .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
         .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
+        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }
       }
       
       @media (max-width: 480px) {
@@ -428,8 +532,9 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__header-title { font-size: 0.95em; }
         .tracker-notes__trackers { gap: 0.4em; }
         .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }
-        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; }
-        .tracker-notes__tracker-title { font-size: 0.85em; }
+        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }
+        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
         .tracker-notes__date-picker { gap: 0.25em; }
         .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; }
         .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; }
@@ -441,6 +546,10 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; }
         .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }
         .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }
+        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
         .tracker-notes__heatmap-day { min-width: 2.2em; max-width: 2.5em; font-size: 0.75em; }
         .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }
         .tracker-notes__calendar-day { font-size: 0.6em; }
@@ -451,10 +560,12 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }
         .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }
         .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }
+        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }
         .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.05em; }
         .tracker-notes__folder-header.level-1 { font-size: 1em; }
         .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
+        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -533,6 +644,21 @@ export default class TrackerPlugin extends Plugin {
         if (stepMatch) {
           fileOpts.step = stepMatch[1];
         }
+        // Ищем minLimit на верхнем уровне
+        const minLimitMatch = frontmatter.match(/^minLimit:\s*([\d.]+)/m);
+        if (minLimitMatch) {
+          fileOpts.minLimit = minLimitMatch[1];
+        }
+        // Ищем maxLimit на верхнем уровне
+        const maxLimitMatch = frontmatter.match(/^maxLimit:\s*([\d.]+)/m);
+        if (maxLimitMatch) {
+          fileOpts.maxLimit = maxLimitMatch[1];
+        }
+        // Ищем unit на верхнем уровне
+        const unitMatch = frontmatter.match(/^unit:\s*["']?([^"'\n]+)["']?/m);
+        if (unitMatch && unitMatch[1]) {
+          fileOpts.unit = unitMatch[1].trim();
+        }
       } else {
         fileOpts.mode = "good-habit"; // значение по умолчанию, если frontmatter нет
       }
@@ -596,13 +722,27 @@ export default class TrackerPlugin extends Plugin {
     
     // Заголовок с названием трекера
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
+    // Получаем единицу измерения для отображения в названии
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const fileName = file.basename;
+    const unit = fileOpts.unit || "";
+    const displayName = unit ? `${fileName} (${unit})` : fileName;
     const titleLink = header.createEl("a", { 
-      text: fileName, 
+      text: displayName, 
       cls: "tracker-notes__tracker-title internal-link",
       href: file.path
     });
     titleLink.setAttribute("data-href", file.path);
+    
+    // Кнопка "Настройки" для редактирования параметров трекера
+    const settingsButton = header.createEl("button", {
+      text: "⚙️",
+      cls: "tracker-notes__settings-btn"
+    });
+    settingsButton.title = "Настройки трекера";
+    settingsButton.onclick = () => {
+      new EditTrackerModal(this.app, this, file).open();
+    };
     
     const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
 
@@ -612,13 +752,16 @@ export default class TrackerPlugin extends Plugin {
       
       // Показываем дополнительные визуализации если запрошено
       const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-      const fileOpts = await this.getFileTypeFromFrontmatter(file);
       const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
       
-      if (opts.showChart === "true") {
+      // Используем настройки по умолчанию, если параметры не заданы напрямую
+      const shouldShowChart = opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault);
+      const shouldShowStats = opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault);
+      
+      if (shouldShowChart) {
         await this.renderChart(trackerItem, file, dateIso, daysToShow);
       }
-      if (opts.showStats === "true") {
+      if (shouldShowStats) {
         await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
       }
       return;
@@ -626,7 +769,7 @@ export default class TrackerPlugin extends Plugin {
 
     // control view - рендерим контролы
     // Всегда определяем тип из frontmatter (игнорируем mode из opts)
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    // Используем уже полученный fileOpts из строки 610
     // Убираем mode из opts, чтобы использовать только из fileOpts
     const { mode, ...optsWithoutMode } = opts;
     const mergedOpts = { ...optsWithoutMode, ...fileOpts };
@@ -637,10 +780,14 @@ export default class TrackerPlugin extends Plugin {
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
     const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
     
-    if (opts.showChart === "true") {
+    // Используем настройки по умолчанию, если параметры не заданы напрямую
+    const shouldShowChart = opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault);
+    const shouldShowStats = opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault);
+    
+    if (shouldShowChart) {
       await this.renderChart(trackerItem, file, dateIso, daysToShow);
     }
-    if (opts.showStats === "true") {
+    if (shouldShowStats) {
       await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
     }
   }
@@ -731,6 +878,10 @@ export default class TrackerPlugin extends Plugin {
         }
       };
     } else if (mode === "plusminus") {
+      // Получаем step из frontmatter, по умолчанию 1
+      const fileOpts = await this.getFileTypeFromFrontmatter(file);
+      const step = parseFloat(fileOpts.step || "1") || 1;
+      
       const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const minus = wrap.createEl("button", { text: "−" });
       const valEl = wrap.createEl("span", { text: "0", cls: "tracker-notes__value" });
@@ -738,7 +889,7 @@ export default class TrackerPlugin extends Plugin {
       let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
       if (!isNaN(current)) valEl.setText(String(current));
       minus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) - 1;
+        current = (Number.isFinite(current) ? current : 0) - step;
         valEl.setText(String(current));
         valEl.addClass("updated");
         await this.writeLogLine(file, dateIso, String(current));
@@ -747,7 +898,7 @@ export default class TrackerPlugin extends Plugin {
         await updateVisualizations();
       };
       plus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) + 1;
+        current = (Number.isFinite(current) ? current : 0) + step;
         valEl.setText(String(current));
         valEl.addClass("updated");
         await this.writeLogLine(file, dateIso, String(current));
@@ -1305,6 +1456,7 @@ export default class TrackerPlugin extends Plugin {
     // Получаем тип метрики из frontmatter
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const metricType = (fileOpts.mode ?? "good-habit").toLowerCase();
+    const unit = fileOpts.unit || "";
     
     // Для типов good-habit и bad-habit показываем хитмап вместо графика
     if (metricType === "good-habit" || metricType === "bad-habit") {
@@ -1328,12 +1480,38 @@ export default class TrackerPlugin extends Plugin {
     const canvas = chartDiv.createEl("canvas");
     
     // Получаем цвета из CSS переменных Obsidian
-    const root = document.documentElement;
+    // Используем body для более надежного получения переменных темы
+    const root = document.body || document.documentElement;
     const getCSSVar = (varName: string, fallback: string = '#000000') => {
-      return getComputedStyle(root).getPropertyValue(varName).trim() || fallback;
+      const value = getComputedStyle(root).getPropertyValue(varName).trim();
+      // Если значение пустое или равно fallback, возвращаем fallback
+      return value || fallback;
     };
     
-    const accentColor = getCSSVar('--interactive-accent', '#7f6df2');
+    // Получаем accent цвет - пробуем разные варианты переменных
+    // Создаем временный элемент для более надежного получения CSS переменных
+    const tempEl = document.createElement('div');
+    tempEl.style.position = 'absolute';
+    tempEl.style.visibility = 'hidden';
+    document.body.appendChild(tempEl);
+    
+    let accentColor = getComputedStyle(tempEl).getPropertyValue('--interactive-accent').trim();
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue('--color-accent').trim();
+    }
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue('--accent-color').trim();
+    }
+    // Если ничего не найдено, пробуем из root
+    if (!accentColor) {
+      accentColor = getComputedStyle(root).getPropertyValue('--interactive-accent').trim();
+    }
+    // Если ничего не найдено, используем fallback
+    if (!accentColor) {
+      accentColor = '#7f6df2';
+    }
+    
+    document.body.removeChild(tempEl);
     const textMuted = getCSSVar('--text-muted', '#999999');
     const textFaint = getCSSVar('--text-faint', '#666666');
     const borderColor = getCSSVar('--background-modifier-border', '#e0e0e0');
@@ -1353,7 +1531,24 @@ export default class TrackerPlugin extends Plugin {
     };
     
     const m = (window as any).moment;
-    const endDate = dateIso ? (m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat)) : (m ? m() : new Date());
+    // Получаем текущую дату
+    const today = m ? m() : new Date();
+    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
+    
+    // Получаем активную дату (дату из dateIso в формате ISO YYYY-MM-DD или текущую дату)
+    // dateIso приходит в формате ISO (YYYY-MM-DD), парсим его правильно
+    let activeDate: any;
+    if (dateIso) {
+      activeDate = m ? m(dateIso, 'YYYY-MM-DD') : parseDate(dateIso, 'YYYY-MM-DD');
+    } else {
+      activeDate = today;
+    }
+    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
+    
+    // Для визуализации графика используем активную дату + 5 дней вперед как endDate
+    // Это нужно только для отображения, активная дата остается исходной
+    // Используем clone() для moment, чтобы не мутировать исходную дату
+    const endDate = m ? m(activeDate).clone().add(5, 'days') : addDays(new Date(activeDate.getTime()), 5);
     const days = daysToShow || this.settings.daysToShow;
     const startDate = m ? m(endDate).subtract(days - 1, 'days') : addDays(endDate, -(days - 1));
     const entries = await this.readAllEntries(file);
@@ -1361,19 +1556,39 @@ export default class TrackerPlugin extends Plugin {
     // Получаем дату начала отслеживания
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     let startTrackingIndex: number | null = null;
+    let activeDateIndex: number | null = null;
+    
+    // Получаем лимиты успешности из frontmatter
+    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
+    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
+    
+    // Получаем значения minValue и maxValue для типа "scale"
+    const scaleMinValue = (metricType === "scale" && fileOpts.minValue) ? parseFloat(fileOpts.minValue) : null;
+    const scaleMaxValue = (metricType === "scale" && fileOpts.maxValue) ? parseFloat(fileOpts.maxValue) : null;
+    
+    // Получаем цвет для точек вне диапазона
+    const errorColor = getCSSVar('--text-error', '#c00000');
     
     // Подготавливаем данные для Chart.js
     const labels: string[] = [];
     const values: number[] = [];
+    const pointBackgroundColors: string[] = [];
+    const pointBorderColors: string[] = [];
+    const dateStrings: string[] = []; // Массив дат для каждой точки (для обработки клика)
     let maxValue = 0;
     
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, 'days') : addDays(startDate, i);
+      // Используем clone() для moment, чтобы не мутировать startDate
+      const date = m ? m(startDate).clone().add(i, 'days') : addDays(new Date(startDate.getTime()), i);
       const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
       
       // Сохраняем индекс дня начала отслеживания
       if (dateStr === startTrackingDateStr) {
         startTrackingIndex = i;
+      }
+      // Сохраняем индекс активной даты (даты, выбранной в трекере)
+      if (dateStr === activeDateStr) {
+        activeDateIndex = i;
       }
       
       // Форматируем дату для подписи
@@ -1386,6 +1601,7 @@ export default class TrackerPlugin extends Plugin {
         label = `${day} ${month}`;
       }
       labels.push(label);
+      dateStrings.push(dateStr); // Сохраняем дату для этой точки
       
       const val = entries.get(dateStr);
       let numVal = 0;
@@ -1403,11 +1619,70 @@ export default class TrackerPlugin extends Plugin {
       }
       values.push(numVal);
       maxValue = Math.max(maxValue, numVal);
+      
+      // Определяем цвет точки: зеленый если в диапазоне, красный если вне диапазона (начиная со дня старта)
+      // Для нейтральных точек (до дня старта, после текущей даты или когда лимиты не заданы) используем accentColor без границы
+      let pointColor = accentColor;
+      let pointBorder = accentColor; // Убираем белую границу для нейтральных точек
+      // Сравниваем даты как строки в формате YYYY-MM-DD для корректного сравнения
+      const isAfterToday = dateStr > todayStr;
+      const hasLimits = (minLimit !== null || maxLimit !== null);
+      // Окрашиваем только если: не после сегодня, после или в день старта отслеживания, есть лимиты, и есть старт отслеживания
+      // Явно проверяем, что точка НЕ до начала отслеживания (i >= startTrackingIndex)
+      if (!isAfterToday && startTrackingIndex !== null && i >= startTrackingIndex && hasLimits) {
+        const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
+        if (isInRange) {
+          // Точка в диапазоне - зеленый цвет
+          const successColor = getCSSVar('--text-success', '#00c000');
+          pointColor = successColor;
+          pointBorder = successColor;
+        } else {
+          // Точка вне диапазона - красный цвет
+          pointColor = errorColor;
+          pointBorder = errorColor;
+        }
+      }
+      pointBackgroundColors.push(pointColor);
+      pointBorderColors.push(pointBorder);
+    }
+    
+    // Создаем массив радиусов точек и обводок - все точки одинаковые, активная дата отмечается вертикальной линией
+    const pointRadii: number[] = [];
+    const pointBorderWidths: number[] = [];
+    
+    for (let i = 0; i < days; i++) {
+      // Все точки одинаковые, не меняем border для активной точки
+      pointRadii.push(3);
+      pointBorderWidths.push(2);
     }
     
     if (maxValue === 0) {
       chartDiv.setText("Нет данных");
       return;
+    }
+    
+    // Автоматически настраиваем min/max оси Y на основе лимитов и значений scale
+    let yAxisMin = 0;
+    let yAxisMax = maxValue;
+    
+    // Находим минимальное значение из всех доступных (лимиты и scale)
+    const allMinValues: number[] = [];
+    if (minLimit !== null) allMinValues.push(minLimit);
+    if (scaleMinValue !== null) allMinValues.push(scaleMinValue);
+    
+    if (allMinValues.length > 0) {
+      const minFromAll = Math.min(...allMinValues);
+      yAxisMin = Math.min(yAxisMin, minFromAll);
+    }
+    
+    // Находим максимальное значение из всех доступных (лимиты и scale)
+    const allMaxValues: number[] = [maxValue]; // Добавляем максимальное значение из данных
+    if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    
+    if (allMaxValues.length > 0) {
+      const maxFromAll = Math.max(...allMaxValues);
+      yAxisMax = Math.max(yAxisMax, maxFromAll);
     }
     
     // Создаем градиент для заливки
@@ -1419,11 +1694,63 @@ export default class TrackerPlugin extends Plugin {
       gradient.addColorStop(1, colorToRgba(accentColor, 0));
     }
     
-    // Определяем подпись для графика в зависимости от типа метрики
-    const chartLabel = metricType === "text" ? "Кол-во слов" : "Значение";
+    // Определяем подпись для графика в зависимости от типа метрики и единицы измерения
+    let chartLabel: string;
+    if (unit) {
+      // Делаем первую букву заглавной для единицы измерения
+      chartLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
+    } else {
+      chartLabel = metricType === "text" ? "Кол-во слов" : "Значение";
+    }
     
     // Получаем цвет для вертикальной линии (используем accent цвет с прозрачностью)
     const startLineColor = getCSSVar('--text-accent', accentColor);
+    
+    // Функция для рисования пунктирной вертикальной линии начала отслеживания
+    const drawStartLine = (chart: any, index: number, color: string) => {
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+      if (!chartArea) return;
+      
+      const xScale = chart.scales.x;
+      const xPos = xScale.getPixelForValue(index);
+      
+      if (xPos < chartArea.left || xPos > chartArea.right) return;
+      
+      ctx.save();
+      ctx.strokeStyle = colorToRgba(color, 0.6);
+      ctx.lineWidth = 2;
+      // Пунктирная линия для даты начала отслеживания
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(xPos, chartArea.top);
+      ctx.lineTo(xPos, chartArea.bottom);
+      ctx.stroke();
+      ctx.restore();
+    };
+    
+    // Функция для рисования сплошной вертикальной линии для выбранного дня
+    const drawActiveDateLine = (chart: any, index: number, color: string) => {
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+      if (!chartArea) return;
+      
+      const xScale = chart.scales.x;
+      const xPos = xScale.getPixelForValue(index);
+      
+      if (xPos < chartArea.left || xPos > chartArea.right) return;
+      
+      ctx.save();
+      ctx.strokeStyle = colorToRgba(color, 0.6);
+      ctx.lineWidth = 2;
+      // Сплошная линия для выбранного дня
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(xPos, chartArea.top);
+      ctx.lineTo(xPos, chartArea.bottom);
+      ctx.stroke();
+      ctx.restore();
+    };
     
     // Конфигурация графика Chart.js с поддержкой темы Obsidian
     const chartConfig = {
@@ -1436,13 +1763,27 @@ export default class TrackerPlugin extends Plugin {
           borderColor: accentColor,
           backgroundColor: gradient || colorToRgba(accentColor, 0.1),
           borderWidth: 2.5,
-          fill: true,
+          fill: false,
           tension: 0.4,
-          pointRadius: 0,
+          pointRadius: pointRadii,
+          pointBackgroundColor: pointBackgroundColors,
+          pointBorderColor: pointBorderColors,
+          pointBorderWidth: pointBorderWidths,
           pointHoverRadius: 5,
-          pointHoverBackgroundColor: accentColor,
-          pointHoverBorderColor: bgPrimary,
-          pointHoverBorderWidth: 2,
+          pointHitRadius: 10,
+          // Явно отключаем изменение цветов при наведении - используем функции, которые возвращают те же цвета
+          pointHoverBackgroundColor: (ctx: any) => {
+            const index = ctx.dataIndex;
+            return pointBackgroundColors[index] || pointBackgroundColors[0] || accentColor;
+          },
+          pointHoverBorderColor: (ctx: any) => {
+            const index = ctx.dataIndex;
+            return pointBorderColors[index] || pointBorderColors[0] || accentColor;
+          },
+          pointHoverBorderWidth: (ctx: any) => {
+            const index = ctx.dataIndex;
+            return pointBorderWidths[index] || pointBorderWidths[0] || 2;
+          },
         }]
       },
       options: {
@@ -1461,6 +1802,17 @@ export default class TrackerPlugin extends Plugin {
             borderWidth: 1,
             padding: 8,
             displayColors: false,
+            callbacks: {
+              label: (context: any) => {
+                const value = context.parsed.y;
+                if (unit) {
+                  // Делаем первую букву заглавной для единицы измерения
+                  const capitalizedUnit = unit.charAt(0).toUpperCase() + unit.slice(1);
+                  return `${capitalizedUnit}: ${value}`;
+                }
+                return `${chartLabel}: ${value}`;
+              }
+            }
           }
         },
         scales: {
@@ -1496,62 +1848,157 @@ export default class TrackerPlugin extends Plugin {
                 size: 11
               }
             },
-            beginAtZero: true
+            beginAtZero: !minLimit && !maxLimit && !scaleMinValue && !scaleMaxValue, // Начинать с нуля только если нет лимитов и scale значений
+            min: (minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null) ? yAxisMin : undefined,
+            max: (minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null) ? yAxisMax : undefined
           }
         },
         interaction: {
           intersect: false,
           mode: 'index' as const
         },
+        elements: {
+          point: {
+            hoverBackgroundColor: undefined, // Отключаем дефолтный hover цвет
+            hoverBorderColor: undefined, // Отключаем дефолтный hover цвет
+            hoverRadius: 5,
+            hoverBorderWidth: undefined // Отключаем дефолтный hover border width
+          }
+        },
+        onClick: (event: any, elements: any[], chart: any) => {
+          // Обработчик клика на точки графика
+          if (elements && elements.length > 0) {
+            const element = elements[0];
+            const pointIndex = element.index;
+            
+            // Получаем массив дат из экземпляра графика
+            const dateStrings = (chart as any).dateStrings;
+            if (!dateStrings) return;
+            
+            // Получаем дату для этой точки из массива dateStrings
+            if (pointIndex >= 0 && pointIndex < dateStrings.length) {
+              const clickedDateStr = dateStrings[pointIndex];
+              
+              // Находим dateInput в header блока
+              const mainContainer = container.closest('.tracker-notes');
+              const blockContainer = mainContainer?.parentElement;
+              const dateInput = blockContainer?.querySelector('.tracker-notes__date-input') as HTMLInputElement;
+              
+              if (dateInput) {
+                // Преобразуем дату в формат ISO (YYYY-MM-DD) для input type="date"
+                const m = (window as any).moment;
+                let dateIsoValue: string;
+                
+                try {
+                  if (m) {
+                    const dateObj = m(clickedDateStr, this.settings.dateFormat);
+                    if (dateObj.isValid()) {
+                      dateIsoValue = dateObj.format('YYYY-MM-DD');
+                    } else {
+                      return;
+                    }
+                  } else {
+                    const dateObj = parseDate(clickedDateStr, this.settings.dateFormat);
+                    dateIsoValue = formatDate(dateObj, 'YYYY-MM-DD');
+                  }
+                  
+                  // Устанавливаем новое значение и вызываем событие change для обновления всех трекеров
+                  if (dateIsoValue) {
+                    dateInput.value = dateIsoValue;
+                    dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                  }
+                } catch (error) {
+                  console.error('Tracker: Error converting date', clickedDateStr, error);
+                }
+              }
+            }
+          }
+        },
         onResize: (chart: any) => {
           // Перерисовываем вертикальную линию при изменении размера
-          const index = (chart as any).startTrackingIndex !== undefined 
+          const startIndex = (chart as any).startTrackingIndex !== undefined 
             ? (chart as any).startTrackingIndex 
             : startTrackingIndex;
           const lineColor = (chart as any).startLineColor !== undefined 
             ? (chart as any).startLineColor 
             : startLineColor;
-          if (index !== null && index !== undefined) {
-            drawStartLine(chart, index, lineColor);
+          // Перерисовываем сплошную вертикальную линию для выбранного дня при изменении размера
+          const activeIdx = (chart as any).activeDateIndex !== undefined 
+            ? (chart as any).activeDateIndex 
+            : activeDateIndex;
+          // Перерисовываем пунктирную вертикальную линию только если она не совпадает с выбранной датой
+          if (startIndex !== null && startIndex !== undefined && startIndex !== activeIdx) {
+            drawStartLine(chart, startIndex, lineColor);
+          }
+          // Перерисовываем сплошную вертикальную линию для выбранного дня (в приоритете)
+          if (activeIdx !== null && activeIdx !== undefined) {
+            drawActiveDateLine(chart, activeIdx, lineColor);
+          }
+          // Перерисовываем горизонтальные линии при изменении размера
+          const minLimitValue = (chart as any).minLimit !== undefined ? (chart as any).minLimit : minLimit;
+          const maxLimitValue = (chart as any).maxLimit !== undefined ? (chart as any).maxLimit : maxLimit;
+          if (minLimitValue !== null && minLimitValue !== undefined) {
+            drawLimitLine(chart, minLimitValue, lineColor);
+          }
+          if (maxLimitValue !== null && maxLimitValue !== undefined) {
+            drawLimitLine(chart, maxLimitValue, lineColor);
           }
         }
       },
       plugins: [{
         id: 'startLinePlugin',
-        afterDraw: (chart: any) => {
-          // Рисуем вертикальную линию на дате начала отслеживания
-          const index = (chart as any).startTrackingIndex !== undefined 
+        beforeDraw: (chart: any) => {
+          // Рисуем линии в beforeDraw, чтобы они были под точками (низкий z-index)
+          const startIdx = (chart as any).startTrackingIndex !== undefined 
             ? (chart as any).startTrackingIndex 
             : startTrackingIndex;
           // Получаем цвет из экземпляра графика или используем текущий
           const lineColor = (chart as any).startLineColor !== undefined 
             ? (chart as any).startLineColor 
             : startLineColor;
-          if (index !== null && index !== undefined) {
-            drawStartLine(chart, index, lineColor);
+          // Рисуем сплошную вертикальную линию для выбранного дня
+          const activeIdx = (chart as any).activeDateIndex !== undefined 
+            ? (chart as any).activeDateIndex 
+            : activeDateIndex;
+          // Рисуем пунктирную вертикальную линию на дате начала отслеживания только если она не совпадает с выбранной датой
+          if (startIdx !== null && startIdx !== undefined && startIdx !== activeIdx) {
+            drawStartLine(chart, startIdx, lineColor);
+          }
+          // Рисуем сплошную вертикальную линию для выбранного дня (в приоритете)
+          if (activeIdx !== null && activeIdx !== undefined) {
+            drawActiveDateLine(chart, activeIdx, lineColor);
+          }
+          // Рисуем горизонтальные линии для лимитов успешности
+          const minLimitValue = (chart as any).minLimit !== undefined ? (chart as any).minLimit : minLimit;
+          const maxLimitValue = (chart as any).maxLimit !== undefined ? (chart as any).maxLimit : maxLimit;
+          if (minLimitValue !== null && minLimitValue !== undefined) {
+            drawLimitLine(chart, minLimitValue, lineColor);
+          }
+          if (maxLimitValue !== null && maxLimitValue !== undefined) {
+            drawLimitLine(chart, maxLimitValue, lineColor);
           }
         }
       }]
     };
     
-    // Функция для рисования вертикальной линии
-    const drawStartLine = (chart: any, index: number, color: string) => {
+    // Функция для рисования горизонтальной линии
+    const drawLimitLine = (chart: any, value: number, color: string) => {
       const ctx = chart.ctx;
       const chartArea = chart.chartArea;
       if (!chartArea) return;
       
-      const xScale = chart.scales.x;
-      const xPos = xScale.getPixelForValue(index);
+      const yScale = chart.scales.y;
+      const yPos = yScale.getPixelForValue(value);
       
-      if (xPos < chartArea.left || xPos > chartArea.right) return;
+      if (yPos < chartArea.top || yPos > chartArea.bottom) return;
       
       ctx.save();
       ctx.strokeStyle = colorToRgba(color, 0.6);
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.moveTo(xPos, chartArea.top);
-      ctx.lineTo(xPos, chartArea.bottom);
+      ctx.moveTo(chartArea.left, yPos);
+      ctx.lineTo(chartArea.right, yPos);
       ctx.stroke();
       ctx.restore();
     };
@@ -1563,6 +2010,11 @@ export default class TrackerPlugin extends Plugin {
       // Сохраняем индекс начала отслеживания и цвет в экземпляре графика
       (chartInstance as any).startTrackingIndex = startTrackingIndex;
       (chartInstance as any).startLineColor = startLineColor;
+      // Сохраняем массив дат для обработки клика
+      (chartInstance as any).dateStrings = dateStrings;
+      // Сохраняем лимиты успешности в экземпляре графика
+      (chartInstance as any).minLimit = minLimit;
+      (chartInstance as any).maxLimit = maxLimit;
     } catch (error) {
       console.error("Tracker: ошибка создания графика", error);
       chartDiv.setText("Ошибка отображения графика");
@@ -1587,7 +2039,24 @@ export default class TrackerPlugin extends Plugin {
     }
 
     const m = (window as any).moment;
-    const endDate = dateIso ? (m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat)) : (m ? m() : new Date());
+    // Получаем текущую дату
+    const today = m ? m() : new Date();
+    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
+    
+    // Получаем активную дату (дату из dateIso в формате ISO YYYY-MM-DD или текущую дату)
+    // dateIso приходит в формате ISO (YYYY-MM-DD), парсим его правильно
+    let activeDate: any;
+    if (dateIso) {
+      activeDate = m ? m(dateIso, 'YYYY-MM-DD') : parseDate(dateIso, 'YYYY-MM-DD');
+    } else {
+      activeDate = today;
+    }
+    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
+    
+    // Для визуализации графика используем активную дату + 5 дней вперед как endDate
+    // Это нужно только для отображения, активная дата остается исходной
+    // Используем clone() для moment, чтобы не мутировать исходную дату
+    const endDate = m ? m(activeDate).clone().add(5, 'days') : addDays(new Date(activeDate.getTime()), 5);
     const days = daysToShow || this.settings.daysToShow;
     const startDate = m ? m(endDate).subtract(days - 1, 'days') : addDays(endDate, -(days - 1));
     const entries = await this.readAllEntries(file);
@@ -1595,19 +2064,72 @@ export default class TrackerPlugin extends Plugin {
     // Получаем дату начала отслеживания
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     let startTrackingIndex: number | null = null;
+    let activeDateIndex: number | null = null;
+    
+    // Получаем лимиты успешности из frontmatter
+    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
+    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
+    
+    // Получаем значения minValue и maxValue для типа "scale"
+    const scaleMinValue = (metricType === "scale" && fileOpts.minValue) ? parseFloat(fileOpts.minValue) : null;
+    const scaleMaxValue = (metricType === "scale" && fileOpts.maxValue) ? parseFloat(fileOpts.maxValue) : null;
+    
+    // Получаем цвет для вертикальной линии
+    // Используем body для более надежного получения переменных темы
+    const root = document.body || document.documentElement;
+    const getCSSVar = (varName: string, fallback: string = '#000000') => {
+      const value = getComputedStyle(root).getPropertyValue(varName).trim();
+      return value || fallback;
+    };
+    
+    // Получаем accent цвет - пробуем разные варианты переменных
+    // Создаем временный элемент для более надежного получения CSS переменных
+    const tempEl = document.createElement('div');
+    tempEl.style.position = 'absolute';
+    tempEl.style.visibility = 'hidden';
+    document.body.appendChild(tempEl);
+    
+    let accentColor = getComputedStyle(tempEl).getPropertyValue('--interactive-accent').trim();
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue('--color-accent').trim();
+    }
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue('--accent-color').trim();
+    }
+    // Если ничего не найдено, пробуем из root
+    if (!accentColor) {
+      accentColor = getComputedStyle(root).getPropertyValue('--interactive-accent').trim();
+    }
+    // Если ничего не найдено, используем fallback
+    if (!accentColor) {
+      accentColor = '#7f6df2';
+    }
+    
+    document.body.removeChild(tempEl);
+    const startLineColor = getCSSVar('--text-accent', accentColor);
+    const errorColor = getCSSVar('--text-error', '#c00000');
+    const bgPrimary = getCSSVar('--background-primary', '#ffffff');
     
     // Подготавливаем данные для Chart.js
     const labels: string[] = [];
     const values: number[] = [];
+    const pointBackgroundColors: string[] = [];
+    const pointBorderColors: string[] = [];
+    const dateStrings: string[] = []; // Массив дат для каждой точки (для обработки клика)
     let maxValue = 0;
     
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, 'days') : addDays(startDate, i);
+      // Используем clone() для moment, чтобы не мутировать startDate
+      const date = m ? m(startDate).clone().add(i, 'days') : addDays(new Date(startDate.getTime()), i);
       const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
       
       // Сохраняем индекс дня начала отслеживания
       if (dateStr === startTrackingDateStr) {
         startTrackingIndex = i;
+      }
+      // Сохраняем индекс активной даты (даты, выбранной в трекере)
+      if (dateStr === activeDateStr) {
+        activeDateIndex = i;
       }
       
       // Форматируем дату для подписи
@@ -1620,6 +2142,7 @@ export default class TrackerPlugin extends Plugin {
         label = `${day} ${month}`;
       }
       labels.push(label);
+      dateStrings.push(dateStr); // Сохраняем дату для этой точки
       
       const val = entries.get(dateStr);
       let numVal = 0;
@@ -1637,23 +2160,93 @@ export default class TrackerPlugin extends Plugin {
       }
       values.push(numVal);
       maxValue = Math.max(maxValue, numVal);
+      
+      // Определяем цвет точки: зеленый если в диапазоне, красный если вне диапазона (начиная со дня старта)
+      // Для нейтральных точек (до дня старта, после текущей даты или когда лимиты не заданы) используем accentColor без границы
+      let pointColor = accentColor;
+      let pointBorder = accentColor; // Убираем белую границу для нейтральных точек
+      // Сравниваем даты как строки в формате YYYY-MM-DD для корректного сравнения
+      const isAfterToday = dateStr > todayStr;
+      const hasLimits = (minLimit !== null || maxLimit !== null);
+      // Окрашиваем только если: не после сегодня, после или в день старта отслеживания, есть лимиты, и есть старт отслеживания
+      // Явно проверяем, что точка НЕ до начала отслеживания (i >= startTrackingIndex)
+      if (!isAfterToday && startTrackingIndex !== null && i >= startTrackingIndex && hasLimits) {
+        const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
+        if (isInRange) {
+          // Точка в диапазоне - зеленый цвет
+          const successColor = getCSSVar('--text-success', '#00c000');
+          pointColor = successColor;
+          pointBorder = successColor;
+        } else {
+          // Точка вне диапазона - красный цвет
+          pointColor = errorColor;
+          pointBorder = errorColor;
+        }
+      }
+      pointBackgroundColors.push(pointColor);
+      pointBorderColors.push(pointBorder);
     }
     
-    // Получаем цвет для вертикальной линии
-    const root = document.documentElement;
-    const getCSSVar = (varName: string, fallback: string = '#000000') => {
-      return getComputedStyle(root).getPropertyValue(varName).trim() || fallback;
-    };
-    const accentColor = getCSSVar('--interactive-accent', '#7f6df2');
-    const startLineColor = getCSSVar('--text-accent', accentColor);
+    // Создаем массив радиусов точек и обводок - все точки одинаковые, активная дата отмечается вертикальной линией
+    const pointRadii: number[] = [];
+    const pointBorderWidths: number[] = [];
+    
+    for (let i = 0; i < days; i++) {
+      // Все точки одинаковые, не меняем border для активной точки
+      pointRadii.push(3);
+      pointBorderWidths.push(2);
+    }
+    
+    // Автоматически настраиваем min/max оси Y на основе лимитов и значений scale
+    let yAxisMin = 0;
+    let yAxisMax = maxValue;
+    
+    // Находим минимальное значение из всех доступных (лимиты и scale)
+    const allMinValues: number[] = [];
+    if (minLimit !== null) allMinValues.push(minLimit);
+    if (scaleMinValue !== null) allMinValues.push(scaleMinValue);
+    
+    if (allMinValues.length > 0) {
+      const minFromAll = Math.min(...allMinValues);
+      yAxisMin = Math.min(yAxisMin, minFromAll);
+    }
+    
+    // Находим максимальное значение из всех доступных (лимиты и scale)
+    const allMaxValues: number[] = [maxValue]; // Добавляем максимальное значение из данных
+    if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    
+    if (allMaxValues.length > 0) {
+      const maxFromAll = Math.max(...allMaxValues);
+      yAxisMax = Math.max(yAxisMax, maxFromAll);
+    }
     
     // Сохраняем индекс начала отслеживания и цвет в экземпляре графика для использования плагином
     (chartInstance as any).startTrackingIndex = startTrackingIndex;
     (chartInstance as any).startLineColor = startLineColor;
+    // Сохраняем массив дат для обработки клика
+    (chartInstance as any).dateStrings = dateStrings;
+    // Сохраняем лимиты успешности в экземпляре графика
+    (chartInstance as any).minLimit = minLimit;
+    (chartInstance as any).maxLimit = maxLimit;
+    // Сохраняем индекс активной даты для использования в hover функциях
+    (chartInstance as any).activeDateIndex = activeDateIndex;
     
     // Обновляем данные графика
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = values;
+    chartInstance.data.datasets[0].pointBackgroundColor = pointBackgroundColors;
+    chartInstance.data.datasets[0].pointBorderColor = pointBorderColors;
+    chartInstance.data.datasets[0].pointRadius = pointRadii;
+    chartInstance.data.datasets[0].pointBorderWidth = pointBorderWidths;
+    
+    // Обновляем настройки оси Y
+    if (chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
+      chartInstance.options.scales.y.beginAtZero = !minLimit && !maxLimit && !scaleMinValue && !scaleMaxValue;
+      chartInstance.options.scales.y.min = (minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null) ? yAxisMin : undefined;
+      chartInstance.options.scales.y.max = (minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null) ? yAxisMax : undefined;
+    }
+    
     chartInstance.update('none'); // 'none' для мгновенного обновления без анимации
   }
 
@@ -2101,18 +2694,23 @@ class TrackerSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.trackersFolder)
         .onChange(async (v)=>{ this.plugin.settings.trackersFolder = v.trim(); await this.plugin.saveSettings(); }));
 
+    new Setting(containerEl).setName("Показывать график по умолчанию")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.showChartByDefault)
+        .onChange(async (v)=>{ this.plugin.settings.showChartByDefault = v; await this.plugin.saveSettings(); }));
+
+    new Setting(containerEl).setName("Показывать статистику по умолчанию")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.showStatsByDefault)
+        .onChange(async (v)=>{ this.plugin.settings.showStatsByDefault = v; await this.plugin.saveSettings(); }));
+
     new Setting(containerEl).setName("Формат даты")
       .addText(t => t.setPlaceholder("YYYY-MM-DD")
         .setValue(this.plugin.settings.dateFormat)
         .onChange(async (v)=>{ this.plugin.settings.dateFormat = v.trim(); await this.plugin.saveSettings(); }));
 
-    new Setting(containerEl).setName("Формат времени")
-      .addText(t => t.setPlaceholder("HH:mm")
-        .setValue(this.plugin.settings.timeFormat)
-        .onChange(async (v)=>{ this.plugin.settings.timeFormat = v.trim(); await this.plugin.saveSettings(); }));
-
     new Setting(containerEl).setName("Количество дней")
-      .setDesc("Количество предыдущих дней, которое отображается для графиков и привычек")
+      .setDesc("Количество прошедших дней, которое отображается для графиков и привычек")
       .addText(t => t.setPlaceholder("30")
         .setValue(String(this.plugin.settings.daysToShow))
         .onChange(async (v)=>{ 
@@ -2237,6 +2835,7 @@ class CreateTrackerModal extends Modal {
         dropdown.addOption("bad-habit", "Плохая привычка");
         // Метрики
         dropdown.addOption("number", "Число");
+        dropdown.addOption("scale", "Шкала");
         dropdown.addOption("plusminus", "Счётчик (+/-)");
         dropdown.addOption("text", "Текст");
         dropdown.setValue("good-habit");
@@ -2268,6 +2867,10 @@ class CreateTrackerModal extends Modal {
       numberOption.value = "number";
       numberOption.textContent = "Число";
       metricsGroup.appendChild(numberOption);
+      const scaleOption = document.createElement("option");
+      scaleOption.value = "scale";
+      scaleOption.textContent = "Шкала";
+      metricsGroup.appendChild(scaleOption);
       const plusminusOption = document.createElement("option");
       plusminusOption.value = "plusminus";
       plusminusOption.textContent = "Счётчик (+/-)";
@@ -2276,15 +2879,41 @@ class CreateTrackerModal extends Modal {
       textOption.value = "text";
       textOption.textContent = "Текст";
       metricsGroup.appendChild(textOption);
-      const scaleOption = document.createElement("option");
-      scaleOption.value = "scale";
-      scaleOption.textContent = "Шкала";
-      metricsGroup.appendChild(scaleOption);
       typeDropdown.appendChild(metricsGroup);
       
       // Устанавливаем значение по умолчанию
       typeDropdown.value = "good-habit";
     }
+    
+    // Заголовок для параметров метрики
+    const parametersHeader = contentEl.createEl("h3", { text: "Параметры" });
+    const parametersDescription = contentEl.createEl("p", {
+      text: "Единица измерения - не обязательное поле. Можно оставить пустым.",
+      cls: "tracker-notes__limits-description"
+    });
+    parametersDescription.style.fontSize = "0.9em";
+    parametersDescription.style.color = "var(--text-muted, #999999)";
+    parametersDescription.style.marginTop = "0.5em";
+    parametersDescription.style.marginBottom = "1em";
+    
+    // Блок "Единица измерения" для метрик (в начале блока "Параметры")
+    const unitSetting = new Setting(contentEl)
+      .setName("Единица измерения")
+      .addText(text => {
+        text.setPlaceholder("Например: метры, минуты, кг");
+        text.inputEl.style.width = "100%";
+      });
+    
+    // Поле "Шаг" для счетчика (plusminus)
+    const plusminusStepSetting = new Setting(contentEl)
+      .setName("Шаг")
+      .addText(text => {
+        text.setPlaceholder("1")
+          .setValue("1")
+          .inputEl.type = "number";
+        text.inputEl.step = "any";
+        text.inputEl.style.width = "100%";
+      });
     
     const minValueSetting = new Setting(contentEl)
       .setName("Значение \"от\"")
@@ -2314,23 +2943,97 @@ class CreateTrackerModal extends Modal {
         text.inputEl.style.width = "100%";
       });
     
-    // Скрываем настройки scale по умолчанию
+    // Скрываем настройки по умолчанию
+    parametersHeader.style.display = "none";
+    parametersDescription.style.display = "none";
+    unitSetting.settingEl.style.display = "none";
+    plusminusStepSetting.settingEl.style.display = "none";
     minValueSetting.settingEl.style.display = "none";
     maxValueSetting.settingEl.style.display = "none";
     stepSetting.settingEl.style.display = "none";
+    
+    // Блок "Лимиты успешности" для метрик
+    const limitsHeader = contentEl.createEl("h3", { text: "Лимиты успешности" });
+    const limitsDescription = contentEl.createEl("p", { 
+      text: "Опционально вы можете сделать метрику лимитирующей и задать желаемые пороговые значения. Прим. \"Не меньше 5000 шагов в день\", \"Не больше 3х шоколадок\"",
+      cls: "tracker-notes__limits-description"
+    });
+    limitsDescription.style.fontSize = "0.9em";
+    limitsDescription.style.color = "var(--text-muted, #999999)";
+    limitsDescription.style.marginTop = "0.5em";
+    limitsDescription.style.marginBottom = "1em";
+    
+    const minLimitSetting = new Setting(contentEl)
+      .setName("Нижняя граница")
+      .addText(text => {
+        text.setPlaceholder("По умолчанию - нет")
+          .setValue("")
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const maxLimitSetting = new Setting(contentEl)
+      .setName("Верхняя граница")
+      .addText(text => {
+        text.setPlaceholder("По умолчанию - нет")
+          .setValue("")
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    // Скрываем блок лимитов по умолчанию
+    limitsHeader.style.display = "none";
+    limitsDescription.style.display = "none";
+    minLimitSetting.settingEl.style.display = "none";
+    maxLimitSetting.settingEl.style.display = "none";
     
     // Получаем select элемент (если еще не получен выше)
     const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
     if (typeDropdownSelect) {
       typeDropdownSelect.onchange = () => {
-        if (typeDropdownSelect.value === "scale") {
-          minValueSetting.settingEl.style.display = "";
-          maxValueSetting.settingEl.style.display = "";
-          stepSetting.settingEl.style.display = "";
+        const isScale = typeDropdownSelect.value === "scale";
+        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(typeDropdownSelect.value);
+        
+        // Управление блоком "Параметры" (для всех метрик)
+        const isPlusminus = typeDropdownSelect.value === "plusminus";
+        if (isMetric) {
+          parametersHeader.style.display = "";
+          parametersDescription.style.display = "";
+          unitSetting.settingEl.style.display = "";
+          // Параметры minValue, maxValue, step только для scale
+          if (isScale) {
+            minValueSetting.settingEl.style.display = "";
+            maxValueSetting.settingEl.style.display = "";
+            stepSetting.settingEl.style.display = "";
+            plusminusStepSetting.settingEl.style.display = "none";
+          } else {
+            minValueSetting.settingEl.style.display = "none";
+            maxValueSetting.settingEl.style.display = "none";
+            stepSetting.settingEl.style.display = "none";
+            // Поле "Шаг" только для plusminus
+            plusminusStepSetting.settingEl.style.display = isPlusminus ? "" : "none";
+          }
         } else {
+          parametersHeader.style.display = "none";
+          parametersDescription.style.display = "none";
+          unitSetting.settingEl.style.display = "none";
+          plusminusStepSetting.settingEl.style.display = "none";
           minValueSetting.settingEl.style.display = "none";
           maxValueSetting.settingEl.style.display = "none";
           stepSetting.settingEl.style.display = "none";
+        }
+        
+        // Управление блоком "Лимиты успешности" (для всех метрик)
+        if (isMetric) {
+          limitsHeader.style.display = "";
+          limitsDescription.style.display = "";
+          minLimitSetting.settingEl.style.display = "";
+          maxLimitSetting.settingEl.style.display = "";
+        } else {
+          limitsHeader.style.display = "none";
+          limitsDescription.style.display = "none";
+          minLimitSetting.settingEl.style.display = "none";
+          maxLimitSetting.settingEl.style.display = "none";
         }
       };
     }
@@ -2358,7 +3061,20 @@ class CreateTrackerModal extends Modal {
               : "10";
             const step = type === "scale"
               ? (stepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
+              : type === "plusminus"
+              ? (plusminusStepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
               : "1";
+            
+            // Получаем значения лимитов успешности
+            const minLimitInput = minLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const maxLimitInput = maxLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const minLimit = minLimitInput?.value.trim() || "";
+            const maxLimit = maxLimitInput?.value.trim() || "";
+            
+            // Получаем единицу измерения
+            const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const unit = unitInput?.value.trim() || "";
+            const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
             
             const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
             // Получаем значение из поля ввода папки
@@ -2388,6 +3104,20 @@ class CreateTrackerModal extends Modal {
                 newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
                 newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
                 newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
+              } else if (type === "plusminus") {
+                newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
+              }
+              // Добавляем лимиты успешности, если они заданы
+              if (minLimit) {
+                newFrontmatter += `minLimit: ${parseFloat(minLimit)}\n`;
+              }
+              if (maxLimit) {
+                newFrontmatter += `maxLimit: ${parseFloat(maxLimit)}\n`;
+              }
+              // Добавляем единицу измерения, если она задана и это метрика
+              if (unit && isMetric) {
+                const escapedUnit = unit.replace(/"/g, '\\"');
+                newFrontmatter += `unit: "${escapedUnit}"\n`;
               }
               newFrontmatter += `data: {}\n`;
               
@@ -2413,6 +3143,361 @@ class CreateTrackerModal extends Modal {
               const errorMsg = error instanceof Error ? error.message : String(error);
               new Notice(`Ошибка при создании трекера: ${errorMsg}`);
               console.error("Tracker: ошибка создания трекера", error);
+            }
+          });
+      });
+  }
+  
+  onClose() {
+    this.contentEl.empty();
+  }
+}
+
+class EditTrackerModal extends Modal {
+  plugin: TrackerPlugin;
+  file: TFile;
+  
+  constructor(app: App, plugin: TrackerPlugin, file: TFile) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+  }
+  
+  async onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "Редактировать трекер" });
+    
+    // Загружаем текущие значения из frontmatter
+    const fileOpts = await this.plugin.getFileTypeFromFrontmatter(this.file);
+    const currentType = fileOpts.mode || "good-habit";
+    const currentName = this.file.basename;
+    const currentUnit = fileOpts.unit || "";
+    const currentMinValue = fileOpts.minValue || "";
+    const currentMaxValue = fileOpts.maxValue || "";
+    const currentStep = fileOpts.step || "";
+    const currentMinLimit = fileOpts.minLimit || "";
+    const currentMaxLimit = fileOpts.maxLimit || "";
+    
+    const nameSetting = new Setting(contentEl)
+      .setName("Название")
+      .addText(text => {
+        text.setPlaceholder("Например: Утренняя зарядка");
+        text.setValue(currentName);
+        text.inputEl.style.width = "100%";
+      });
+    
+    const typeSetting = new Setting(contentEl)
+      .setName("Тип")
+      .addDropdown(dropdown => {
+        // Привычки
+        dropdown.addOption("good-habit", "Хорошая привычка");
+        dropdown.addOption("bad-habit", "Плохая привычка");
+        // Метрики
+        dropdown.addOption("number", "Число");
+        dropdown.addOption("scale", "Шкала");
+        dropdown.addOption("plusminus", "Счётчик (+/-)");
+        dropdown.addOption("text", "Текст");
+        dropdown.setValue(currentType);
+        // Запрещаем изменение типа в модальном окне редактирования
+        dropdown.selectEl.disabled = true;
+      });
+    
+    // Добавляем optgroup для группировки опций
+    const typeDropdown = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
+    if (typeDropdown) {
+      // Очищаем существующие опции
+      typeDropdown.innerHTML = "";
+      
+      // Группа "Привычки"
+      const habitsGroup = document.createElement("optgroup");
+      habitsGroup.label = "Привычки";
+      const goodHabitOption = document.createElement("option");
+      goodHabitOption.value = "good-habit";
+      goodHabitOption.textContent = "Хорошая привычка";
+      habitsGroup.appendChild(goodHabitOption);
+      const badHabitOption = document.createElement("option");
+      badHabitOption.value = "bad-habit";
+      badHabitOption.textContent = "Плохая привычка";
+      habitsGroup.appendChild(badHabitOption);
+      typeDropdown.appendChild(habitsGroup);
+      
+      // Группа "Метрики"
+      const metricsGroup = document.createElement("optgroup");
+      metricsGroup.label = "Метрики";
+      const numberOption = document.createElement("option");
+      numberOption.value = "number";
+      numberOption.textContent = "Число";
+      metricsGroup.appendChild(numberOption);
+      const scaleOption = document.createElement("option");
+      scaleOption.value = "scale";
+      scaleOption.textContent = "Шкала";
+      metricsGroup.appendChild(scaleOption);
+      const plusminusOption = document.createElement("option");
+      plusminusOption.value = "plusminus";
+      plusminusOption.textContent = "Счётчик (+/-)";
+      metricsGroup.appendChild(plusminusOption);
+      const textOption = document.createElement("option");
+      textOption.value = "text";
+      textOption.textContent = "Текст";
+      metricsGroup.appendChild(textOption);
+      typeDropdown.appendChild(metricsGroup);
+      
+      // Устанавливаем текущее значение
+      typeDropdown.value = currentType;
+      // Запрещаем изменение типа
+      typeDropdown.disabled = true;
+    }
+    
+    // Заголовок для параметров метрики
+    const parametersHeader = contentEl.createEl("h3", { text: "Параметры" });
+    const parametersDescription = contentEl.createEl("p", {
+      text: "Единица измерения - не обязательное поле. Можно оставить пустым.",
+      cls: "tracker-notes__limits-description"
+    });
+    parametersDescription.style.fontSize = "0.9em";
+    parametersDescription.style.color = "var(--text-muted, #999999)";
+    parametersDescription.style.marginTop = "0.5em";
+    parametersDescription.style.marginBottom = "1em";
+    
+    // Блок "Единица измерения" для метрик (в начале блока "Параметры")
+    const unitSetting = new Setting(contentEl)
+      .setName("Единица измерения")
+      .addText(text => {
+        text.setPlaceholder("Например: метры, минуты, кг");
+        text.setValue(currentUnit);
+        text.inputEl.style.width = "100%";
+      });
+    
+    // Поле "Шаг" для счетчика (plusminus)
+    const plusminusStepSetting = new Setting(contentEl)
+      .setName("Шаг")
+      .addText(text => {
+        text.setPlaceholder("1")
+          .setValue(currentStep || "1")
+          .inputEl.type = "number";
+        text.inputEl.step = "any";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const minValueSetting = new Setting(contentEl)
+      .setName("Значение \"от\"")
+      .addText(text => {
+        text.setPlaceholder("0")
+          .setValue(currentMinValue || "0")
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const maxValueSetting = new Setting(contentEl)
+      .setName("Значение \"до\"")
+      .addText(text => {
+        text.setPlaceholder("10")
+          .setValue(currentMaxValue || "10")
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const stepSetting = new Setting(contentEl)
+      .setName("Шаг")
+      .addText(text => {
+        text.setPlaceholder("1")
+          .setValue(currentStep || "1")
+          .inputEl.type = "number";
+        text.inputEl.step = "any";
+        text.inputEl.style.width = "100%";
+      });
+    
+    // Блок "Лимиты успешности" для метрик
+    const limitsHeader = contentEl.createEl("h3", { text: "Лимиты успешности" });
+    const limitsDescription = contentEl.createEl("p", { 
+      text: "Опционально вы можете сделать метрику лимитирующей и задать желаемые пороговые значения. Прим. \"Не меньше 5000 шагов в день\", \"Не больше 3х шоколадок\"",
+      cls: "tracker-notes__limits-description"
+    });
+    limitsDescription.style.fontSize = "0.9em";
+    limitsDescription.style.color = "var(--text-muted, #999999)";
+    limitsDescription.style.marginTop = "0.5em";
+    limitsDescription.style.marginBottom = "1em";
+    
+    const minLimitSetting = new Setting(contentEl)
+      .setName("Нижняя граница")
+      .addText(text => {
+        text.setPlaceholder("По умолчанию - нет")
+          .setValue(currentMinLimit)
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    const maxLimitSetting = new Setting(contentEl)
+      .setName("Верхняя граница")
+      .addText(text => {
+        text.setPlaceholder("По умолчанию - нет")
+          .setValue(currentMaxLimit)
+          .inputEl.type = "number";
+        text.inputEl.style.width = "100%";
+      });
+    
+    // Функция для управления видимостью полей
+    const updateFieldsVisibility = () => {
+      const isScale = typeDropdown.value === "scale";
+      const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(typeDropdown.value);
+      const isPlusminus = typeDropdown.value === "plusminus";
+      
+      // Управление блоком "Параметры" (для всех метрик)
+      if (isMetric) {
+        parametersHeader.style.display = "";
+        parametersDescription.style.display = "";
+        unitSetting.settingEl.style.display = "";
+        // Параметры minValue, maxValue, step только для scale
+        if (isScale) {
+          minValueSetting.settingEl.style.display = "";
+          maxValueSetting.settingEl.style.display = "";
+          stepSetting.settingEl.style.display = "";
+          plusminusStepSetting.settingEl.style.display = "none";
+        } else {
+          minValueSetting.settingEl.style.display = "none";
+          maxValueSetting.settingEl.style.display = "none";
+          stepSetting.settingEl.style.display = "none";
+          // Поле "Шаг" только для plusminus
+          plusminusStepSetting.settingEl.style.display = isPlusminus ? "" : "none";
+        }
+      } else {
+        parametersHeader.style.display = "none";
+        parametersDescription.style.display = "none";
+        unitSetting.settingEl.style.display = "none";
+        plusminusStepSetting.settingEl.style.display = "none";
+        minValueSetting.settingEl.style.display = "none";
+        maxValueSetting.settingEl.style.display = "none";
+        stepSetting.settingEl.style.display = "none";
+      }
+      
+      // Управление блоком "Лимиты успешности" (для всех метрик)
+      if (isMetric) {
+        limitsHeader.style.display = "";
+        limitsDescription.style.display = "";
+        minLimitSetting.settingEl.style.display = "";
+        maxLimitSetting.settingEl.style.display = "";
+      } else {
+        limitsHeader.style.display = "none";
+        limitsDescription.style.display = "none";
+        minLimitSetting.settingEl.style.display = "none";
+        maxLimitSetting.settingEl.style.display = "none";
+      }
+    };
+    
+    // Инициализируем видимость полей
+    updateFieldsVisibility();
+    
+    // Обновляем видимость при изменении типа
+    if (typeDropdown) {
+      typeDropdown.onchange = updateFieldsVisibility;
+    }
+    
+    new Setting(contentEl)
+      .addButton(button => {
+        button
+          .setButtonText("Сохранить")
+          .setCta()
+          .onClick(async () => {
+            const nameInput = nameSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const name = nameInput.value.trim();
+            if (!name) {
+              new Notice("Введите название");
+              return;
+            }
+            
+            const type = typeDropdown ? typeDropdown.value : currentType;
+            const minValue = type === "scale"
+              ? (minValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "0"
+              : "0";
+            const maxValue = type === "scale"
+              ? (maxValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "10"
+              : "10";
+            const step = type === "scale"
+              ? (stepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
+              : type === "plusminus"
+              ? (plusminusStepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
+              : "1";
+            
+            // Получаем значения лимитов успешности
+            const minLimitInput = minLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const maxLimitInput = maxLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const minLimit = minLimitInput?.value.trim() || "";
+            const maxLimit = maxLimitInput?.value.trim() || "";
+            
+            // Получаем единицу измерения
+            const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const unit = unitInput?.value.trim() || "";
+            const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
+            
+            try {
+              // Читаем текущий контент файла
+              const content = await this.app.vault.read(this.file);
+              const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+              
+              // Сохраняем тело файла (все после frontmatter)
+              const body = frontmatterMatch 
+                ? content.slice(frontmatterMatch[0].length).trim()
+                : content.trim();
+              
+              // Сохраняем существующие данные из frontmatter
+              let existingData: Record<string, string | number> = {};
+              if (frontmatterMatch) {
+                existingData = this.plugin.parseFrontmatterData(frontmatterMatch[1]);
+              }
+              
+              // Экранируем кавычки в названии для YAML
+              const escapedName = name.replace(/"/g, '\\"');
+              // Плоская структура без вложенности
+              let newFrontmatter = `name: "${escapedName}"\ntype: "${type}"\n`;
+              if (type === "scale") {
+                newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
+                newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
+                newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
+              } else if (type === "plusminus") {
+                newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
+              }
+              // Добавляем лимиты успешности, если они заданы
+              if (minLimit) {
+                newFrontmatter += `minLimit: ${parseFloat(minLimit)}\n`;
+              }
+              if (maxLimit) {
+                newFrontmatter += `maxLimit: ${parseFloat(maxLimit)}\n`;
+              }
+              // Добавляем единицу измерения, если она задана и это метрика
+              if (unit && isMetric) {
+                const escapedUnit = unit.replace(/"/g, '\\"');
+                newFrontmatter += `unit: "${escapedUnit}"\n`;
+              }
+              // Форматируем данные обратно в YAML
+              const dataYaml = this.plugin.formatDataToYaml(existingData);
+              newFrontmatter += dataYaml;
+              
+              // Сохраняем структуру: frontmatter с правильным форматированием
+              const newContent = `---\n${newFrontmatter}---${body ? `\n\n${body}` : ''}`;
+              
+              await this.app.vault.modify(this.file, newContent);
+              
+              // Если название изменилось, переименовываем файл
+              if (name !== this.file.basename) {
+                const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+                const newPath = this.file.path.replace(this.file.name, newFileName);
+                await this.app.vault.rename(this.file, newPath);
+              }
+              
+              new Notice(`Трекер обновлен: ${name}`);
+              
+              // Обновляем все открытые блоки tracker для этой папки
+              const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
+              setTimeout(async () => {
+                await this.plugin.onTrackerCreated(fileFolderPath);
+              }, 500);
+              
+              this.close();
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              new Notice(`Ошибка при обновлении трекера: ${errorMsg}`);
+              console.error("Tracker: ошибка обновления трекера", error);
             }
           });
       });

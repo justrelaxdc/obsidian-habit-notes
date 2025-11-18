@@ -14502,8 +14502,9 @@ Chart.register(...registerables);
 var DEFAULT_SETTINGS = {
   trackersFolder: "0. Files/Trackers",
   dateFormat: "YYYY-MM-DD",
-  timeFormat: "HH:mm",
-  daysToShow: 30
+  daysToShow: 30,
+  showChartByDefault: true,
+  showStatsByDefault: false
 };
 var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild {
   constructor(plugin, source, containerEl, ctx) {
@@ -14512,6 +14513,7 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
     this.source = source;
     this.opts = parseOptions(source);
     this.folderPath = this.opts.folder || plugin.settings.trackersFolder;
+    this.ctx = ctx;
   }
   async render() {
     this.containerEl.empty();
@@ -14525,7 +14527,71 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
         return;
       }
       const view = (this.opts.view ?? "control").toLowerCase();
-      let dateIso = resolveDateIso(this.opts.date, this.plugin.settings.dateFormat);
+      let initialDate = this.opts.date;
+      if (!initialDate && this.ctx.sourcePath) {
+        try {
+          const noteFile = this.plugin.app.vault.getAbstractFileByPath(this.ctx.sourcePath);
+          if (noteFile instanceof import_obsidian.TFile) {
+            const fileName = noteFile.basename;
+            if (fileName) {
+              const m = window.moment;
+              if (m) {
+                const dateFormats = ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY", "YYYY-MM-DD HH:mm", "YYYY/MM/DD HH:mm"];
+                for (const fmt of dateFormats) {
+                  const parsedDate = m(fileName, fmt, true);
+                  if (parsedDate.isValid()) {
+                    initialDate = parsedDate.format(this.plugin.settings.dateFormat);
+                    break;
+                  }
+                }
+                if (!initialDate) {
+                  const datePattern = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}\.\d{2}\.\d{4})/;
+                  const match = fileName.match(datePattern);
+                  if (match) {
+                    const dateStr = match[0];
+                    const parsedDate = m(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
+                    if (parsedDate.isValid()) {
+                      initialDate = parsedDate.format(this.plugin.settings.dateFormat);
+                    }
+                  }
+                }
+              } else {
+                const datePatterns = [
+                  /(\d{4})-(\d{2})-(\d{2})/,
+                  // YYYY-MM-DD
+                  /(\d{4})\/(\d{2})\/(\d{2})/,
+                  // YYYY/MM/DD
+                  /(\d{2})\.(\d{2})\.(\d{4})/
+                  // DD.MM.YYYY
+                ];
+                for (const pattern of datePatterns) {
+                  const match = fileName.match(pattern);
+                  if (match) {
+                    let year, month, day;
+                    if (pattern === datePatterns[2]) {
+                      day = parseInt(match[1]);
+                      month = parseInt(match[2]) - 1;
+                      year = parseInt(match[3]);
+                    } else {
+                      year = parseInt(match[1]);
+                      month = parseInt(match[2]) - 1;
+                      day = parseInt(match[3]);
+                    }
+                    const date = new Date(year, month, day);
+                    if (!isNaN(date.getTime())) {
+                      initialDate = formatDate(date, this.plugin.settings.dateFormat);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Tracker: Error reading note filename", error);
+        }
+      }
+      let dateIso = resolveDateIso(initialDate, this.plugin.settings.dateFormat);
       const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
       if (view === "control") {
         const blockHeader = this.containerEl.createDiv({ cls: "tracker-notes__header" });
@@ -14600,7 +14666,7 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
       };
     }
     if (folder instanceof import_obsidian.TFolder) {
-      return this.buildFolderTree(folder, 2, 0);
+      return this.buildFolderTree(folder, 3, 0);
     }
     return null;
   }
@@ -14709,8 +14775,11 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }
       .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
       .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); }
-      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; }
+      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }
+      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }
+      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }
+      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }
       .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
       .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes__value.updated { animation: pulse 0.3s ease; }
@@ -14766,11 +14835,24 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
       .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
       .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }
-      .tracker-notes__heatmap-day:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }
       .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
       .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
       .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .tracker-notes__heatmap-day.start-day { box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; }
+      .tracker-notes__heatmap-day.start-day { 
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        line-height: 1;
+      }
+      .tracker-notes__heatmap-day.start-day::after {
+        content: "START";
+        font-size: 0.5em;
+        line-height: 1;
+        margin-top: 0.1em;
+        opacity: 0.7;
+        font-weight: 600;
+      }
       .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }
       .tracker-notes__stats > div { transition: opacity 0.2s ease; }
       .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
@@ -14781,10 +14863,12 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }
       .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }
       .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }
+      .tracker-notes__folder-node.level-3 { padding-left: 1em; margin-top: 0.5em; margin-bottom: 0.75em; }
       .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
       .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
       .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }
       .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
+      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
       
       /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */
       @media (max-width: 768px) {
@@ -14793,8 +14877,9 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__header-title { font-size: 1em; }
         .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }
         .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }
-        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; }
-        .tracker-notes__tracker-title { font-size: 0.9em; }
+        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }
+        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
         .tracker-notes__date-picker-container { padding: 0; }
         .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }
         .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; }
@@ -14808,6 +14893,10 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; }
         .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }
         .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }
+        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
         .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }
         .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }
         .tracker-notes__calendar-day { font-size: 0.65em; }
@@ -14818,10 +14907,12 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }
         .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }
         .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }
         .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }
         .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
         .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
+        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }
       }
       
       @media (max-width: 480px) {
@@ -14830,8 +14921,9 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__header-title { font-size: 0.95em; }
         .tracker-notes__trackers { gap: 0.4em; }
         .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }
-        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; }
-        .tracker-notes__tracker-title { font-size: 0.85em; }
+        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }
+        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
         .tracker-notes__date-picker { gap: 0.25em; }
         .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; }
         .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; }
@@ -14843,6 +14935,10 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; }
         .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }
         .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }
+        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
+        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
         .tracker-notes__heatmap-day { min-width: 2.2em; max-width: 2.5em; font-size: 0.75em; }
         .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }
         .tracker-notes__calendar-day { font-size: 0.6em; }
@@ -14853,10 +14949,12 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }
         .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }
         .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }
+        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }
         .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }
         .tracker-notes__folder-header.level-0 { font-size: 1.05em; }
         .tracker-notes__folder-header.level-1 { font-size: 1em; }
         .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
+        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }
       }
     `;
     document.head.appendChild(styleEl);
@@ -14921,6 +15019,18 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         if (stepMatch) {
           fileOpts.step = stepMatch[1];
         }
+        const minLimitMatch = frontmatter.match(/^minLimit:\s*([\d.]+)/m);
+        if (minLimitMatch) {
+          fileOpts.minLimit = minLimitMatch[1];
+        }
+        const maxLimitMatch = frontmatter.match(/^maxLimit:\s*([\d.]+)/m);
+        if (maxLimitMatch) {
+          fileOpts.maxLimit = maxLimitMatch[1];
+        }
+        const unitMatch = frontmatter.match(/^unit:\s*["']?([^"'\n]+)["']?/m);
+        if (unitMatch && unitMatch[1]) {
+          fileOpts.unit = unitMatch[1].trim();
+        }
       } else {
         fileOpts.mode = "good-habit";
       }
@@ -14965,38 +15075,51 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     const trackerItem = parentEl.createDiv({ cls: "tracker-notes__tracker" });
     trackerItem.dataset.filePath = file.path;
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const fileName = file.basename;
+    const unit = fileOpts.unit || "";
+    const displayName = unit ? `${fileName} (${unit})` : fileName;
     const titleLink = header.createEl("a", {
-      text: fileName,
+      text: displayName,
       cls: "tracker-notes__tracker-title internal-link",
       href: file.path
     });
     titleLink.setAttribute("data-href", file.path);
+    const settingsButton = header.createEl("button", {
+      text: "\u2699\uFE0F",
+      cls: "tracker-notes__settings-btn"
+    });
+    settingsButton.title = "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430";
+    settingsButton.onclick = () => {
+      new EditTrackerModal(this.app, this, file).open();
+    };
     const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
     if (view === "display") {
       const value = await this.readValueForDate(file, dateIso);
       trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "\u2014"}` });
       const daysToShow2 = parseInt(opts.days) || this.settings.daysToShow;
-      const fileOpts2 = await this.getFileTypeFromFrontmatter(file);
-      const trackerType2 = (fileOpts2.mode ?? "good-habit").toLowerCase();
-      if (opts.showChart === "true") {
+      const trackerType2 = (fileOpts.mode ?? "good-habit").toLowerCase();
+      const shouldShowChart2 = opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault;
+      const shouldShowStats2 = opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault;
+      if (shouldShowChart2) {
         await this.renderChart(trackerItem, file, dateIso, daysToShow2);
       }
-      if (opts.showStats === "true") {
+      if (shouldShowStats2) {
         await this.renderStats(trackerItem, file, dateIso, daysToShow2, trackerType2);
       }
       return;
     }
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const { mode, ...optsWithoutMode } = opts;
     const mergedOpts = { ...optsWithoutMode, ...fileOpts };
     await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
     const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    if (opts.showChart === "true") {
+    const shouldShowChart = opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault;
+    const shouldShowStats = opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault;
+    if (shouldShowChart) {
       await this.renderChart(trackerItem, file, dateIso, daysToShow);
     }
-    if (opts.showStats === "true") {
+    if (shouldShowStats) {
       await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
     }
   }
@@ -15062,6 +15185,8 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         }
       };
     } else if (mode === "plusminus") {
+      const fileOpts = await this.getFileTypeFromFrontmatter(file);
+      const step = parseFloat(fileOpts.step || "1") || 1;
       const wrap = container.createDiv({ cls: "tracker-notes__row" });
       const minus = wrap.createEl("button", { text: "\u2212" });
       const valEl = wrap.createEl("span", { text: "0", cls: "tracker-notes__value" });
@@ -15069,7 +15194,7 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
       if (!isNaN(current)) valEl.setText(String(current));
       minus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) - 1;
+        current = (Number.isFinite(current) ? current : 0) - step;
         valEl.setText(String(current));
         valEl.addClass("updated");
         await this.writeLogLine(file, dateIso, String(current));
@@ -15077,7 +15202,7 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         await updateVisualizations();
       };
       plus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) + 1;
+        current = (Number.isFinite(current) ? current : 0) + step;
         valEl.setText(String(current));
         valEl.addClass("updated");
         await this.writeLogLine(file, dateIso, String(current));
@@ -15495,6 +15620,7 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
   async renderChart(container, file, dateIso, daysToShow) {
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const metricType = (fileOpts.mode ?? "good-habit").toLowerCase();
+    const unit = fileOpts.unit || "";
     if (metricType === "good-habit" || metricType === "bad-habit") {
       const endDate2 = dateIso || resolveDateIso("today", this.settings.dateFormat);
       const days2 = daysToShow || this.settings.daysToShow;
@@ -15511,11 +15637,29 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
     }
     const chartDiv = container.createDiv({ cls: "tracker-notes__chart" });
     const canvas = chartDiv.createEl("canvas");
-    const root = document.documentElement;
+    const root = document.body || document.documentElement;
     const getCSSVar = (varName, fallback = "#000000") => {
-      return getComputedStyle(root).getPropertyValue(varName).trim() || fallback;
+      const value = getComputedStyle(root).getPropertyValue(varName).trim();
+      return value || fallback;
     };
-    const accentColor = getCSSVar("--interactive-accent", "#7f6df2");
+    const tempEl = document.createElement("div");
+    tempEl.style.position = "absolute";
+    tempEl.style.visibility = "hidden";
+    document.body.appendChild(tempEl);
+    let accentColor = getComputedStyle(tempEl).getPropertyValue("--interactive-accent").trim();
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue("--color-accent").trim();
+    }
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue("--accent-color").trim();
+    }
+    if (!accentColor) {
+      accentColor = getComputedStyle(root).getPropertyValue("--interactive-accent").trim();
+    }
+    if (!accentColor) {
+      accentColor = "#7f6df2";
+    }
+    document.body.removeChild(tempEl);
     const textMuted = getCSSVar("--text-muted", "#999999");
     const textFaint = getCSSVar("--text-faint", "#666666");
     const borderColor = getCSSVar("--background-modifier-border", "#e0e0e0");
@@ -15532,20 +15676,41 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       return color2;
     };
     const m = window.moment;
-    const endDate = dateIso ? m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat) : m ? m() : /* @__PURE__ */ new Date();
+    const today = m ? m() : /* @__PURE__ */ new Date();
+    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
+    let activeDate;
+    if (dateIso) {
+      activeDate = m ? m(dateIso, "YYYY-MM-DD") : parseDate(dateIso, "YYYY-MM-DD");
+    } else {
+      activeDate = today;
+    }
+    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
+    const endDate = m ? m(activeDate).clone().add(5, "days") : addDays(new Date(activeDate.getTime()), 5);
     const days = daysToShow || this.settings.daysToShow;
     const startDate = m ? m(endDate).subtract(days - 1, "days") : addDays(endDate, -(days - 1));
     const entries = await this.readAllEntries(file);
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     let startTrackingIndex = null;
+    let activeDateIndex = null;
+    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
+    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
+    const scaleMinValue = metricType === "scale" && fileOpts.minValue ? parseFloat(fileOpts.minValue) : null;
+    const scaleMaxValue = metricType === "scale" && fileOpts.maxValue ? parseFloat(fileOpts.maxValue) : null;
+    const errorColor = getCSSVar("--text-error", "#c00000");
     const labels = [];
     const values = [];
+    const pointBackgroundColors = [];
+    const pointBorderColors = [];
+    const dateStrings = [];
     let maxValue = 0;
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, "days") : addDays(startDate, i);
+      const date = m ? m(startDate).clone().add(i, "days") : addDays(new Date(startDate.getTime()), i);
       const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
       if (dateStr === startTrackingDateStr) {
         startTrackingIndex = i;
+      }
+      if (dateStr === activeDateStr) {
+        activeDateIndex = i;
       }
       let label = "";
       if (m) {
@@ -15556,6 +15721,7 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         label = `${day} ${month}`;
       }
       labels.push(label);
+      dateStrings.push(dateStr);
       const val = entries.get(dateStr);
       let numVal = 0;
       if (val != null) {
@@ -15571,10 +15737,49 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       }
       values.push(numVal);
       maxValue = Math.max(maxValue, numVal);
+      let pointColor = accentColor;
+      let pointBorder = accentColor;
+      const isAfterToday = dateStr > todayStr;
+      const hasLimits = minLimit !== null || maxLimit !== null;
+      if (!isAfterToday && startTrackingIndex !== null && i >= startTrackingIndex && hasLimits) {
+        const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
+        if (isInRange) {
+          const successColor = getCSSVar("--text-success", "#00c000");
+          pointColor = successColor;
+          pointBorder = successColor;
+        } else {
+          pointColor = errorColor;
+          pointBorder = errorColor;
+        }
+      }
+      pointBackgroundColors.push(pointColor);
+      pointBorderColors.push(pointBorder);
+    }
+    const pointRadii = [];
+    const pointBorderWidths = [];
+    for (let i = 0; i < days; i++) {
+      pointRadii.push(3);
+      pointBorderWidths.push(2);
     }
     if (maxValue === 0) {
       chartDiv.setText("\u041D\u0435\u0442 \u0434\u0430\u043D\u043D\u044B\u0445");
       return;
+    }
+    let yAxisMin = 0;
+    let yAxisMax = maxValue;
+    const allMinValues = [];
+    if (minLimit !== null) allMinValues.push(minLimit);
+    if (scaleMinValue !== null) allMinValues.push(scaleMinValue);
+    if (allMinValues.length > 0) {
+      const minFromAll = Math.min(...allMinValues);
+      yAxisMin = Math.min(yAxisMin, minFromAll);
+    }
+    const allMaxValues = [maxValue];
+    if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    if (allMaxValues.length > 0) {
+      const maxFromAll = Math.max(...allMaxValues);
+      yAxisMax = Math.max(yAxisMax, maxFromAll);
     }
     const ctx = canvas.getContext("2d");
     let gradient = null;
@@ -15583,8 +15788,47 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       gradient.addColorStop(0, colorToRgba(accentColor, 0.25));
       gradient.addColorStop(1, colorToRgba(accentColor, 0));
     }
-    const chartLabel = metricType === "text" ? "\u041A\u043E\u043B-\u0432\u043E \u0441\u043B\u043E\u0432" : "\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435";
+    let chartLabel;
+    if (unit) {
+      chartLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
+    } else {
+      chartLabel = metricType === "text" ? "\u041A\u043E\u043B-\u0432\u043E \u0441\u043B\u043E\u0432" : "\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435";
+    }
     const startLineColor = getCSSVar("--text-accent", accentColor);
+    const drawStartLine = (chart, index2, color2) => {
+      const ctx2 = chart.ctx;
+      const chartArea = chart.chartArea;
+      if (!chartArea) return;
+      const xScale = chart.scales.x;
+      const xPos = xScale.getPixelForValue(index2);
+      if (xPos < chartArea.left || xPos > chartArea.right) return;
+      ctx2.save();
+      ctx2.strokeStyle = colorToRgba(color2, 0.6);
+      ctx2.lineWidth = 2;
+      ctx2.setLineDash([5, 5]);
+      ctx2.beginPath();
+      ctx2.moveTo(xPos, chartArea.top);
+      ctx2.lineTo(xPos, chartArea.bottom);
+      ctx2.stroke();
+      ctx2.restore();
+    };
+    const drawActiveDateLine = (chart, index2, color2) => {
+      const ctx2 = chart.ctx;
+      const chartArea = chart.chartArea;
+      if (!chartArea) return;
+      const xScale = chart.scales.x;
+      const xPos = xScale.getPixelForValue(index2);
+      if (xPos < chartArea.left || xPos > chartArea.right) return;
+      ctx2.save();
+      ctx2.strokeStyle = colorToRgba(color2, 0.6);
+      ctx2.lineWidth = 2;
+      ctx2.setLineDash([]);
+      ctx2.beginPath();
+      ctx2.moveTo(xPos, chartArea.top);
+      ctx2.lineTo(xPos, chartArea.bottom);
+      ctx2.stroke();
+      ctx2.restore();
+    };
     const chartConfig = {
       type: "line",
       data: {
@@ -15595,13 +15839,27 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
           borderColor: accentColor,
           backgroundColor: gradient || colorToRgba(accentColor, 0.1),
           borderWidth: 2.5,
-          fill: true,
+          fill: false,
           tension: 0.4,
-          pointRadius: 0,
+          pointRadius: pointRadii,
+          pointBackgroundColor: pointBackgroundColors,
+          pointBorderColor: pointBorderColors,
+          pointBorderWidth: pointBorderWidths,
           pointHoverRadius: 5,
-          pointHoverBackgroundColor: accentColor,
-          pointHoverBorderColor: bgPrimary,
-          pointHoverBorderWidth: 2
+          pointHitRadius: 10,
+          // Явно отключаем изменение цветов при наведении - используем функции, которые возвращают те же цвета
+          pointHoverBackgroundColor: (ctx2) => {
+            const index2 = ctx2.dataIndex;
+            return pointBackgroundColors[index2] || pointBackgroundColors[0] || accentColor;
+          },
+          pointHoverBorderColor: (ctx2) => {
+            const index2 = ctx2.dataIndex;
+            return pointBorderColors[index2] || pointBorderColors[0] || accentColor;
+          },
+          pointHoverBorderWidth: (ctx2) => {
+            const index2 = ctx2.dataIndex;
+            return pointBorderWidths[index2] || pointBorderWidths[0] || 2;
+          }
         }]
       },
       options: {
@@ -15619,7 +15877,17 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
             borderColor,
             borderWidth: 1,
             padding: 8,
-            displayColors: false
+            displayColors: false,
+            callbacks: {
+              label: (context) => {
+                const value = context.parsed.y;
+                if (unit) {
+                  const capitalizedUnit = unit.charAt(0).toUpperCase() + unit.slice(1);
+                  return `${capitalizedUnit}: ${value}`;
+                }
+                return `${chartLabel}: ${value}`;
+              }
+            }
           }
         },
         scales: {
@@ -15655,46 +15923,121 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
                 size: 11
               }
             },
-            beginAtZero: true
+            beginAtZero: !minLimit && !maxLimit && !scaleMinValue && !scaleMaxValue,
+            // Начинать с нуля только если нет лимитов и scale значений
+            min: minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMin : void 0,
+            max: minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMax : void 0
           }
         },
         interaction: {
           intersect: false,
           mode: "index"
         },
+        elements: {
+          point: {
+            hoverBackgroundColor: void 0,
+            // Отключаем дефолтный hover цвет
+            hoverBorderColor: void 0,
+            // Отключаем дефолтный hover цвет
+            hoverRadius: 5,
+            hoverBorderWidth: void 0
+            // Отключаем дефолтный hover border width
+          }
+        },
+        onClick: (event, elements2, chart) => {
+          if (elements2 && elements2.length > 0) {
+            const element = elements2[0];
+            const pointIndex = element.index;
+            const dateStrings2 = chart.dateStrings;
+            if (!dateStrings2) return;
+            if (pointIndex >= 0 && pointIndex < dateStrings2.length) {
+              const clickedDateStr = dateStrings2[pointIndex];
+              const mainContainer = container.closest(".tracker-notes");
+              const blockContainer = mainContainer?.parentElement;
+              const dateInput = blockContainer?.querySelector(".tracker-notes__date-input");
+              if (dateInput) {
+                const m2 = window.moment;
+                let dateIsoValue;
+                try {
+                  if (m2) {
+                    const dateObj = m2(clickedDateStr, this.settings.dateFormat);
+                    if (dateObj.isValid()) {
+                      dateIsoValue = dateObj.format("YYYY-MM-DD");
+                    } else {
+                      return;
+                    }
+                  } else {
+                    const dateObj = parseDate(clickedDateStr, this.settings.dateFormat);
+                    dateIsoValue = formatDate(dateObj, "YYYY-MM-DD");
+                  }
+                  if (dateIsoValue) {
+                    dateInput.value = dateIsoValue;
+                    dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+                  }
+                } catch (error) {
+                  console.error("Tracker: Error converting date", clickedDateStr, error);
+                }
+              }
+            }
+          }
+        },
         onResize: (chart) => {
-          const index2 = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
+          const startIndex = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
           const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : startLineColor;
-          if (index2 !== null && index2 !== void 0) {
-            drawStartLine(chart, index2, lineColor);
+          const activeIdx = chart.activeDateIndex !== void 0 ? chart.activeDateIndex : activeDateIndex;
+          if (startIndex !== null && startIndex !== void 0 && startIndex !== activeIdx) {
+            drawStartLine(chart, startIndex, lineColor);
+          }
+          if (activeIdx !== null && activeIdx !== void 0) {
+            drawActiveDateLine(chart, activeIdx, lineColor);
+          }
+          const minLimitValue = chart.minLimit !== void 0 ? chart.minLimit : minLimit;
+          const maxLimitValue = chart.maxLimit !== void 0 ? chart.maxLimit : maxLimit;
+          if (minLimitValue !== null && minLimitValue !== void 0) {
+            drawLimitLine(chart, minLimitValue, lineColor);
+          }
+          if (maxLimitValue !== null && maxLimitValue !== void 0) {
+            drawLimitLine(chart, maxLimitValue, lineColor);
           }
         }
       },
       plugins: [{
         id: "startLinePlugin",
-        afterDraw: (chart) => {
-          const index2 = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
+        beforeDraw: (chart) => {
+          const startIdx = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
           const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : startLineColor;
-          if (index2 !== null && index2 !== void 0) {
-            drawStartLine(chart, index2, lineColor);
+          const activeIdx = chart.activeDateIndex !== void 0 ? chart.activeDateIndex : activeDateIndex;
+          if (startIdx !== null && startIdx !== void 0 && startIdx !== activeIdx) {
+            drawStartLine(chart, startIdx, lineColor);
+          }
+          if (activeIdx !== null && activeIdx !== void 0) {
+            drawActiveDateLine(chart, activeIdx, lineColor);
+          }
+          const minLimitValue = chart.minLimit !== void 0 ? chart.minLimit : minLimit;
+          const maxLimitValue = chart.maxLimit !== void 0 ? chart.maxLimit : maxLimit;
+          if (minLimitValue !== null && minLimitValue !== void 0) {
+            drawLimitLine(chart, minLimitValue, lineColor);
+          }
+          if (maxLimitValue !== null && maxLimitValue !== void 0) {
+            drawLimitLine(chart, maxLimitValue, lineColor);
           }
         }
       }]
     };
-    const drawStartLine = (chart, index2, color2) => {
+    const drawLimitLine = (chart, value, color2) => {
       const ctx2 = chart.ctx;
       const chartArea = chart.chartArea;
       if (!chartArea) return;
-      const xScale = chart.scales.x;
-      const xPos = xScale.getPixelForValue(index2);
-      if (xPos < chartArea.left || xPos > chartArea.right) return;
+      const yScale = chart.scales.y;
+      const yPos = yScale.getPixelForValue(value);
+      if (yPos < chartArea.top || yPos > chartArea.bottom) return;
       ctx2.save();
       ctx2.strokeStyle = colorToRgba(color2, 0.6);
       ctx2.lineWidth = 2;
       ctx2.setLineDash([5, 5]);
       ctx2.beginPath();
-      ctx2.moveTo(xPos, chartArea.top);
-      ctx2.lineTo(xPos, chartArea.bottom);
+      ctx2.moveTo(chartArea.left, yPos);
+      ctx2.lineTo(chartArea.right, yPos);
       ctx2.stroke();
       ctx2.restore();
     };
@@ -15703,6 +16046,9 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       chartDiv.chartInstance = chartInstance;
       chartInstance.startTrackingIndex = startTrackingIndex;
       chartInstance.startLineColor = startLineColor;
+      chartInstance.dateStrings = dateStrings;
+      chartInstance.minLimit = minLimit;
+      chartInstance.maxLimit = maxLimit;
     } catch (error) {
       console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u0430", error);
       chartDiv.setText("\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u0430");
@@ -15720,20 +16066,66 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       return;
     }
     const m = window.moment;
-    const endDate = dateIso ? m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat) : m ? m() : /* @__PURE__ */ new Date();
+    const today = m ? m() : /* @__PURE__ */ new Date();
+    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
+    let activeDate;
+    if (dateIso) {
+      activeDate = m ? m(dateIso, "YYYY-MM-DD") : parseDate(dateIso, "YYYY-MM-DD");
+    } else {
+      activeDate = today;
+    }
+    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
+    const endDate = m ? m(activeDate).clone().add(5, "days") : addDays(new Date(activeDate.getTime()), 5);
     const days = daysToShow || this.settings.daysToShow;
     const startDate = m ? m(endDate).subtract(days - 1, "days") : addDays(endDate, -(days - 1));
     const entries = await this.readAllEntries(file);
     const startTrackingDateStr = this.getStartTrackingDate(entries, file);
     let startTrackingIndex = null;
+    let activeDateIndex = null;
+    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
+    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
+    const scaleMinValue = metricType === "scale" && fileOpts.minValue ? parseFloat(fileOpts.minValue) : null;
+    const scaleMaxValue = metricType === "scale" && fileOpts.maxValue ? parseFloat(fileOpts.maxValue) : null;
+    const root = document.body || document.documentElement;
+    const getCSSVar = (varName, fallback = "#000000") => {
+      const value = getComputedStyle(root).getPropertyValue(varName).trim();
+      return value || fallback;
+    };
+    const tempEl = document.createElement("div");
+    tempEl.style.position = "absolute";
+    tempEl.style.visibility = "hidden";
+    document.body.appendChild(tempEl);
+    let accentColor = getComputedStyle(tempEl).getPropertyValue("--interactive-accent").trim();
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue("--color-accent").trim();
+    }
+    if (!accentColor) {
+      accentColor = getComputedStyle(tempEl).getPropertyValue("--accent-color").trim();
+    }
+    if (!accentColor) {
+      accentColor = getComputedStyle(root).getPropertyValue("--interactive-accent").trim();
+    }
+    if (!accentColor) {
+      accentColor = "#7f6df2";
+    }
+    document.body.removeChild(tempEl);
+    const startLineColor = getCSSVar("--text-accent", accentColor);
+    const errorColor = getCSSVar("--text-error", "#c00000");
+    const bgPrimary = getCSSVar("--background-primary", "#ffffff");
     const labels = [];
     const values = [];
+    const pointBackgroundColors = [];
+    const pointBorderColors = [];
+    const dateStrings = [];
     let maxValue = 0;
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, "days") : addDays(startDate, i);
+      const date = m ? m(startDate).clone().add(i, "days") : addDays(new Date(startDate.getTime()), i);
       const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
       if (dateStr === startTrackingDateStr) {
         startTrackingIndex = i;
+      }
+      if (dateStr === activeDateStr) {
+        activeDateIndex = i;
       }
       let label = "";
       if (m) {
@@ -15744,6 +16136,7 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
         label = `${day} ${month}`;
       }
       labels.push(label);
+      dateStrings.push(dateStr);
       const val = entries.get(dateStr);
       let numVal = 0;
       if (val != null) {
@@ -15759,17 +16152,63 @@ var TrackerPlugin = class extends import_obsidian.Plugin {
       }
       values.push(numVal);
       maxValue = Math.max(maxValue, numVal);
+      let pointColor = accentColor;
+      let pointBorder = accentColor;
+      const isAfterToday = dateStr > todayStr;
+      const hasLimits = minLimit !== null || maxLimit !== null;
+      if (!isAfterToday && startTrackingIndex !== null && i >= startTrackingIndex && hasLimits) {
+        const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
+        if (isInRange) {
+          const successColor = getCSSVar("--text-success", "#00c000");
+          pointColor = successColor;
+          pointBorder = successColor;
+        } else {
+          pointColor = errorColor;
+          pointBorder = errorColor;
+        }
+      }
+      pointBackgroundColors.push(pointColor);
+      pointBorderColors.push(pointBorder);
     }
-    const root = document.documentElement;
-    const getCSSVar = (varName, fallback = "#000000") => {
-      return getComputedStyle(root).getPropertyValue(varName).trim() || fallback;
-    };
-    const accentColor = getCSSVar("--interactive-accent", "#7f6df2");
-    const startLineColor = getCSSVar("--text-accent", accentColor);
+    const pointRadii = [];
+    const pointBorderWidths = [];
+    for (let i = 0; i < days; i++) {
+      pointRadii.push(3);
+      pointBorderWidths.push(2);
+    }
+    let yAxisMin = 0;
+    let yAxisMax = maxValue;
+    const allMinValues = [];
+    if (minLimit !== null) allMinValues.push(minLimit);
+    if (scaleMinValue !== null) allMinValues.push(scaleMinValue);
+    if (allMinValues.length > 0) {
+      const minFromAll = Math.min(...allMinValues);
+      yAxisMin = Math.min(yAxisMin, minFromAll);
+    }
+    const allMaxValues = [maxValue];
+    if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    if (allMaxValues.length > 0) {
+      const maxFromAll = Math.max(...allMaxValues);
+      yAxisMax = Math.max(yAxisMax, maxFromAll);
+    }
     chartInstance.startTrackingIndex = startTrackingIndex;
     chartInstance.startLineColor = startLineColor;
+    chartInstance.dateStrings = dateStrings;
+    chartInstance.minLimit = minLimit;
+    chartInstance.maxLimit = maxLimit;
+    chartInstance.activeDateIndex = activeDateIndex;
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = values;
+    chartInstance.data.datasets[0].pointBackgroundColor = pointBackgroundColors;
+    chartInstance.data.datasets[0].pointBorderColor = pointBorderColors;
+    chartInstance.data.datasets[0].pointRadius = pointRadii;
+    chartInstance.data.datasets[0].pointBorderWidth = pointBorderWidths;
+    if (chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
+      chartInstance.options.scales.y.beginAtZero = !minLimit && !maxLimit && !scaleMinValue && !scaleMaxValue;
+      chartInstance.options.scales.y.min = minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMin : void 0;
+      chartInstance.options.scales.y.max = minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMax : void 0;
+    }
     chartInstance.update("none");
   }
   async updateStats(statsDiv, file, dateIso, daysToShow, trackerType) {
@@ -16112,15 +16551,19 @@ var TrackerSettingsTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.trackersFolder = v.trim();
       await this.plugin.saveSettings();
     }));
+    new import_obsidian.Setting(containerEl).setName("\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u0433\u0440\u0430\u0444\u0438\u043A \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E").addToggle((t) => t.setValue(this.plugin.settings.showChartByDefault).onChange(async (v) => {
+      this.plugin.settings.showChartByDefault = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0443 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E").addToggle((t) => t.setValue(this.plugin.settings.showStatsByDefault).onChange(async (v) => {
+      this.plugin.settings.showStatsByDefault = v;
+      await this.plugin.saveSettings();
+    }));
     new import_obsidian.Setting(containerEl).setName("\u0424\u043E\u0440\u043C\u0430\u0442 \u0434\u0430\u0442\u044B").addText((t) => t.setPlaceholder("YYYY-MM-DD").setValue(this.plugin.settings.dateFormat).onChange(async (v) => {
       this.plugin.settings.dateFormat = v.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("\u0424\u043E\u0440\u043C\u0430\u0442 \u0432\u0440\u0435\u043C\u0435\u043D\u0438").addText((t) => t.setPlaceholder("HH:mm").setValue(this.plugin.settings.timeFormat).onChange(async (v) => {
-      this.plugin.settings.timeFormat = v.trim();
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian.Setting(containerEl).setName("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u0434\u043D\u0435\u0439").setDesc("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0438\u0445 \u0434\u043D\u0435\u0439, \u043A\u043E\u0442\u043E\u0440\u043E\u0435 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0430\u0435\u0442\u0441\u044F \u0434\u043B\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u043E\u0432 \u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A").addText((t) => t.setPlaceholder("30").setValue(String(this.plugin.settings.daysToShow)).onChange(async (v) => {
+    new import_obsidian.Setting(containerEl).setName("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u0434\u043D\u0435\u0439").setDesc("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u043F\u0440\u043E\u0448\u0435\u0434\u0448\u0438\u0445 \u0434\u043D\u0435\u0439, \u043A\u043E\u0442\u043E\u0440\u043E\u0435 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0430\u0435\u0442\u0441\u044F \u0434\u043B\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u043E\u0432 \u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A").addText((t) => t.setPlaceholder("30").setValue(String(this.plugin.settings.daysToShow)).onChange(async (v) => {
       const num = parseInt(v.trim());
       if (!isNaN(num) && num > 0) {
         this.plugin.settings.daysToShow = num;
@@ -16206,6 +16649,7 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
       dropdown.addOption("good-habit", "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
       dropdown.addOption("bad-habit", "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
       dropdown.addOption("number", "\u0427\u0438\u0441\u043B\u043E");
+      dropdown.addOption("scale", "\u0428\u043A\u0430\u043B\u0430");
       dropdown.addOption("plusminus", "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)");
       dropdown.addOption("text", "\u0422\u0435\u043A\u0441\u0442");
       dropdown.setValue("good-habit");
@@ -16230,6 +16674,10 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
       numberOption.value = "number";
       numberOption.textContent = "\u0427\u0438\u0441\u043B\u043E";
       metricsGroup.appendChild(numberOption);
+      const scaleOption = document.createElement("option");
+      scaleOption.value = "scale";
+      scaleOption.textContent = "\u0428\u043A\u0430\u043B\u0430";
+      metricsGroup.appendChild(scaleOption);
       const plusminusOption = document.createElement("option");
       plusminusOption.value = "plusminus";
       plusminusOption.textContent = "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)";
@@ -16238,13 +16686,27 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
       textOption.value = "text";
       textOption.textContent = "\u0422\u0435\u043A\u0441\u0442";
       metricsGroup.appendChild(textOption);
-      const scaleOption = document.createElement("option");
-      scaleOption.value = "scale";
-      scaleOption.textContent = "\u0428\u043A\u0430\u043B\u0430";
-      metricsGroup.appendChild(scaleOption);
       typeDropdown.appendChild(metricsGroup);
       typeDropdown.value = "good-habit";
     }
+    const parametersHeader = contentEl.createEl("h3", { text: "\u041F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B" });
+    const parametersDescription = contentEl.createEl("p", {
+      text: "\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F - \u043D\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u043F\u043E\u043B\u0435. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u043F\u0443\u0441\u0442\u044B\u043C.",
+      cls: "tracker-notes__limits-description"
+    });
+    parametersDescription.style.fontSize = "0.9em";
+    parametersDescription.style.color = "var(--text-muted, #999999)";
+    parametersDescription.style.marginTop = "0.5em";
+    parametersDescription.style.marginBottom = "1em";
+    const unitSetting = new import_obsidian.Setting(contentEl).setName("\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F").addText((text) => {
+      text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u043C\u0435\u0442\u0440\u044B, \u043C\u0438\u043D\u0443\u0442\u044B, \u043A\u0433");
+      text.inputEl.style.width = "100%";
+    });
+    const plusminusStepSetting = new import_obsidian.Setting(contentEl).setName("\u0428\u0430\u0433").addText((text) => {
+      text.setPlaceholder("1").setValue("1").inputEl.type = "number";
+      text.inputEl.step = "any";
+      text.inputEl.style.width = "100%";
+    });
     const minValueSetting = new import_obsidian.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u043E\u0442"').addText((text) => {
       text.setPlaceholder("0").setValue("0").inputEl.type = "number";
       text.inputEl.style.width = "100%";
@@ -16258,20 +16720,74 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
       text.inputEl.step = "any";
       text.inputEl.style.width = "100%";
     });
+    parametersHeader.style.display = "none";
+    parametersDescription.style.display = "none";
+    unitSetting.settingEl.style.display = "none";
+    plusminusStepSetting.settingEl.style.display = "none";
     minValueSetting.settingEl.style.display = "none";
     maxValueSetting.settingEl.style.display = "none";
     stepSetting.settingEl.style.display = "none";
+    const limitsHeader = contentEl.createEl("h3", { text: "\u041B\u0438\u043C\u0438\u0442\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0441\u0442\u0438" });
+    const limitsDescription = contentEl.createEl("p", {
+      text: '\u041E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E \u0432\u044B \u043C\u043E\u0436\u0435\u0442\u0435 \u0441\u0434\u0435\u043B\u0430\u0442\u044C \u043C\u0435\u0442\u0440\u0438\u043A\u0443 \u043B\u0438\u043C\u0438\u0442\u0438\u0440\u0443\u044E\u0449\u0435\u0439 \u0438 \u0437\u0430\u0434\u0430\u0442\u044C \u0436\u0435\u043B\u0430\u0435\u043C\u044B\u0435 \u043F\u043E\u0440\u043E\u0433\u043E\u0432\u044B\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F. \u041F\u0440\u0438\u043C. "\u041D\u0435 \u043C\u0435\u043D\u044C\u0448\u0435 5000 \u0448\u0430\u0433\u043E\u0432 \u0432 \u0434\u0435\u043D\u044C", "\u041D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 3\u0445 \u0448\u043E\u043A\u043E\u043B\u0430\u0434\u043E\u043A"',
+      cls: "tracker-notes__limits-description"
+    });
+    limitsDescription.style.fontSize = "0.9em";
+    limitsDescription.style.color = "var(--text-muted, #999999)";
+    limitsDescription.style.marginTop = "0.5em";
+    limitsDescription.style.marginBottom = "1em";
+    const minLimitSetting = new import_obsidian.Setting(contentEl).setName("\u041D\u0438\u0436\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430").addText((text) => {
+      text.setPlaceholder("\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442").setValue("").inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const maxLimitSetting = new import_obsidian.Setting(contentEl).setName("\u0412\u0435\u0440\u0445\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430").addText((text) => {
+      text.setPlaceholder("\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442").setValue("").inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    limitsHeader.style.display = "none";
+    limitsDescription.style.display = "none";
+    minLimitSetting.settingEl.style.display = "none";
+    maxLimitSetting.settingEl.style.display = "none";
     const typeDropdownSelect = typeSetting.controlEl.querySelector("select");
     if (typeDropdownSelect) {
       typeDropdownSelect.onchange = () => {
-        if (typeDropdownSelect.value === "scale") {
-          minValueSetting.settingEl.style.display = "";
-          maxValueSetting.settingEl.style.display = "";
-          stepSetting.settingEl.style.display = "";
+        const isScale = typeDropdownSelect.value === "scale";
+        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(typeDropdownSelect.value);
+        const isPlusminus = typeDropdownSelect.value === "plusminus";
+        if (isMetric) {
+          parametersHeader.style.display = "";
+          parametersDescription.style.display = "";
+          unitSetting.settingEl.style.display = "";
+          if (isScale) {
+            minValueSetting.settingEl.style.display = "";
+            maxValueSetting.settingEl.style.display = "";
+            stepSetting.settingEl.style.display = "";
+            plusminusStepSetting.settingEl.style.display = "none";
+          } else {
+            minValueSetting.settingEl.style.display = "none";
+            maxValueSetting.settingEl.style.display = "none";
+            stepSetting.settingEl.style.display = "none";
+            plusminusStepSetting.settingEl.style.display = isPlusminus ? "" : "none";
+          }
         } else {
+          parametersHeader.style.display = "none";
+          parametersDescription.style.display = "none";
+          unitSetting.settingEl.style.display = "none";
+          plusminusStepSetting.settingEl.style.display = "none";
           minValueSetting.settingEl.style.display = "none";
           maxValueSetting.settingEl.style.display = "none";
           stepSetting.settingEl.style.display = "none";
+        }
+        if (isMetric) {
+          limitsHeader.style.display = "";
+          limitsDescription.style.display = "";
+          minLimitSetting.settingEl.style.display = "";
+          maxLimitSetting.settingEl.style.display = "";
+        } else {
+          limitsHeader.style.display = "none";
+          limitsDescription.style.display = "none";
+          minLimitSetting.settingEl.style.display = "none";
+          maxLimitSetting.settingEl.style.display = "none";
         }
       };
     }
@@ -16287,7 +16803,14 @@ var CreateTrackerModal = class extends import_obsidian.Modal {
         const type = typeDropdownSelect2 ? typeDropdownSelect2.value : "good-habit";
         const minValue = type === "scale" ? minValueSetting.controlEl.querySelector("input")?.value || "0" : "0";
         const maxValue = type === "scale" ? maxValueSetting.controlEl.querySelector("input")?.value || "10" : "10";
-        const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : "1";
+        const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : type === "plusminus" ? plusminusStepSetting.controlEl.querySelector("input")?.value || "1" : "1";
+        const minLimitInput = minLimitSetting.controlEl.querySelector("input");
+        const maxLimitInput = maxLimitSetting.controlEl.querySelector("input");
+        const minLimit = minLimitInput?.value.trim() || "";
+        const maxLimit = maxLimitInput?.value.trim() || "";
+        const unitInput = unitSetting.controlEl.querySelector("input");
+        const unit = unitInput?.value.trim() || "";
+        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
         const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
         const folderInput = folderSetting.controlEl.querySelector("input");
         let inputFolder = folderInput?.value.trim() || "";
@@ -16311,6 +16834,22 @@ type: "${type}"
 `;
             newFrontmatter += `step: ${parseFloat(step) || 1}
 `;
+          } else if (type === "plusminus") {
+            newFrontmatter += `step: ${parseFloat(step) || 1}
+`;
+          }
+          if (minLimit) {
+            newFrontmatter += `minLimit: ${parseFloat(minLimit)}
+`;
+          }
+          if (maxLimit) {
+            newFrontmatter += `maxLimit: ${parseFloat(maxLimit)}
+`;
+          }
+          if (unit && isMetric) {
+            const escapedUnit = unit.replace(/"/g, '\\"');
+            newFrontmatter += `unit: "${escapedUnit}"
+`;
           }
           newFrontmatter += `data: {}
 `;
@@ -16330,6 +16869,254 @@ ${body}` : ""}`;
           const errorMsg = error instanceof Error ? error.message : String(error);
           new import_obsidian.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
           console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
+        }
+      });
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var EditTrackerModal = class extends import_obsidian.Modal {
+  constructor(app, plugin, file) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+  }
+  async onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0442\u0440\u0435\u043A\u0435\u0440" });
+    const fileOpts = await this.plugin.getFileTypeFromFrontmatter(this.file);
+    const currentType = fileOpts.mode || "good-habit";
+    const currentName = this.file.basename;
+    const currentUnit = fileOpts.unit || "";
+    const currentMinValue = fileOpts.minValue || "";
+    const currentMaxValue = fileOpts.maxValue || "";
+    const currentStep = fileOpts.step || "";
+    const currentMinLimit = fileOpts.minLimit || "";
+    const currentMaxLimit = fileOpts.maxLimit || "";
+    const nameSetting = new import_obsidian.Setting(contentEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435").addText((text) => {
+      text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u0442\u0440\u0435\u043D\u043D\u044F\u044F \u0437\u0430\u0440\u044F\u0434\u043A\u0430");
+      text.setValue(currentName);
+      text.inputEl.style.width = "100%";
+    });
+    const typeSetting = new import_obsidian.Setting(contentEl).setName("\u0422\u0438\u043F").addDropdown((dropdown) => {
+      dropdown.addOption("good-habit", "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
+      dropdown.addOption("bad-habit", "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
+      dropdown.addOption("number", "\u0427\u0438\u0441\u043B\u043E");
+      dropdown.addOption("scale", "\u0428\u043A\u0430\u043B\u0430");
+      dropdown.addOption("plusminus", "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)");
+      dropdown.addOption("text", "\u0422\u0435\u043A\u0441\u0442");
+      dropdown.setValue(currentType);
+      dropdown.selectEl.disabled = true;
+    });
+    const typeDropdown = typeSetting.controlEl.querySelector("select");
+    if (typeDropdown) {
+      typeDropdown.innerHTML = "";
+      const habitsGroup = document.createElement("optgroup");
+      habitsGroup.label = "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438";
+      const goodHabitOption = document.createElement("option");
+      goodHabitOption.value = "good-habit";
+      goodHabitOption.textContent = "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430";
+      habitsGroup.appendChild(goodHabitOption);
+      const badHabitOption = document.createElement("option");
+      badHabitOption.value = "bad-habit";
+      badHabitOption.textContent = "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430";
+      habitsGroup.appendChild(badHabitOption);
+      typeDropdown.appendChild(habitsGroup);
+      const metricsGroup = document.createElement("optgroup");
+      metricsGroup.label = "\u041C\u0435\u0442\u0440\u0438\u043A\u0438";
+      const numberOption = document.createElement("option");
+      numberOption.value = "number";
+      numberOption.textContent = "\u0427\u0438\u0441\u043B\u043E";
+      metricsGroup.appendChild(numberOption);
+      const scaleOption = document.createElement("option");
+      scaleOption.value = "scale";
+      scaleOption.textContent = "\u0428\u043A\u0430\u043B\u0430";
+      metricsGroup.appendChild(scaleOption);
+      const plusminusOption = document.createElement("option");
+      plusminusOption.value = "plusminus";
+      plusminusOption.textContent = "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)";
+      metricsGroup.appendChild(plusminusOption);
+      const textOption = document.createElement("option");
+      textOption.value = "text";
+      textOption.textContent = "\u0422\u0435\u043A\u0441\u0442";
+      metricsGroup.appendChild(textOption);
+      typeDropdown.appendChild(metricsGroup);
+      typeDropdown.value = currentType;
+      typeDropdown.disabled = true;
+    }
+    const parametersHeader = contentEl.createEl("h3", { text: "\u041F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B" });
+    const parametersDescription = contentEl.createEl("p", {
+      text: "\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F - \u043D\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u043F\u043E\u043B\u0435. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u043F\u0443\u0441\u0442\u044B\u043C.",
+      cls: "tracker-notes__limits-description"
+    });
+    parametersDescription.style.fontSize = "0.9em";
+    parametersDescription.style.color = "var(--text-muted, #999999)";
+    parametersDescription.style.marginTop = "0.5em";
+    parametersDescription.style.marginBottom = "1em";
+    const unitSetting = new import_obsidian.Setting(contentEl).setName("\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F").addText((text) => {
+      text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u043C\u0435\u0442\u0440\u044B, \u043C\u0438\u043D\u0443\u0442\u044B, \u043A\u0433");
+      text.setValue(currentUnit);
+      text.inputEl.style.width = "100%";
+    });
+    const plusminusStepSetting = new import_obsidian.Setting(contentEl).setName("\u0428\u0430\u0433").addText((text) => {
+      text.setPlaceholder("1").setValue(currentStep || "1").inputEl.type = "number";
+      text.inputEl.step = "any";
+      text.inputEl.style.width = "100%";
+    });
+    const minValueSetting = new import_obsidian.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u043E\u0442"').addText((text) => {
+      text.setPlaceholder("0").setValue(currentMinValue || "0").inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const maxValueSetting = new import_obsidian.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u0434\u043E"').addText((text) => {
+      text.setPlaceholder("10").setValue(currentMaxValue || "10").inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const stepSetting = new import_obsidian.Setting(contentEl).setName("\u0428\u0430\u0433").addText((text) => {
+      text.setPlaceholder("1").setValue(currentStep || "1").inputEl.type = "number";
+      text.inputEl.step = "any";
+      text.inputEl.style.width = "100%";
+    });
+    const limitsHeader = contentEl.createEl("h3", { text: "\u041B\u0438\u043C\u0438\u0442\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0441\u0442\u0438" });
+    const limitsDescription = contentEl.createEl("p", {
+      text: '\u041E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E \u0432\u044B \u043C\u043E\u0436\u0435\u0442\u0435 \u0441\u0434\u0435\u043B\u0430\u0442\u044C \u043C\u0435\u0442\u0440\u0438\u043A\u0443 \u043B\u0438\u043C\u0438\u0442\u0438\u0440\u0443\u044E\u0449\u0435\u0439 \u0438 \u0437\u0430\u0434\u0430\u0442\u044C \u0436\u0435\u043B\u0430\u0435\u043C\u044B\u0435 \u043F\u043E\u0440\u043E\u0433\u043E\u0432\u044B\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F. \u041F\u0440\u0438\u043C. "\u041D\u0435 \u043C\u0435\u043D\u044C\u0448\u0435 5000 \u0448\u0430\u0433\u043E\u0432 \u0432 \u0434\u0435\u043D\u044C", "\u041D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 3\u0445 \u0448\u043E\u043A\u043E\u043B\u0430\u0434\u043E\u043A"',
+      cls: "tracker-notes__limits-description"
+    });
+    limitsDescription.style.fontSize = "0.9em";
+    limitsDescription.style.color = "var(--text-muted, #999999)";
+    limitsDescription.style.marginTop = "0.5em";
+    limitsDescription.style.marginBottom = "1em";
+    const minLimitSetting = new import_obsidian.Setting(contentEl).setName("\u041D\u0438\u0436\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430").addText((text) => {
+      text.setPlaceholder("\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442").setValue(currentMinLimit).inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const maxLimitSetting = new import_obsidian.Setting(contentEl).setName("\u0412\u0435\u0440\u0445\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430").addText((text) => {
+      text.setPlaceholder("\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442").setValue(currentMaxLimit).inputEl.type = "number";
+      text.inputEl.style.width = "100%";
+    });
+    const updateFieldsVisibility = () => {
+      const isScale = typeDropdown.value === "scale";
+      const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(typeDropdown.value);
+      const isPlusminus = typeDropdown.value === "plusminus";
+      if (isMetric) {
+        parametersHeader.style.display = "";
+        parametersDescription.style.display = "";
+        unitSetting.settingEl.style.display = "";
+        if (isScale) {
+          minValueSetting.settingEl.style.display = "";
+          maxValueSetting.settingEl.style.display = "";
+          stepSetting.settingEl.style.display = "";
+          plusminusStepSetting.settingEl.style.display = "none";
+        } else {
+          minValueSetting.settingEl.style.display = "none";
+          maxValueSetting.settingEl.style.display = "none";
+          stepSetting.settingEl.style.display = "none";
+          plusminusStepSetting.settingEl.style.display = isPlusminus ? "" : "none";
+        }
+      } else {
+        parametersHeader.style.display = "none";
+        parametersDescription.style.display = "none";
+        unitSetting.settingEl.style.display = "none";
+        plusminusStepSetting.settingEl.style.display = "none";
+        minValueSetting.settingEl.style.display = "none";
+        maxValueSetting.settingEl.style.display = "none";
+        stepSetting.settingEl.style.display = "none";
+      }
+      if (isMetric) {
+        limitsHeader.style.display = "";
+        limitsDescription.style.display = "";
+        minLimitSetting.settingEl.style.display = "";
+        maxLimitSetting.settingEl.style.display = "";
+      } else {
+        limitsHeader.style.display = "none";
+        limitsDescription.style.display = "none";
+        minLimitSetting.settingEl.style.display = "none";
+        maxLimitSetting.settingEl.style.display = "none";
+      }
+    };
+    updateFieldsVisibility();
+    if (typeDropdown) {
+      typeDropdown.onchange = updateFieldsVisibility;
+    }
+    new import_obsidian.Setting(contentEl).addButton((button) => {
+      button.setButtonText("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C").setCta().onClick(async () => {
+        const nameInput = nameSetting.controlEl.querySelector("input");
+        const name = nameInput.value.trim();
+        if (!name) {
+          new import_obsidian.Notice("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435");
+          return;
+        }
+        const type = typeDropdown ? typeDropdown.value : currentType;
+        const minValue = type === "scale" ? minValueSetting.controlEl.querySelector("input")?.value || "0" : "0";
+        const maxValue = type === "scale" ? maxValueSetting.controlEl.querySelector("input")?.value || "10" : "10";
+        const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : type === "plusminus" ? plusminusStepSetting.controlEl.querySelector("input")?.value || "1" : "1";
+        const minLimitInput = minLimitSetting.controlEl.querySelector("input");
+        const maxLimitInput = maxLimitSetting.controlEl.querySelector("input");
+        const minLimit = minLimitInput?.value.trim() || "";
+        const maxLimit = maxLimitInput?.value.trim() || "";
+        const unitInput = unitSetting.controlEl.querySelector("input");
+        const unit = unitInput?.value.trim() || "";
+        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
+        try {
+          const content = await this.app.vault.read(this.file);
+          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+          const body = frontmatterMatch ? content.slice(frontmatterMatch[0].length).trim() : content.trim();
+          let existingData = {};
+          if (frontmatterMatch) {
+            existingData = this.plugin.parseFrontmatterData(frontmatterMatch[1]);
+          }
+          const escapedName = name.replace(/"/g, '\\"');
+          let newFrontmatter = `name: "${escapedName}"
+type: "${type}"
+`;
+          if (type === "scale") {
+            newFrontmatter += `minValue: ${parseFloat(minValue) || 0}
+`;
+            newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}
+`;
+            newFrontmatter += `step: ${parseFloat(step) || 1}
+`;
+          } else if (type === "plusminus") {
+            newFrontmatter += `step: ${parseFloat(step) || 1}
+`;
+          }
+          if (minLimit) {
+            newFrontmatter += `minLimit: ${parseFloat(minLimit)}
+`;
+          }
+          if (maxLimit) {
+            newFrontmatter += `maxLimit: ${parseFloat(maxLimit)}
+`;
+          }
+          if (unit && isMetric) {
+            const escapedUnit = unit.replace(/"/g, '\\"');
+            newFrontmatter += `unit: "${escapedUnit}"
+`;
+          }
+          const dataYaml = this.plugin.formatDataToYaml(existingData);
+          newFrontmatter += dataYaml;
+          const newContent = `---
+${newFrontmatter}---${body ? `
+
+${body}` : ""}`;
+          await this.app.vault.modify(this.file, newContent);
+          if (name !== this.file.basename) {
+            const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+            const newPath = this.file.path.replace(this.file.name, newFileName);
+            await this.app.vault.rename(this.file, newPath);
+          }
+          new import_obsidian.Notice(`\u0422\u0440\u0435\u043A\u0435\u0440 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D: ${name}`);
+          const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
+          setTimeout(async () => {
+            await this.plugin.onTrackerCreated(fileFolderPath);
+          }, 500);
+          this.close();
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          new import_obsidian.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
+          console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
         }
       });
     });
