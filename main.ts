@@ -8,6 +8,8 @@ type TrackerSettings = {
   daysToShow: number;          // количество дней для отображения графиков
   showChartByDefault: boolean;  // показывать график по умолчанию
   showStatsByDefault: boolean; // показывать статистику по умолчанию
+  hideChartOnMobile: boolean;  // скрывать график на смартфоне
+  hideStatsOnMobile: boolean;  // скрывать статистику на смартфоне
 };
 
 const DEFAULT_SETTINGS: TrackerSettings = {
@@ -16,6 +18,8 @@ const DEFAULT_SETTINGS: TrackerSettings = {
   daysToShow: 30,
   showChartByDefault: true,
   showStatsByDefault: false,
+  hideChartOnMobile: false,
+  hideStatsOnMobile: false,
 };
 
 // Интерфейс для представления узла дерева папок
@@ -337,6 +341,10 @@ export default class TrackerPlugin extends Plugin {
   settings: TrackerSettings;
   activeBlocks: Set<TrackerBlockRenderChild> = new Set();
 
+  private isMobileDevice(): boolean {
+    return window.innerWidth <= 768;
+  }
+
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addStyleSheet();
@@ -395,10 +403,11 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes__value.updated { animation: pulse 0.3s ease; }
       @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+      .tracker-notes input { outline: none !important; }
       .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }
       .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
       .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
-      .tracker-notes input[type="number"]:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }
       .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }
       .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
       .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
@@ -420,7 +429,7 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }
       .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
       .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }
-      .tracker-notes__text-input:focus { outline: 2px solid var(--interactive-accent); outline-offset: 2px; border-color: var(--interactive-accent); }
+      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }
       .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }
       .tracker-notes__stats > div { margin: 0.3em 0; }
       .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }
@@ -434,7 +443,7 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }
       .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }
-      .tracker-notes__date-input:focus { outline: none; box-shadow: 0 0 0 2px var(--background-modifier-border-focus, hsla(var(--interactive-accent-hsl), 0.2)); }
+      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }
       .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }
       .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
       .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }
@@ -474,7 +483,7 @@ export default class TrackerPlugin extends Plugin {
       .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }
       .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }
       .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }
-      .tracker-notes__folder-node.level-3 { padding-left: 1em; margin-top: 0.5em; margin-bottom: 0.75em; }
+      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }
       .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
       .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
       .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }
@@ -493,15 +502,15 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
         .tracker-notes__date-picker-container { padding: 0; }
         .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }
-        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; }
-        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; }
+        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }
+        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }
         .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }
         .tracker-notes__value { font-size: 0.9em; min-width: 2em; }
-        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; }
-        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; }
+        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
+        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
         .tracker-notes__rating { gap: 0.2em; justify-content: center; }
         .tracker-notes__rating-star { font-size: 1.2em; }
-        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; }
+        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
         .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }
         .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }
         .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }
@@ -536,21 +545,22 @@ export default class TrackerPlugin extends Plugin {
         .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
         .tracker-notes__date-picker { gap: 0.25em; }
-        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; }
-        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; }
+        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }
+        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }
         .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }
         .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }
-        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; }
-        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; }
+        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
+        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
         .tracker-notes__rating-star { font-size: 1.1em; }
-        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; }
+        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
         .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }
         .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }
         .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }
         .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
         .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
         .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
-        .tracker-notes__heatmap-day { min-width: 2.2em; max-width: 2.5em; font-size: 0.75em; }
+        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }
+        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }
         .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }
         .tracker-notes__calendar-day { font-size: 0.6em; }
         .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }
@@ -603,6 +613,109 @@ export default class TrackerPlugin extends Plugin {
         console.error("Tracker: ошибка при обновлении блока", error);
       }
     }
+  }
+
+  async refreshAllBlocks() {
+    // Сохраняем позицию скролла для всех возможных контейнеров
+    const scrollPositions = new Map<HTMLElement, { top: number; left: number }>();
+    
+    // Функция для поиска и сохранения скролла всех элементов с overflow
+    const findAndSaveScrollContainers = (root: HTMLElement) => {
+      // Проверяем сам элемент
+      const style = window.getComputedStyle(root);
+      if (style.overflow === 'auto' || style.overflow === 'scroll' || 
+          style.overflowY === 'auto' || style.overflowY === 'scroll' ||
+          style.overflowX === 'auto' || style.overflowX === 'scroll') {
+        scrollPositions.set(root, {
+          top: root.scrollTop,
+          left: root.scrollLeft
+        });
+      }
+      
+      // Проверяем все дочерние элементы
+      const allElements = root.querySelectorAll('*');
+      for (const el of Array.from(allElements) as HTMLElement[]) {
+        const elStyle = window.getComputedStyle(el);
+        if (elStyle.overflow === 'auto' || elStyle.overflow === 'scroll' || 
+            elStyle.overflowY === 'auto' || elStyle.overflowY === 'scroll' ||
+            elStyle.overflowX === 'auto' || elStyle.overflowX === 'scroll') {
+          scrollPositions.set(el, {
+            top: el.scrollTop,
+            left: el.scrollLeft
+          });
+        }
+      }
+    };
+    
+    // Сохраняем скролл для всех активных листьев
+    for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+      const view = leaf.view as any;
+      if (view && view.containerEl) {
+        findAndSaveScrollContainers(view.containerEl);
+        
+        // Также проверяем специфичные контейнеры Obsidian
+        const cmScroller = view.containerEl.querySelector('.cm-scroller') as HTMLElement;
+        if (cmScroller) {
+          scrollPositions.set(cmScroller, {
+            top: cmScroller.scrollTop,
+            left: cmScroller.scrollLeft
+          });
+        }
+        
+        const previewView = view.containerEl.querySelector('.markdown-preview-view') as HTMLElement;
+        if (previewView) {
+          scrollPositions.set(previewView, {
+            top: previewView.scrollTop,
+            left: previewView.scrollLeft
+          });
+        }
+      }
+    }
+    
+    // Также сохраняем скролл window
+    const windowScroll = { top: window.scrollY, left: window.scrollX };
+    
+    // Обновляем все блоки
+    for (const block of Array.from(this.activeBlocks)) {
+      try {
+        await block.render();
+      } catch (error) {
+        console.error("Tracker: ошибка при обновлении блока", error);
+      }
+    }
+    
+    // Восстанавливаем позицию скролла после обновления DOM
+    // Используем несколько requestAnimationFrame и небольшую задержку для гарантии, что DOM полностью обновлен
+    const restoreScroll = () => {
+      // Восстанавливаем скролл window
+      window.scrollTo(windowScroll.left, windowScroll.top);
+      
+      // Восстанавливаем скролл для всех контейнеров
+      for (const [container, position] of scrollPositions.entries()) {
+        if (container && container.isConnected) {
+          try {
+            container.scrollTop = position.top;
+            container.scrollLeft = position.left;
+          } catch (e) {
+            // Игнорируем ошибки, если элемент больше не доступен
+          }
+        }
+      }
+    };
+    
+    // Пробуем восстановить несколько раз с разными задержками
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        restoreScroll();
+        // Также пробуем восстановить после небольшой задержки
+        setTimeout(() => {
+          restoreScroll();
+        }, 50);
+        setTimeout(() => {
+          restoreScroll();
+        }, 100);
+      });
+    });
   }
 
   private normalizePath(path: string): string {
@@ -755,8 +868,10 @@ export default class TrackerPlugin extends Plugin {
       const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
       
       // Используем настройки по умолчанию, если параметры не заданы напрямую
-      const shouldShowChart = opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault);
-      const shouldShowStats = opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault);
+      const shouldShowChart = (opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault)) && 
+                               !(this.isMobileDevice() && this.settings.hideChartOnMobile);
+      const shouldShowStats = (opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault)) && 
+                              !(this.isMobileDevice() && this.settings.hideStatsOnMobile);
       
       if (shouldShowChart) {
         await this.renderChart(trackerItem, file, dateIso, daysToShow);
@@ -781,8 +896,10 @@ export default class TrackerPlugin extends Plugin {
     const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
     
     // Используем настройки по умолчанию, если параметры не заданы напрямую
-    const shouldShowChart = opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault);
-    const shouldShowStats = opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault);
+    const shouldShowChart = (opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault)) && 
+                             !(this.isMobileDevice() && this.settings.hideChartOnMobile);
+    const shouldShowStats = (opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault)) && 
+                            !(this.isMobileDevice() && this.settings.hideStatsOnMobile);
     
     if (shouldShowChart) {
       await this.renderChart(trackerItem, file, dateIso, daysToShow);
@@ -796,7 +913,9 @@ export default class TrackerPlugin extends Plugin {
     // Очищаем контейнер перед созданием новых элементов
     container.empty();
     
-    const mode = (opts.mode ?? "good-habit").toLowerCase();
+    // Всегда определяем тип из frontmatter, игнорируя mode из opts
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    const mode = (fileOpts.mode ?? "good-habit").toLowerCase();
     
     // Находим родительский контейнер для обновления визуализаций
     const trackerItem = container.closest(".tracker-notes__tracker") as HTMLElement;
@@ -2499,7 +2618,7 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async onTrackerCreated(folderPath: string) {
-    await this.refreshBlocksForFolder(folderPath);
+    await this.refreshAllBlocks();
   }
 
 
@@ -2690,24 +2809,32 @@ class TrackerSettingsTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl).setName("Папка трекеров по умолчанию")
+      .setDesc("Можно переопределить параметром folder: `path`")
       .addText(t => t.setPlaceholder("0. Files/Trackers")
         .setValue(this.plugin.settings.trackersFolder)
         .onChange(async (v)=>{ this.plugin.settings.trackersFolder = v.trim(); await this.plugin.saveSettings(); }));
 
     new Setting(containerEl).setName("Показывать график по умолчанию")
+      .setDesc("Можно переопределить параметром showChart: `true/false`")
       .addToggle(t => t
         .setValue(this.plugin.settings.showChartByDefault)
         .onChange(async (v)=>{ this.plugin.settings.showChartByDefault = v; await this.plugin.saveSettings(); }));
 
     new Setting(containerEl).setName("Показывать статистику по умолчанию")
+      .setDesc("Можно переопределить параметром showStats: `true/false`")
       .addToggle(t => t
         .setValue(this.plugin.settings.showStatsByDefault)
         .onChange(async (v)=>{ this.plugin.settings.showStatsByDefault = v; await this.plugin.saveSettings(); }));
 
-    new Setting(containerEl).setName("Формат даты")
-      .addText(t => t.setPlaceholder("YYYY-MM-DD")
-        .setValue(this.plugin.settings.dateFormat)
-        .onChange(async (v)=>{ this.plugin.settings.dateFormat = v.trim(); await this.plugin.saveSettings(); }));
+    new Setting(containerEl).setName("Скрывать график на смартфоне")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.hideChartOnMobile)
+        .onChange(async (v)=>{ this.plugin.settings.hideChartOnMobile = v; await this.plugin.saveSettings(); }));
+
+    new Setting(containerEl).setName("Скрывать статистику на смартфоне")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.hideStatsOnMobile)
+        .onChange(async (v)=>{ this.plugin.settings.hideStatsOnMobile = v; await this.plugin.saveSettings(); }));
 
     new Setting(containerEl).setName("Количество дней")
       .setDesc("Количество прошедших дней, которое отображается для графиков и привычек")
@@ -2903,6 +3030,7 @@ class CreateTrackerModal extends Modal {
         text.setPlaceholder("Например: метры, минуты, кг");
         text.inputEl.style.width = "100%";
       });
+    const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
     
     // Поле "Шаг" для счетчика (plusminus)
     const plusminusStepSetting = new Setting(contentEl)
@@ -2996,10 +3124,22 @@ class CreateTrackerModal extends Modal {
         
         // Управление блоком "Параметры" (для всех метрик)
         const isPlusminus = typeDropdownSelect.value === "plusminus";
+        const isText = typeDropdownSelect.value === "text";
         if (isMetric) {
           parametersHeader.style.display = "";
           parametersDescription.style.display = "";
           unitSetting.settingEl.style.display = "";
+          // Для типа "текст" устанавливаем "слов" и отключаем поле
+          if (isText) {
+            if (unitInput) {
+              unitInput.value = "слов";
+              unitInput.disabled = true;
+            }
+          } else {
+            if (unitInput) {
+              unitInput.disabled = false;
+            }
+          }
           // Параметры minValue, maxValue, step только для scale
           if (isScale) {
             minValueSetting.settingEl.style.display = "";
@@ -3072,8 +3212,10 @@ class CreateTrackerModal extends Modal {
             const maxLimit = maxLimitInput?.value.trim() || "";
             
             // Получаем единицу измерения
-            const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
-            const unit = unitInput?.value.trim() || "";
+            const unitInputValue = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const unitRaw = unitInputValue?.value.trim() || "";
+            // Для типа "текст" всегда используем "слов"
+            const unit = type === "text" ? "слов" : unitRaw;
             const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
             
             const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
@@ -3132,11 +3274,9 @@ class CreateTrackerModal extends Modal {
               
               new Notice(`Создан трекер: ${name}`);
               
-              // Обновляем все открытые блоки tracker для этой папки
+              // Обновляем все открытые блоки tracker
               const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
-              setTimeout(async () => {
-                await this.plugin.onTrackerCreated(fileFolderPath);
-              }, 500);
+              await this.plugin.onTrackerCreated(fileFolderPath);
               
               this.close();
             } catch (error) {
@@ -3265,9 +3405,16 @@ class EditTrackerModal extends Modal {
       .setName("Единица измерения")
       .addText(text => {
         text.setPlaceholder("Например: метры, минуты, кг");
-        text.setValue(currentUnit);
+        // Для типа "текст" всегда используем "слов"
+        const unitValue = currentType === "text" ? "слов" : currentUnit;
+        text.setValue(unitValue);
         text.inputEl.style.width = "100%";
+        // Для типа "текст" отключаем поле
+        if (currentType === "text") {
+          text.inputEl.disabled = true;
+        }
       });
+    const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
     
     // Поле "Шаг" для счетчика (plusminus)
     const plusminusStepSetting = new Setting(contentEl)
@@ -3344,10 +3491,22 @@ class EditTrackerModal extends Modal {
       const isPlusminus = typeDropdown.value === "plusminus";
       
       // Управление блоком "Параметры" (для всех метрик)
+      const isText = typeDropdown.value === "text";
       if (isMetric) {
         parametersHeader.style.display = "";
         parametersDescription.style.display = "";
         unitSetting.settingEl.style.display = "";
+        // Для типа "текст" устанавливаем "слов" и отключаем поле
+        if (isText) {
+          if (unitInput) {
+            unitInput.value = "слов";
+            unitInput.disabled = true;
+          }
+        } else {
+          if (unitInput) {
+            unitInput.disabled = false;
+          }
+        }
         // Параметры minValue, maxValue, step только для scale
         if (isScale) {
           minValueSetting.settingEl.style.display = "";
@@ -3426,8 +3585,10 @@ class EditTrackerModal extends Modal {
             const maxLimit = maxLimitInput?.value.trim() || "";
             
             // Получаем единицу измерения
-            const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
-            const unit = unitInput?.value.trim() || "";
+            const unitInputValue = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
+            const unitRaw = unitInputValue?.value.trim() || "";
+            // Для типа "текст" всегда используем "слов"
+            const unit = type === "text" ? "слов" : unitRaw;
             const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
             
             try {
@@ -3487,11 +3648,9 @@ class EditTrackerModal extends Modal {
               
               new Notice(`Трекер обновлен: ${name}`);
               
-              // Обновляем все открытые блоки tracker для этой папки
+              // Обновляем все открытые блоки tracker
               const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
-              setTimeout(async () => {
-                await this.plugin.onTrackerCreated(fileFolderPath);
-              }, 500);
+              await this.plugin.onTrackerCreated(fileFolderPath);
               
               this.close();
             } catch (error) {

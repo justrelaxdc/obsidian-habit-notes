@@ -54,7 +54,6 @@
 ````markdown
 ```tracker
 file: 3. Metrics/Habits/Утренняя зарядка.md
-mode: checkbox
 ```
 ````
 
