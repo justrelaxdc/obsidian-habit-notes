@@ -3,6 +3,9 @@ import { Modal, Notice, Setting } from "obsidian";
 import type TrackerPlugin from "../../core/tracker-plugin";
 import { DEFAULT_SETTINGS } from "../../domain/types";
 import { FolderSuggest } from "../suggest/folder-suggest";
+import { populateTrackerTypeSelector, isMetricType } from "../components/tracker-type-selector";
+import { TrackerType, MODAL_LABELS, PLACEHOLDERS, DEFAULTS, ERROR_MESSAGES, SUCCESS_MESSAGES } from "../../constants";
+import { sanitizeFileName } from "../../utils/validation";
 
 export class CreateTrackerModal extends Modal {
   private readonly plugin: TrackerPlugin;
@@ -15,17 +18,17 @@ export class CreateTrackerModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Создать новый трекер" });
+    contentEl.createEl("h2", { text: MODAL_LABELS.CREATE_TRACKER });
 
-    const nameSetting = new Setting(contentEl).setName("Название").addText((text) => {
-      text.setPlaceholder("Например: Утренняя зарядка");
+    const nameSetting = new Setting(contentEl).setName(MODAL_LABELS.NAME).addText((text) => {
+      text.setPlaceholder(PLACEHOLDERS.TRACKER_NAME);
       text.inputEl.style.width = "100%";
     });
 
     const folders = this.app.vault.getAllFolders();
 
     const folderSetting = new Setting(contentEl)
-      .setName("Путь")
+      .setName(MODAL_LABELS.PATH)
       .addText((text) => {
         const defaultPath = this.plugin.settings.trackersFolder || DEFAULT_SETTINGS.trackersFolder;
         text.setPlaceholder(defaultPath);
@@ -35,57 +38,17 @@ export class CreateTrackerModal extends Modal {
       });
 
     const typeSetting = new Setting(contentEl)
-      .setName("Тип")
+      .setName(MODAL_LABELS.TYPE)
       .addDropdown((dropdown) => {
-        dropdown.addOption("good-habit", "Хорошая привычка");
-        dropdown.addOption("bad-habit", "Плохая привычка");
-        dropdown.addOption("number", "Число");
-        dropdown.addOption("scale", "Шкала");
-        dropdown.addOption("plusminus", "Счётчик (+/-)");
-        dropdown.addOption("text", "Текст");
-        dropdown.setValue("good-habit");
+        dropdown.setValue(TrackerType.GOOD_HABIT);
       });
 
     const typeDropdown = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
     if (typeDropdown) {
-      typeDropdown.innerHTML = "";
-
-      const habitsGroup = document.createElement("optgroup");
-      habitsGroup.label = "Привычки";
-      const goodHabitOption = document.createElement("option");
-      goodHabitOption.value = "good-habit";
-      goodHabitOption.textContent = "Хорошая привычка";
-      habitsGroup.appendChild(goodHabitOption);
-      const badHabitOption = document.createElement("option");
-      badHabitOption.value = "bad-habit";
-      badHabitOption.textContent = "Плохая привычка";
-      habitsGroup.appendChild(badHabitOption);
-      typeDropdown.appendChild(habitsGroup);
-
-      const metricsGroup = document.createElement("optgroup");
-      metricsGroup.label = "Метрики";
-      const numberOption = document.createElement("option");
-      numberOption.value = "number";
-      numberOption.textContent = "Число";
-      metricsGroup.appendChild(numberOption);
-      const scaleOption = document.createElement("option");
-      scaleOption.value = "scale";
-      scaleOption.textContent = "Шкала";
-      metricsGroup.appendChild(scaleOption);
-      const plusminusOption = document.createElement("option");
-      plusminusOption.value = "plusminus";
-      plusminusOption.textContent = "Счётчик (+/-)";
-      metricsGroup.appendChild(plusminusOption);
-      const textOption = document.createElement("option");
-      textOption.value = "text";
-      textOption.textContent = "Текст";
-      metricsGroup.appendChild(textOption);
-      typeDropdown.appendChild(metricsGroup);
-
-      typeDropdown.value = "good-habit";
+      populateTrackerTypeSelector(typeDropdown, TrackerType.GOOD_HABIT);
     }
 
-    const parametersHeader = contentEl.createEl("h3", { text: "Параметры" });
+    const parametersHeader = contentEl.createEl("h3", { text: MODAL_LABELS.PARAMETERS });
     const parametersDescription = contentEl.createEl("p", {
       text: "Единица измерения - не обязательное поле. Можно оставить пустым.",
       cls: "tracker-notes__limits-description",
@@ -96,50 +59,50 @@ export class CreateTrackerModal extends Modal {
     parametersDescription.style.marginBottom = "1em";
 
     const unitSetting = new Setting(contentEl)
-      .setName("Единица измерения")
+      .setName(MODAL_LABELS.UNIT)
       .addText((text) => {
-        text.setPlaceholder("Например: метры, минуты, кг");
+        text.setPlaceholder(PLACEHOLDERS.UNIT);
         text.inputEl.style.width = "100%";
       });
     const unitInput = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
 
     const plusminusStepSetting = new Setting(contentEl)
-      .setName("Шаг")
+      .setName(MODAL_LABELS.STEP)
       .addText((text) => {
         text
-          .setPlaceholder("1")
-          .setValue("1")
+          .setPlaceholder(String(DEFAULTS.STEP))
+          .setValue(String(DEFAULTS.STEP))
           .inputEl.type = "number";
         text.inputEl.step = "any";
         text.inputEl.style.width = "100%";
       });
 
     const minValueSetting = new Setting(contentEl)
-      .setName("Значение \"от\"")
+      .setName(MODAL_LABELS.VALUE_FROM)
       .addText((text) => {
         text
-          .setPlaceholder("0")
-          .setValue("0")
+          .setPlaceholder(String(DEFAULTS.MIN_VALUE))
+          .setValue(String(DEFAULTS.MIN_VALUE))
           .inputEl.type = "number";
         text.inputEl.style.width = "100%";
       });
 
     const maxValueSetting = new Setting(contentEl)
-      .setName("Значение \"до\"")
+      .setName(MODAL_LABELS.VALUE_TO)
       .addText((text) => {
         text
-          .setPlaceholder("10")
-          .setValue("10")
+          .setPlaceholder(String(DEFAULTS.MAX_VALUE))
+          .setValue(String(DEFAULTS.MAX_VALUE))
           .inputEl.type = "number";
         text.inputEl.style.width = "100%";
       });
 
     const stepSetting = new Setting(contentEl)
-      .setName("Шаг")
+      .setName(MODAL_LABELS.STEP)
       .addText((text) => {
         text
-          .setPlaceholder("1")
-          .setValue("1")
+          .setPlaceholder(String(DEFAULTS.STEP))
+          .setValue(String(DEFAULTS.STEP))
           .inputEl.type = "number";
         text.inputEl.step = "any";
         text.inputEl.style.width = "100%";
@@ -153,7 +116,7 @@ export class CreateTrackerModal extends Modal {
     maxValueSetting.settingEl.style.display = "none";
     stepSetting.settingEl.style.display = "none";
 
-    const limitsHeader = contentEl.createEl("h3", { text: "Лимиты успешности" });
+    const limitsHeader = contentEl.createEl("h3", { text: MODAL_LABELS.LIMITS });
     const limitsDescription = contentEl.createEl("p", {
       text: 'Опционально вы можете сделать метрику лимитирующей и задать желаемые пороговые значения. Прим. "Не меньше 5000 шагов в день", "Не больше 3х шоколадок"',
       cls: "tracker-notes__limits-description",
@@ -164,20 +127,20 @@ export class CreateTrackerModal extends Modal {
     limitsDescription.style.marginBottom = "1em";
 
     const minLimitSetting = new Setting(contentEl)
-      .setName("Нижняя граница")
+      .setName(MODAL_LABELS.LOWER_LIMIT)
       .addText((text) => {
         text
-          .setPlaceholder("По умолчанию - нет")
+          .setPlaceholder(PLACEHOLDERS.LIMIT_NONE)
           .setValue("")
           .inputEl.type = "number";
         text.inputEl.style.width = "100%";
       });
 
     const maxLimitSetting = new Setting(contentEl)
-      .setName("Верхняя граница")
+      .setName(MODAL_LABELS.UPPER_LIMIT)
       .addText((text) => {
         text
-          .setPlaceholder("По умолчанию - нет")
+          .setPlaceholder(PLACEHOLDERS.LIMIT_NONE)
           .setValue("")
           .inputEl.type = "number";
         text.inputEl.style.width = "100%";
@@ -191,12 +154,10 @@ export class CreateTrackerModal extends Modal {
     const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
     if (typeDropdownSelect) {
       typeDropdownSelect.onchange = () => {
-        const isScale = typeDropdownSelect.value === "scale";
-        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(
-          typeDropdownSelect.value,
-        );
-        const isPlusminus = typeDropdownSelect.value === "plusminus";
-        const isText = typeDropdownSelect.value === "text";
+        const isScale = typeDropdownSelect.value === TrackerType.SCALE;
+        const isMetric = isMetricType(typeDropdownSelect.value);
+        const isPlusminus = typeDropdownSelect.value === TrackerType.PLUSMINUS;
+        const isText = typeDropdownSelect.value === TrackerType.TEXT;
 
         if (isMetric) {
           parametersHeader.style.display = "";
@@ -204,7 +165,7 @@ export class CreateTrackerModal extends Modal {
           unitSetting.settingEl.style.display = "";
           if (isText) {
             if (unitInput) {
-              unitInput.value = "слов";
+              unitInput.value = DEFAULTS.TEXT_UNIT;
               unitInput.disabled = true;
             }
           } else if (unitInput) {
@@ -247,30 +208,30 @@ export class CreateTrackerModal extends Modal {
     }
 
     new Setting(contentEl).addButton((button) => {
-      button.setButtonText("Создать").setCta().onClick(async () => {
+      button.setButtonText(MODAL_LABELS.CREATE).setCta().onClick(async () => {
         const nameInput = nameSetting.controlEl.querySelector("input") as HTMLInputElement;
         const name = nameInput.value.trim();
         if (!name) {
-          new Notice("Введите название");
+          new Notice(ERROR_MESSAGES.ENTER_NAME);
           return;
         }
 
         const typeDropdownSelect = typeSetting.controlEl.querySelector("select") as HTMLSelectElement;
-        const type = typeDropdownSelect ? typeDropdownSelect.value : "good-habit";
+        const type = typeDropdownSelect ? typeDropdownSelect.value : TrackerType.GOOD_HABIT;
         const minValue =
-          type === "scale"
-            ? (minValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "0"
-            : "0";
+          type === TrackerType.SCALE
+            ? (minValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || String(DEFAULTS.MIN_VALUE)
+            : String(DEFAULTS.MIN_VALUE);
         const maxValue =
-          type === "scale"
-            ? (maxValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "10"
-            : "10";
+          type === TrackerType.SCALE
+            ? (maxValueSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || String(DEFAULTS.MAX_VALUE)
+            : String(DEFAULTS.MAX_VALUE);
         const step =
-          type === "scale"
-            ? (stepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
-            : type === "plusminus"
-            ? (plusminusStepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || "1"
-            : "1";
+          type === TrackerType.SCALE
+            ? (stepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || String(DEFAULTS.STEP)
+            : type === TrackerType.PLUSMINUS
+            ? (plusminusStepSetting.controlEl.querySelector("input") as HTMLInputElement)?.value || String(DEFAULTS.STEP)
+            : String(DEFAULTS.STEP);
 
         const minLimitInput = minLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
         const maxLimitInput = maxLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
@@ -279,10 +240,10 @@ export class CreateTrackerModal extends Modal {
 
         const unitInputValue = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
         const unitRaw = unitInputValue?.value.trim() || "";
-        const unit = type === "text" ? "слов" : unitRaw;
-        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
+        const unit = type === TrackerType.TEXT ? DEFAULTS.TEXT_UNIT : unitRaw;
+        const isMetric = isMetricType(type);
 
-        const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+        const fileName = sanitizeFileName(name) + ".md";
         const folderInput = folderSetting.controlEl.querySelector("input") as HTMLInputElement;
         let inputFolder = folderInput?.value.trim() || "";
         if (inputFolder === "/ (корневая папка)") {
@@ -297,14 +258,13 @@ export class CreateTrackerModal extends Modal {
           const content = await this.app.vault.read(file);
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
 
-          const escapedName = name.replace(/"/g, '\\"');
-          let newFrontmatter = `name: "${escapedName}"\ntype: "${type}"\n`;
-          if (type === "scale") {
-            newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
-            newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
-            newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
-          } else if (type === "plusminus") {
-            newFrontmatter += `step: ${parseFloat(step) || 1}\n`;
+          let newFrontmatter = `type: "${type}"\n`;
+          if (type === TrackerType.SCALE) {
+            newFrontmatter += `minValue: ${parseFloat(minValue) || DEFAULTS.MIN_VALUE}\n`;
+            newFrontmatter += `maxValue: ${parseFloat(maxValue) || DEFAULTS.MAX_VALUE}\n`;
+            newFrontmatter += `step: ${parseFloat(step) || DEFAULTS.STEP}\n`;
+          } else if (type === TrackerType.PLUSMINUS) {
+            newFrontmatter += `step: ${parseFloat(step) || DEFAULTS.STEP}\n`;
           }
           if (minLimit) {
             newFrontmatter += `minLimit: ${parseFloat(minLimit)}\n`;
@@ -323,7 +283,7 @@ export class CreateTrackerModal extends Modal {
 
           await this.app.vault.modify(file, newContent);
 
-          new Notice(`Создан трекер: ${name}`);
+          new Notice(`${SUCCESS_MESSAGES.TRACKER_CREATED}: ${name}`);
 
           const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
           await this.plugin.onTrackerCreated(fileFolderPath);
@@ -331,7 +291,7 @@ export class CreateTrackerModal extends Modal {
           this.close();
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          new Notice(`Ошибка при создании трекера: ${errorMsg}`);
+          new Notice(`${ERROR_MESSAGES.CREATE_ERROR}: ${errorMsg}`);
           console.error("Tracker: ошибка создания трекера", error);
         }
       });

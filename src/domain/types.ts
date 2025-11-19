@@ -1,4 +1,5 @@
 import type { TFile } from "obsidian";
+import type { TrackerTypeValue } from "../constants";
 
 export type TrackerSettings = {
   trackersFolder: string;
@@ -29,7 +30,7 @@ export interface FolderNode {
 }
 
 export interface TrackerFileOptions {
-  mode?: string;
+  mode?: TrackerTypeValue;
   maxRating?: string;
   minValue?: string;
   maxValue?: string;
@@ -37,6 +38,23 @@ export interface TrackerFileOptions {
   minLimit?: string;
   maxLimit?: string;
   unit?: string;
-  name?: string;
+}
+
+/**
+ * Tracker data entry value
+ */
+export type TrackerValue = string | number;
+
+/**
+ * Map of date strings to tracker values
+ */
+export type TrackerEntries = Map<string, TrackerValue>;
+
+/**
+ * Callback guards for file modifications
+ */
+export interface ModifyGuards {
+  onBeforeModify?: (path: string) => void;
+  onAfterModify?: (path: string) => void;
 }
 

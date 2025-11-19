@@ -14813,16 +14813,21 @@ var DEFAULT_SETTINGS = {
 
 // src/services/folder-tree-service.ts
 var import_obsidian2 = require("obsidian");
+
+// src/utils/path.ts
+function normalizePath(path) {
+  if (!path) return "";
+  return path.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
+}
+
+// src/services/folder-tree-service.ts
 var FolderTreeService = class {
   constructor(app) {
     this.app = app;
     this.cache = /* @__PURE__ */ new Map();
   }
-  normalizePath(path) {
-    return (path || "").trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
-  }
   cacheKey(folderPath, maxDepth) {
-    return `${this.normalizePath(folderPath)}::${maxDepth}`;
+    return `${normalizePath(folderPath)}::${maxDepth}`;
   }
   getFolderTree(folderPath, maxDepth = 3) {
     const key = this.cacheKey(folderPath, maxDepth);
@@ -14882,7 +14887,7 @@ var FolderTreeService = class {
       this.cache.clear();
       return;
     }
-    const normalized = this.normalizePath(folderPath);
+    const normalized = normalizePath(folderPath);
     for (const key of Array.from(this.cache.keys())) {
       const [cachedPath] = key.split("::");
       if (cachedPath === normalized || cachedPath.startsWith(`${normalized}/`) || normalized.startsWith(`${cachedPath}/`)) {
@@ -14906,6 +14911,85 @@ function countWords(text) {
   return trimmed.split(/\s+/).filter((word) => word.length > 0).length;
 }
 
+// src/constants/index.ts
+var MAX_DAYS_BACK = 3650;
+var CACHE_TTL_MS = 5 * 60 * 1e3;
+var MAX_CACHE_SIZE = 100;
+var TrackerType = {
+  GOOD_HABIT: "good-habit",
+  BAD_HABIT: "bad-habit",
+  NUMBER: "number",
+  SCALE: "scale",
+  PLUSMINUS: "plusminus",
+  TEXT: "text",
+  CHECKBOX: "checkbox",
+  RATING: "rating"
+};
+var ERROR_MESSAGES = {
+  NO_TRACKERS: "\u0432 \u043F\u0430\u043F\u043A\u0435 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432",
+  NO_FRONTMATTER: "Frontmatter \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D",
+  ENTER_NAME: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435",
+  CREATE_ERROR: "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430",
+  UPDATE_ERROR: "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430",
+  WRITE_ERROR: "\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438",
+  READ_ERROR: "\u041E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F",
+  RENDER_ERROR: "\u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0435 \u0431\u043B\u043E\u043A\u0430"
+};
+var SUCCESS_MESSAGES = {
+  TRACKER_CREATED: "\u0421\u043E\u0437\u0434\u0430\u043D \u0442\u0440\u0435\u043A\u0435\u0440",
+  TRACKER_UPDATED: "\u0422\u0440\u0435\u043A\u0435\u0440 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D",
+  TRACKER_DELETED: "\u0422\u0440\u0435\u043A\u0435\u0440 \u0443\u0434\u0430\u043B\u0435\u043D",
+  VALUE_SAVED: "\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E",
+  RATING_SAVED: "\u2B50 \u041E\u0446\u0435\u043D\u043A\u0430"
+};
+var PLACEHOLDERS = {
+  TRACKER_NAME: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u0442\u0440\u0435\u043D\u043D\u044F\u044F \u0437\u0430\u0440\u044F\u0434\u043A\u0430",
+  UNIT: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u043C\u0435\u0442\u0440\u044B, \u043C\u0438\u043D\u0443\u0442\u044B, \u043A\u0433",
+  TEXT_INPUT: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0442\u0435\u043A\u0441\u0442...",
+  NUMBER_INPUT: "0",
+  LIMIT_NONE: "\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442"
+};
+var TRACKER_TYPE_LABELS = {
+  [TrackerType.GOOD_HABIT]: "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430",
+  [TrackerType.BAD_HABIT]: "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430",
+  [TrackerType.NUMBER]: "\u0427\u0438\u0441\u043B\u043E",
+  [TrackerType.SCALE]: "\u0428\u043A\u0430\u043B\u0430",
+  [TrackerType.PLUSMINUS]: "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)",
+  [TrackerType.TEXT]: "\u0422\u0435\u043A\u0441\u0442",
+  [TrackerType.CHECKBOX]: "\u0427\u0435\u043A\u0431\u043E\u043A\u0441",
+  [TrackerType.RATING]: "\u0420\u0435\u0439\u0442\u0438\u043D\u0433"
+};
+var MODAL_LABELS = {
+  CREATE_TRACKER: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043D\u043E\u0432\u044B\u0439 \u0442\u0440\u0435\u043A\u0435\u0440",
+  EDIT_TRACKER: "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0442\u0440\u0435\u043A\u0435\u0440",
+  NAME: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435",
+  PATH: "\u041F\u0443\u0442\u044C",
+  TYPE: "\u0422\u0438\u043F",
+  PARAMETERS: "\u041F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B",
+  UNIT: "\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F",
+  STEP: "\u0428\u0430\u0433",
+  VALUE_FROM: '\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u043E\u0442"',
+  VALUE_TO: '\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u0434\u043E"',
+  LIMITS: "\u041B\u0438\u043C\u0438\u0442\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0441\u0442\u0438",
+  LOWER_LIMIT: "\u041D\u0438\u0436\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430",
+  UPPER_LIMIT: "\u0412\u0435\u0440\u0445\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430",
+  CREATE: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C",
+  SAVE: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C",
+  DELETE: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+  DELETE_CONFIRM_TITLE: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0442\u0440\u0435\u043A\u0435\u0440?",
+  DELETE_CONFIRM_MESSAGE: '\u0412\u044B \u0443\u0432\u0435\u0440\u0435\u043D\u044B, \u0447\u0442\u043E \u0445\u043E\u0442\u0438\u0442\u0435 \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u0442\u0440\u0435\u043A\u0435\u0440 "{name}"? \u042D\u0442\u043E \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043D\u0435\u043B\u044C\u0437\u044F \u043E\u0442\u043C\u0435\u043D\u0438\u0442\u044C.',
+  CANCEL: "\u041E\u0442\u043C\u0435\u043D\u0430",
+  HABITS_GROUP: "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438",
+  METRICS_GROUP: "\u041C\u0435\u0442\u0440\u0438\u043A\u0438"
+};
+var DEFAULTS = {
+  STEP: 1,
+  MIN_VALUE: 0,
+  MAX_VALUE: 10,
+  MAX_RATING: 5,
+  TEXT_UNIT: "\u0441\u043B\u043E\u0432"
+};
+
 // src/services/tracker-data-cache.ts
 var TrackerDataCache = class {
   constructor() {
@@ -14917,18 +15001,51 @@ var TrackerDataCache = class {
   getMtime(file) {
     return file.stat?.mtime ?? 0;
   }
+  getSize(file) {
+    return file.stat?.size ?? 0;
+  }
   ensureEntry(file) {
     const key = this.getKey(file);
     let entry = this.cache.get(key);
     if (!entry) {
-      entry = { mtime: this.getMtime(file) };
+      entry = {
+        mtime: this.getMtime(file),
+        size: this.getSize(file),
+        timestamp: Date.now(),
+        lastAccessed: Date.now()
+      };
       this.cache.set(key, entry);
     }
     return entry;
   }
   isStale(file, entry) {
     if (!entry) return true;
-    return entry.mtime !== this.getMtime(file);
+    if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+      return true;
+    }
+    if (entry.mtime !== this.getMtime(file)) {
+      return true;
+    }
+    if (entry.size !== this.getSize(file)) {
+      return true;
+    }
+    return false;
+  }
+  evictLRU() {
+    if (this.cache.size <= MAX_CACHE_SIZE) {
+      return;
+    }
+    let oldestKey = null;
+    let oldestTime = Infinity;
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.lastAccessed < oldestTime) {
+        oldestTime = entry.lastAccessed;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) {
+      this.cache.delete(oldestKey);
+    }
   }
   invalidate(path) {
     this.cache.delete(path);
@@ -14940,31 +15057,56 @@ var TrackerDataCache = class {
     const key = this.getKey(file);
     const entry = this.cache.get(key);
     if (this.isStale(file, entry) || !entry?.frontmatter) {
+      this.evictLRU();
       const freshEntry = {
         mtime: this.getMtime(file),
+        size: this.getSize(file),
+        timestamp: Date.now(),
+        lastAccessed: Date.now(),
         frontmatter: await loader(),
         entries: this.isStale(file, entry) ? void 0 : entry?.entries
       };
       this.cache.set(key, freshEntry);
       return freshEntry.frontmatter ?? {};
     }
+    entry.lastAccessed = Date.now();
     return entry.frontmatter;
   }
   async getEntries(file, loader) {
     const key = this.getKey(file);
     const entry = this.cache.get(key);
     if (this.isStale(file, entry) || !entry?.entries) {
+      this.evictLRU();
       const freshEntry = {
         mtime: this.getMtime(file),
+        size: this.getSize(file),
+        timestamp: Date.now(),
+        lastAccessed: Date.now(),
         entries: await loader(),
         frontmatter: this.isStale(file, entry) ? void 0 : entry?.frontmatter
       };
       this.cache.set(key, freshEntry);
       return freshEntry.entries ?? /* @__PURE__ */ new Map();
     }
+    entry.lastAccessed = Date.now();
     return entry.entries;
   }
 };
+
+// src/utils/validation.ts
+function sanitizeFileName(name) {
+  return name.replace(/[<>:"/\\|?*]/g, "_");
+}
+function isTrackerValueTrue(value) {
+  if (value === null || value === void 0) {
+    return false;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  const str = String(value);
+  return str === "1" || str === "true" || str.trim() !== "";
+}
 
 // src/services/tracker-file-service.ts
 var TrackerFileService = class {
@@ -14979,9 +15121,7 @@ var TrackerFileService = class {
     if (dir && !this.app.vault.getAbstractFileByPath(dir)) {
       await this.app.vault.createFolder(dir);
     }
-    const name = filePath.split("/").pop()?.replace(".md", "") || "Untitled";
     const content = `---
-name: "${name.replace(/"/g, '\\"')}"
 type: "${type}"
 data: {}
 ---
@@ -15074,7 +15214,7 @@ data: {}
       const content = await this.app.vault.read(file);
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
       if (!frontmatterMatch) {
-        throw new Error("Frontmatter \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D");
+        throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
       }
       const frontmatter = frontmatterMatch[1];
       const body = content.slice(frontmatterMatch[0].length);
@@ -15116,11 +15256,7 @@ ${newFrontmatter}---${body}`;
         if (frontmatterMatch) {
           const frontmatter = frontmatterMatch[1];
           const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
-          fileOpts.mode = typeMatch && typeMatch[1] ? typeMatch[1].trim() : "good-habit";
-          const nameMatch = frontmatter.match(/^name:\s*["']?([^"'\n]+)["']?/m);
-          if (nameMatch && nameMatch[1]) {
-            fileOpts.name = nameMatch[1].trim();
-          }
+          fileOpts.mode = typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT;
           const maxRatingMatch = frontmatter.match(/^maxRating:\s*(\d+)/m);
           if (maxRatingMatch) fileOpts.maxRating = maxRatingMatch[1];
           const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
@@ -15138,11 +15274,11 @@ ${newFrontmatter}---${body}`;
             fileOpts.unit = unitMatch[1].trim();
           }
         } else {
-          fileOpts.mode = "good-habit";
+          fileOpts.mode = TrackerType.GOOD_HABIT;
         }
       } catch (error) {
         console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F frontmatter", error);
-        fileOpts.mode = "good-habit";
+        fileOpts.mode = TrackerType.GOOD_HABIT;
       }
       return fileOpts;
     });
@@ -15193,9 +15329,8 @@ ${newFrontmatter}---${body}`;
     if (!startTrackingDate) {
       startTrackingDate = m ? m(endDate).subtract(365, "days") : addDays(endDate, -365);
     }
-    const maxDaysBack = 3650;
     let daysChecked = 0;
-    while (daysChecked < maxDaysBack) {
+    while (daysChecked < MAX_DAYS_BACK) {
       if (m) {
         if (currentDate.isBefore(startTrackingDate)) break;
       } else if (currentDate < startTrackingDate) {
@@ -15208,13 +15343,11 @@ ${newFrontmatter}---${body}`;
         if (val == null) {
           isSuccess = true;
         } else {
-          const valStr = String(val);
-          const hasValue = typeof val === "number" ? val !== 0 : valStr === "1" || valStr === "true" || valStr.trim() !== "";
+          const hasValue = isTrackerValueTrue(val);
           isSuccess = !hasValue;
         }
       } else if (val != null) {
-        const valStr = String(val);
-        isSuccess = typeof val === "number" ? val !== 0 : valStr === "1" || valStr === "true" || valStr.trim() !== "";
+        isSuccess = isTrackerValueTrue(val);
       }
       if (isSuccess) {
         streak++;
@@ -15324,6 +15457,51 @@ var FolderSuggest = class extends import_obsidian5.AbstractInputSuggest {
   }
 };
 
+// src/ui/components/tracker-type-selector.ts
+function populateTrackerTypeSelector(selectElement, defaultValue = TrackerType.GOOD_HABIT) {
+  selectElement.innerHTML = "";
+  const habitsGroup = document.createElement("optgroup");
+  habitsGroup.label = MODAL_LABELS.HABITS_GROUP;
+  const goodHabitOption = document.createElement("option");
+  goodHabitOption.value = TrackerType.GOOD_HABIT;
+  goodHabitOption.textContent = TRACKER_TYPE_LABELS[TrackerType.GOOD_HABIT];
+  habitsGroup.appendChild(goodHabitOption);
+  const badHabitOption = document.createElement("option");
+  badHabitOption.value = TrackerType.BAD_HABIT;
+  badHabitOption.textContent = TRACKER_TYPE_LABELS[TrackerType.BAD_HABIT];
+  habitsGroup.appendChild(badHabitOption);
+  selectElement.appendChild(habitsGroup);
+  const metricsGroup = document.createElement("optgroup");
+  metricsGroup.label = MODAL_LABELS.METRICS_GROUP;
+  const numberOption = document.createElement("option");
+  numberOption.value = TrackerType.NUMBER;
+  numberOption.textContent = TRACKER_TYPE_LABELS[TrackerType.NUMBER];
+  metricsGroup.appendChild(numberOption);
+  const scaleOption = document.createElement("option");
+  scaleOption.value = TrackerType.SCALE;
+  scaleOption.textContent = TRACKER_TYPE_LABELS[TrackerType.SCALE];
+  metricsGroup.appendChild(scaleOption);
+  const plusminusOption = document.createElement("option");
+  plusminusOption.value = TrackerType.PLUSMINUS;
+  plusminusOption.textContent = TRACKER_TYPE_LABELS[TrackerType.PLUSMINUS];
+  metricsGroup.appendChild(plusminusOption);
+  const textOption = document.createElement("option");
+  textOption.value = TrackerType.TEXT;
+  textOption.textContent = TRACKER_TYPE_LABELS[TrackerType.TEXT];
+  metricsGroup.appendChild(textOption);
+  selectElement.appendChild(metricsGroup);
+  selectElement.value = defaultValue;
+}
+function isMetricType(type) {
+  return [
+    TrackerType.NUMBER,
+    TrackerType.PLUSMINUS,
+    TrackerType.RATING,
+    TrackerType.TEXT,
+    TrackerType.SCALE
+  ].includes(type);
+}
+
 // src/ui/modals/create-tracker-modal.ts
 var CreateTrackerModal = class extends import_obsidian6.Modal {
   constructor(app, plugin) {
@@ -15333,64 +15511,27 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043D\u043E\u0432\u044B\u0439 \u0442\u0440\u0435\u043A\u0435\u0440" });
-    const nameSetting = new import_obsidian6.Setting(contentEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435").addText((text) => {
-      text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u0442\u0440\u0435\u043D\u043D\u044F\u044F \u0437\u0430\u0440\u044F\u0434\u043A\u0430");
+    contentEl.createEl("h2", { text: MODAL_LABELS.CREATE_TRACKER });
+    const nameSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.NAME).addText((text) => {
+      text.setPlaceholder(PLACEHOLDERS.TRACKER_NAME);
       text.inputEl.style.width = "100%";
     });
     const folders = this.app.vault.getAllFolders();
-    const folderSetting = new import_obsidian6.Setting(contentEl).setName("\u041F\u0443\u0442\u044C").addText((text) => {
+    const folderSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.PATH).addText((text) => {
       const defaultPath = this.plugin.settings.trackersFolder || DEFAULT_SETTINGS.trackersFolder;
       text.setPlaceholder(defaultPath);
       text.setValue("");
       text.inputEl.style.width = "100%";
       new FolderSuggest(this.app, text.inputEl, folders);
     });
-    const typeSetting = new import_obsidian6.Setting(contentEl).setName("\u0422\u0438\u043F").addDropdown((dropdown) => {
-      dropdown.addOption("good-habit", "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
-      dropdown.addOption("bad-habit", "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430");
-      dropdown.addOption("number", "\u0427\u0438\u0441\u043B\u043E");
-      dropdown.addOption("scale", "\u0428\u043A\u0430\u043B\u0430");
-      dropdown.addOption("plusminus", "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)");
-      dropdown.addOption("text", "\u0422\u0435\u043A\u0441\u0442");
-      dropdown.setValue("good-habit");
+    const typeSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.TYPE).addDropdown((dropdown) => {
+      dropdown.setValue(TrackerType.GOOD_HABIT);
     });
     const typeDropdown = typeSetting.controlEl.querySelector("select");
     if (typeDropdown) {
-      typeDropdown.innerHTML = "";
-      const habitsGroup = document.createElement("optgroup");
-      habitsGroup.label = "\u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438";
-      const goodHabitOption = document.createElement("option");
-      goodHabitOption.value = "good-habit";
-      goodHabitOption.textContent = "\u0425\u043E\u0440\u043E\u0448\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430";
-      habitsGroup.appendChild(goodHabitOption);
-      const badHabitOption = document.createElement("option");
-      badHabitOption.value = "bad-habit";
-      badHabitOption.textContent = "\u041F\u043B\u043E\u0445\u0430\u044F \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430";
-      habitsGroup.appendChild(badHabitOption);
-      typeDropdown.appendChild(habitsGroup);
-      const metricsGroup = document.createElement("optgroup");
-      metricsGroup.label = "\u041C\u0435\u0442\u0440\u0438\u043A\u0438";
-      const numberOption = document.createElement("option");
-      numberOption.value = "number";
-      numberOption.textContent = "\u0427\u0438\u0441\u043B\u043E";
-      metricsGroup.appendChild(numberOption);
-      const scaleOption = document.createElement("option");
-      scaleOption.value = "scale";
-      scaleOption.textContent = "\u0428\u043A\u0430\u043B\u0430";
-      metricsGroup.appendChild(scaleOption);
-      const plusminusOption = document.createElement("option");
-      plusminusOption.value = "plusminus";
-      plusminusOption.textContent = "\u0421\u0447\u0451\u0442\u0447\u0438\u043A (+/-)";
-      metricsGroup.appendChild(plusminusOption);
-      const textOption = document.createElement("option");
-      textOption.value = "text";
-      textOption.textContent = "\u0422\u0435\u043A\u0441\u0442";
-      metricsGroup.appendChild(textOption);
-      typeDropdown.appendChild(metricsGroup);
-      typeDropdown.value = "good-habit";
+      populateTrackerTypeSelector(typeDropdown, TrackerType.GOOD_HABIT);
     }
-    const parametersHeader = contentEl.createEl("h3", { text: "\u041F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B" });
+    const parametersHeader = contentEl.createEl("h3", { text: MODAL_LABELS.PARAMETERS });
     const parametersDescription = contentEl.createEl("p", {
       text: "\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F - \u043D\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u043F\u043E\u043B\u0435. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u043F\u0443\u0441\u0442\u044B\u043C.",
       cls: "tracker-notes__limits-description"
@@ -15399,26 +15540,26 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
     parametersDescription.style.color = "var(--text-muted, #999999)";
     parametersDescription.style.marginTop = "0.5em";
     parametersDescription.style.marginBottom = "1em";
-    const unitSetting = new import_obsidian6.Setting(contentEl).setName("\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F").addText((text) => {
-      text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u043C\u0435\u0442\u0440\u044B, \u043C\u0438\u043D\u0443\u0442\u044B, \u043A\u0433");
+    const unitSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.UNIT).addText((text) => {
+      text.setPlaceholder(PLACEHOLDERS.UNIT);
       text.inputEl.style.width = "100%";
     });
     const unitInput = unitSetting.controlEl.querySelector("input");
-    const plusminusStepSetting = new import_obsidian6.Setting(contentEl).setName("\u0428\u0430\u0433").addText((text) => {
-      text.setPlaceholder("1").setValue("1").inputEl.type = "number";
+    const plusminusStepSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.STEP).addText((text) => {
+      text.setPlaceholder(String(DEFAULTS.STEP)).setValue(String(DEFAULTS.STEP)).inputEl.type = "number";
       text.inputEl.step = "any";
       text.inputEl.style.width = "100%";
     });
-    const minValueSetting = new import_obsidian6.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u043E\u0442"').addText((text) => {
-      text.setPlaceholder("0").setValue("0").inputEl.type = "number";
+    const minValueSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.VALUE_FROM).addText((text) => {
+      text.setPlaceholder(String(DEFAULTS.MIN_VALUE)).setValue(String(DEFAULTS.MIN_VALUE)).inputEl.type = "number";
       text.inputEl.style.width = "100%";
     });
-    const maxValueSetting = new import_obsidian6.Setting(contentEl).setName('\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435 "\u0434\u043E"').addText((text) => {
-      text.setPlaceholder("10").setValue("10").inputEl.type = "number";
+    const maxValueSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.VALUE_TO).addText((text) => {
+      text.setPlaceholder(String(DEFAULTS.MAX_VALUE)).setValue(String(DEFAULTS.MAX_VALUE)).inputEl.type = "number";
       text.inputEl.style.width = "100%";
     });
-    const stepSetting = new import_obsidian6.Setting(contentEl).setName("\u0428\u0430\u0433").addText((text) => {
-      text.setPlaceholder("1").setValue("1").inputEl.type = "number";
+    const stepSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.STEP).addText((text) => {
+      text.setPlaceholder(String(DEFAULTS.STEP)).setValue(String(DEFAULTS.STEP)).inputEl.type = "number";
       text.inputEl.step = "any";
       text.inputEl.style.width = "100%";
     });
@@ -15429,7 +15570,7 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
     minValueSetting.settingEl.style.display = "none";
     maxValueSetting.settingEl.style.display = "none";
     stepSetting.settingEl.style.display = "none";
-    const limitsHeader = contentEl.createEl("h3", { text: "\u041B\u0438\u043C\u0438\u0442\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E\u0441\u0442\u0438" });
+    const limitsHeader = contentEl.createEl("h3", { text: MODAL_LABELS.LIMITS });
     const limitsDescription = contentEl.createEl("p", {
       text: '\u041E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E \u0432\u044B \u043C\u043E\u0436\u0435\u0442\u0435 \u0441\u0434\u0435\u043B\u0430\u0442\u044C \u043C\u0435\u0442\u0440\u0438\u043A\u0443 \u043B\u0438\u043C\u0438\u0442\u0438\u0440\u0443\u044E\u0449\u0435\u0439 \u0438 \u0437\u0430\u0434\u0430\u0442\u044C \u0436\u0435\u043B\u0430\u0435\u043C\u044B\u0435 \u043F\u043E\u0440\u043E\u0433\u043E\u0432\u044B\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F. \u041F\u0440\u0438\u043C. "\u041D\u0435 \u043C\u0435\u043D\u044C\u0448\u0435 5000 \u0448\u0430\u0433\u043E\u0432 \u0432 \u0434\u0435\u043D\u044C", "\u041D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 3\u0445 \u0448\u043E\u043A\u043E\u043B\u0430\u0434\u043E\u043A"',
       cls: "tracker-notes__limits-description"
@@ -15438,12 +15579,12 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
     limitsDescription.style.color = "var(--text-muted, #999999)";
     limitsDescription.style.marginTop = "0.5em";
     limitsDescription.style.marginBottom = "1em";
-    const minLimitSetting = new import_obsidian6.Setting(contentEl).setName("\u041D\u0438\u0436\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430").addText((text) => {
-      text.setPlaceholder("\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442").setValue("").inputEl.type = "number";
+    const minLimitSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.LOWER_LIMIT).addText((text) => {
+      text.setPlaceholder(PLACEHOLDERS.LIMIT_NONE).setValue("").inputEl.type = "number";
       text.inputEl.style.width = "100%";
     });
-    const maxLimitSetting = new import_obsidian6.Setting(contentEl).setName("\u0412\u0435\u0440\u0445\u043D\u044F\u044F \u0433\u0440\u0430\u043D\u0438\u0446\u0430").addText((text) => {
-      text.setPlaceholder("\u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E - \u043D\u0435\u0442").setValue("").inputEl.type = "number";
+    const maxLimitSetting = new import_obsidian6.Setting(contentEl).setName(MODAL_LABELS.UPPER_LIMIT).addText((text) => {
+      text.setPlaceholder(PLACEHOLDERS.LIMIT_NONE).setValue("").inputEl.type = "number";
       text.inputEl.style.width = "100%";
     });
     limitsHeader.style.display = "none";
@@ -15453,19 +15594,17 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
     const typeDropdownSelect = typeSetting.controlEl.querySelector("select");
     if (typeDropdownSelect) {
       typeDropdownSelect.onchange = () => {
-        const isScale = typeDropdownSelect.value === "scale";
-        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(
-          typeDropdownSelect.value
-        );
-        const isPlusminus = typeDropdownSelect.value === "plusminus";
-        const isText = typeDropdownSelect.value === "text";
+        const isScale = typeDropdownSelect.value === TrackerType.SCALE;
+        const isMetric = isMetricType(typeDropdownSelect.value);
+        const isPlusminus = typeDropdownSelect.value === TrackerType.PLUSMINUS;
+        const isText = typeDropdownSelect.value === TrackerType.TEXT;
         if (isMetric) {
           parametersHeader.style.display = "";
           parametersDescription.style.display = "";
           unitSetting.settingEl.style.display = "";
           if (isText) {
             if (unitInput) {
-              unitInput.value = "\u0441\u043B\u043E\u0432";
+              unitInput.value = DEFAULTS.TEXT_UNIT;
               unitInput.disabled = true;
             }
           } else if (unitInput) {
@@ -15505,27 +15644,27 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
       };
     }
     new import_obsidian6.Setting(contentEl).addButton((button) => {
-      button.setButtonText("\u0421\u043E\u0437\u0434\u0430\u0442\u044C").setCta().onClick(async () => {
+      button.setButtonText(MODAL_LABELS.CREATE).setCta().onClick(async () => {
         const nameInput = nameSetting.controlEl.querySelector("input");
         const name = nameInput.value.trim();
         if (!name) {
-          new import_obsidian6.Notice("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435");
+          new import_obsidian6.Notice(ERROR_MESSAGES.ENTER_NAME);
           return;
         }
         const typeDropdownSelect2 = typeSetting.controlEl.querySelector("select");
-        const type = typeDropdownSelect2 ? typeDropdownSelect2.value : "good-habit";
-        const minValue = type === "scale" ? minValueSetting.controlEl.querySelector("input")?.value || "0" : "0";
-        const maxValue = type === "scale" ? maxValueSetting.controlEl.querySelector("input")?.value || "10" : "10";
-        const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : type === "plusminus" ? plusminusStepSetting.controlEl.querySelector("input")?.value || "1" : "1";
+        const type = typeDropdownSelect2 ? typeDropdownSelect2.value : TrackerType.GOOD_HABIT;
+        const minValue = type === TrackerType.SCALE ? minValueSetting.controlEl.querySelector("input")?.value || String(DEFAULTS.MIN_VALUE) : String(DEFAULTS.MIN_VALUE);
+        const maxValue = type === TrackerType.SCALE ? maxValueSetting.controlEl.querySelector("input")?.value || String(DEFAULTS.MAX_VALUE) : String(DEFAULTS.MAX_VALUE);
+        const step = type === TrackerType.SCALE ? stepSetting.controlEl.querySelector("input")?.value || String(DEFAULTS.STEP) : type === TrackerType.PLUSMINUS ? plusminusStepSetting.controlEl.querySelector("input")?.value || String(DEFAULTS.STEP) : String(DEFAULTS.STEP);
         const minLimitInput = minLimitSetting.controlEl.querySelector("input");
         const maxLimitInput = maxLimitSetting.controlEl.querySelector("input");
         const minLimit = minLimitInput?.value.trim() || "";
         const maxLimit = maxLimitInput?.value.trim() || "";
         const unitInputValue = unitSetting.controlEl.querySelector("input");
         const unitRaw = unitInputValue?.value.trim() || "";
-        const unit = type === "text" ? "\u0441\u043B\u043E\u0432" : unitRaw;
-        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
-        const fileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+        const unit = type === TrackerType.TEXT ? DEFAULTS.TEXT_UNIT : unitRaw;
+        const isMetric = isMetricType(type);
+        const fileName = sanitizeFileName(name) + ".md";
         const folderInput = folderSetting.controlEl.querySelector("input");
         let inputFolder = folderInput?.value.trim() || "";
         if (inputFolder === "/ (\u043A\u043E\u0440\u043D\u0435\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430)") {
@@ -15537,19 +15676,17 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
           const file = await this.plugin.ensureFileWithHeading(filePath, type);
           const content = await this.app.vault.read(file);
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          const escapedName = name.replace(/"/g, '\\"');
-          let newFrontmatter = `name: "${escapedName}"
-type: "${type}"
+          let newFrontmatter = `type: "${type}"
 `;
-          if (type === "scale") {
-            newFrontmatter += `minValue: ${parseFloat(minValue) || 0}
+          if (type === TrackerType.SCALE) {
+            newFrontmatter += `minValue: ${parseFloat(minValue) || DEFAULTS.MIN_VALUE}
 `;
-            newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}
+            newFrontmatter += `maxValue: ${parseFloat(maxValue) || DEFAULTS.MAX_VALUE}
 `;
-            newFrontmatter += `step: ${parseFloat(step) || 1}
+            newFrontmatter += `step: ${parseFloat(step) || DEFAULTS.STEP}
 `;
-          } else if (type === "plusminus") {
-            newFrontmatter += `step: ${parseFloat(step) || 1}
+          } else if (type === TrackerType.PLUSMINUS) {
+            newFrontmatter += `step: ${parseFloat(step) || DEFAULTS.STEP}
 `;
           }
           if (minLimit) {
@@ -15573,13 +15710,13 @@ ${newFrontmatter}---${body ? `
 
 ${body}` : ""}`;
           await this.app.vault.modify(file, newContent);
-          new import_obsidian6.Notice(`\u0421\u043E\u0437\u0434\u0430\u043D \u0442\u0440\u0435\u043A\u0435\u0440: ${name}`);
+          new import_obsidian6.Notice(`${SUCCESS_MESSAGES.TRACKER_CREATED}: ${name}`);
           const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
           await this.plugin.onTrackerCreated(fileFolderPath);
           this.close();
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          new import_obsidian6.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
+          new import_obsidian6.Notice(`${ERROR_MESSAGES.CREATE_ERROR}: ${errorMsg}`);
           console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
         }
       });
@@ -15769,85 +15906,103 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
     if (typeDropdown) {
       typeDropdown.onchange = updateFieldsVisibility;
     }
-    new import_obsidian7.Setting(contentEl).addButton((button) => {
-      button.setButtonText("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C").setCta().onClick(async () => {
-        const nameInput = nameSetting.controlEl.querySelector("input");
-        const name = nameInput.value.trim();
-        if (!name) {
-          new import_obsidian7.Notice("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435");
-          return;
+    const buttonsWrapper = contentEl.createDiv({ cls: "tracker-modal-buttons" });
+    const deleteBtn = buttonsWrapper.createEl("button", {
+      text: MODAL_LABELS.DELETE,
+      cls: "mod-warning"
+    });
+    deleteBtn.addEventListener("click", async () => {
+      try {
+        await this.app.vault.delete(this.file);
+        new import_obsidian7.Notice(`${SUCCESS_MESSAGES.TRACKER_DELETED}: ${this.file.basename}`);
+        const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
+        await this.plugin.onTrackerCreated(fileFolderPath);
+        this.close();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        new import_obsidian7.Notice(`${ERROR_MESSAGES.UPDATE_ERROR}: ${errorMsg}`);
+        console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0443\u0434\u0430\u043B\u0435\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
+      }
+    });
+    const saveBtn = buttonsWrapper.createEl("button", {
+      text: MODAL_LABELS.SAVE,
+      cls: "mod-cta"
+    });
+    saveBtn.addEventListener("click", async () => {
+      const nameInput = nameSetting.controlEl.querySelector("input");
+      const name = nameInput.value.trim();
+      if (!name) {
+        new import_obsidian7.Notice("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435");
+        return;
+      }
+      const type = typeDropdown ? typeDropdown.value : currentType;
+      const minValue = type === "scale" ? minValueSetting.controlEl.querySelector("input")?.value || "0" : "0";
+      const maxValue = type === "scale" ? maxValueSetting.controlEl.querySelector("input")?.value || "10" : "10";
+      const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : type === "plusminus" ? plusminusStepSetting.controlEl.querySelector("input")?.value || "1" : "1";
+      const minLimitInput = minLimitSetting.controlEl.querySelector("input");
+      const maxLimitInput = maxLimitSetting.controlEl.querySelector("input");
+      const minLimit = minLimitInput?.value.trim() || "";
+      const maxLimit = maxLimitInput?.value.trim() || "";
+      const unitInputValue = unitSetting.controlEl.querySelector("input");
+      const unitRaw = unitInputValue?.value.trim() || "";
+      const unit = type === "text" ? "\u0441\u043B\u043E\u0432" : unitRaw;
+      const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
+      try {
+        const content = await this.app.vault.read(this.file);
+        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        const body = frontmatterMatch ? content.slice(frontmatterMatch[0].length).trim() : content.trim();
+        let existingData = {};
+        if (frontmatterMatch) {
+          existingData = this.plugin.parseFrontmatterData(frontmatterMatch[1]);
         }
-        const type = typeDropdown ? typeDropdown.value : currentType;
-        const minValue = type === "scale" ? minValueSetting.controlEl.querySelector("input")?.value || "0" : "0";
-        const maxValue = type === "scale" ? maxValueSetting.controlEl.querySelector("input")?.value || "10" : "10";
-        const step = type === "scale" ? stepSetting.controlEl.querySelector("input")?.value || "1" : type === "plusminus" ? plusminusStepSetting.controlEl.querySelector("input")?.value || "1" : "1";
-        const minLimitInput = minLimitSetting.controlEl.querySelector("input");
-        const maxLimitInput = maxLimitSetting.controlEl.querySelector("input");
-        const minLimit = minLimitInput?.value.trim() || "";
-        const maxLimit = maxLimitInput?.value.trim() || "";
-        const unitInputValue = unitSetting.controlEl.querySelector("input");
-        const unitRaw = unitInputValue?.value.trim() || "";
-        const unit = type === "text" ? "\u0441\u043B\u043E\u0432" : unitRaw;
-        const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
-        try {
-          const content = await this.app.vault.read(this.file);
-          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          const body = frontmatterMatch ? content.slice(frontmatterMatch[0].length).trim() : content.trim();
-          let existingData = {};
-          if (frontmatterMatch) {
-            existingData = this.plugin.parseFrontmatterData(frontmatterMatch[1]);
-          }
-          const escapedName = name.replace(/"/g, '\\"');
-          let newFrontmatter = `name: "${escapedName}"
-type: "${type}"
+        let newFrontmatter = `type: "${type}"
 `;
-          if (type === "scale") {
-            newFrontmatter += `minValue: ${parseFloat(minValue) || 0}
+        if (type === "scale") {
+          newFrontmatter += `minValue: ${parseFloat(minValue) || 0}
 `;
-            newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}
+          newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}
 `;
-            newFrontmatter += `step: ${parseFloat(step) || 1}
+          newFrontmatter += `step: ${parseFloat(step) || 1}
 `;
-          } else if (type === "plusminus") {
-            newFrontmatter += `step: ${parseFloat(step) || 1}
+        } else if (type === "plusminus") {
+          newFrontmatter += `step: ${parseFloat(step) || 1}
 `;
-          }
-          if (minLimit) {
-            newFrontmatter += `minLimit: ${parseFloat(minLimit)}
+        }
+        if (minLimit) {
+          newFrontmatter += `minLimit: ${parseFloat(minLimit)}
 `;
-          }
-          if (maxLimit) {
-            newFrontmatter += `maxLimit: ${parseFloat(maxLimit)}
+        }
+        if (maxLimit) {
+          newFrontmatter += `maxLimit: ${parseFloat(maxLimit)}
 `;
-          }
-          if (unit && isMetric) {
-            const escapedUnit = unit.replace(/"/g, '\\"');
-            newFrontmatter += `unit: "${escapedUnit}"
+        }
+        if (unit && isMetric) {
+          const escapedUnit = unit.replace(/"/g, '\\"');
+          newFrontmatter += `unit: "${escapedUnit}"
 `;
-          }
-          const dataYaml = this.plugin.formatDataToYaml(existingData);
-          newFrontmatter += dataYaml;
-          const newContent = `---
+        }
+        const dataYaml = this.plugin.formatDataToYaml(existingData);
+        newFrontmatter += dataYaml;
+        const newContent = `---
 ${newFrontmatter}---${body ? `
 
 ${body}` : ""}`;
-          await this.app.vault.modify(this.file, newContent);
-          this.plugin.trackerFileService.invalidateCacheForPath(this.file.path);
-          if (name !== this.file.basename) {
-            const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-            const newPath = this.file.path.replace(this.file.name, newFileName);
-            await this.app.vault.rename(this.file, newPath);
-          }
-          new import_obsidian7.Notice(`\u0422\u0440\u0435\u043A\u0435\u0440 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D: ${name}`);
-          const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
-          await this.plugin.onTrackerCreated(fileFolderPath);
-          this.close();
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          new import_obsidian7.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
-          console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
+        await this.app.vault.modify(this.file, newContent);
+        this.plugin.trackerFileService.invalidateCacheForPath(this.file.path);
+        if (name !== this.file.basename) {
+          const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+          const newPath = this.file.path.replace(this.file.name, newFileName);
+          await this.app.vault.rename(this.file, newPath);
         }
-      });
+        new import_obsidian7.Notice(`\u0422\u0440\u0435\u043A\u0435\u0440 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D: ${name}`);
+        const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
+        await this.plugin.onTrackerCreated(fileFolderPath);
+        this.close();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        new import_obsidian7.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
+        console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
+      }
     });
   }
   onClose() {
@@ -15887,7 +16042,7 @@ var FilePickerModal = class extends import_obsidian8.Modal {
 };
 
 // src/styles/tracker.css
-var tracker_default = '.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,\r\n.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }\r\n.tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }\r\n      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }\r\n      .tracker-notes__header-icon { font-size: 1.3em; }\r\n      .tracker-notes__header-label { }\r\n      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }\r\n      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }\r\n      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }\r\n      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }\r\n      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes__value.updated { animation: pulse 0.3s ease; }\r\n      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }\r\n      .tracker-notes input { outline: none !important; }\r\n      .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }\r\n      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }\r\n      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }\r\n      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }\r\n      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; z-index: 0; }\r\n      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 2; white-space: nowrap; }\r\n      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }\r\n      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes button:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__rating { display: flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }\r\n      .tracker-notes__rating-star { font-size: 1.4em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; flex-shrink: 0; }\r\n      .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }\r\n      .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }\r\n      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }\r\n      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__stats > div { margin: 0.3em 0; }\r\n      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }\r\n      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }\r\n      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }\r\n      .tracker-notes__calendar-day:hover { transform: scale(1.1); }\r\n      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }\r\n      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }\r\n      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }\r\n      .tracker-notes__loading { display: none; align-items: center; gap: 0.4em; font-size: 0.85em; color: var(--text-muted); margin-top: 0.3em; }\r\n      .tracker-notes__loading.is-active { display: flex; }\r\n      .tracker-notes__loading-dot { width: 0.8em; height: 0.8em; border-radius: 50%; border: 2px solid var(--interactive-accent); border-top-color: transparent; animation: tracker-loading-spin 0.8s linear infinite; }\r\n      @keyframes tracker-loading-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }\r\n      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }\r\n      .tracker-notes__date-input.is-updating { opacity: 0.65; cursor: progress; }\r\n      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }\r\n      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }\r\n      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }\r\n      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }\r\n      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }\r\n      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }\r\n      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.start-day { \r\n        flex-direction: column;\r\n        justify-content: center;\r\n        align-items: center;\r\n        line-height: 1;\r\n      }\r\n      .tracker-notes__heatmap-day.start-day::after {\r\n        content: "START";\r\n        font-size: 0.5em;\r\n        line-height: 1;\r\n        margin-top: 0.1em;\r\n        opacity: 0.7;\r\n        font-weight: 600;\r\n      }\r\n      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }\r\n      .tracker-notes__stats > div { transition: opacity 0.2s ease; }\r\n      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }\r\n      .tracker-notes__heatmap { transition: opacity 0.15s ease; }\r\n      .tracker-notes__chart { transition: opacity 0.15s ease; }\r\n      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }\r\n      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }\r\n      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }\r\n      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }\r\n      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }\r\n      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }\r\n      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      \r\n      /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */\r\n      @media (max-width: 768px) {\r\n        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }\r\n        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }\r\n        .tracker-notes__header-title { font-size: 1em; }\r\n        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }\r\n        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker-container { padding: 0; }\r\n        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }\r\n        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }\r\n        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }\r\n        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__rating { gap: 0.2em; justify-content: center; }\r\n        .tracker-notes__rating-star { font-size: 1.2em; }\r\n        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }\r\n        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }\r\n        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }\r\n        .tracker-notes__calendar-day { font-size: 0.65em; }\r\n        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }\r\n        .tracker-notes__chart canvas { height: 140px !important; }\r\n        .tracker-notes__hierarchy { gap: 1em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }\r\n        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }\r\n      }\r\n      \r\n      @media (max-width: 480px) {\r\n        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }\r\n        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }\r\n        .tracker-notes__header-title { font-size: 0.95em; }\r\n        .tracker-notes__trackers { gap: 0.4em; }\r\n        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker { gap: 0.25em; }\r\n        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }\r\n        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }\r\n        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__rating-star { font-size: 1.1em; }\r\n        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }\r\n        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }\r\n        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }\r\n        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }\r\n        .tracker-notes__calendar-day { font-size: 0.6em; }\r\n        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }\r\n        .tracker-notes__chart canvas { height: 120px !important; }\r\n        .tracker-notes__hierarchy { gap: 0.75em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }\r\n      }';
+var tracker_default = '.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,\r\n.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }\r\n.tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }\r\n      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }\r\n      .tracker-notes__header-icon { font-size: 1.3em; }\r\n      .tracker-notes__header-label { }\r\n      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }\r\n      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }\r\n      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }\r\n      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }\r\n      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes__value.updated { animation: pulse 0.3s ease; }\r\n      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }\r\n      .tracker-notes input { outline: none !important; }\r\n      .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }\r\n      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }\r\n      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }\r\n      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }\r\n      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; z-index: 0; }\r\n      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 2; white-space: nowrap; }\r\n      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }\r\n      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes button:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__rating { display: flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }\r\n      .tracker-notes__rating-star { font-size: 1.4em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; flex-shrink: 0; }\r\n      .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }\r\n      .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }\r\n      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }\r\n      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__stats > div { margin: 0.3em 0; }\r\n      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }\r\n      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }\r\n      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }\r\n      .tracker-notes__calendar-day:hover { transform: scale(1.1); }\r\n      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }\r\n      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }\r\n      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }\r\n      .tracker-notes__loading { display: none; align-items: center; gap: 0.4em; font-size: 0.85em; color: var(--text-muted); margin-top: 0.3em; }\r\n      .tracker-notes__loading.is-active { display: flex; }\r\n      .tracker-notes__loading-dot { width: 0.8em; height: 0.8em; border-radius: 50%; border: 2px solid var(--interactive-accent); border-top-color: transparent; animation: tracker-loading-spin 0.8s linear infinite; }\r\n      @keyframes tracker-loading-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }\r\n      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }\r\n      .tracker-notes__date-input.is-updating { opacity: 0.65; cursor: progress; }\r\n      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }\r\n      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }\r\n      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }\r\n      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }\r\n      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }\r\n      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }\r\n      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.start-day { \r\n        flex-direction: column;\r\n        justify-content: center;\r\n        align-items: center;\r\n        line-height: 1;\r\n      }\r\n      .tracker-notes__heatmap-day.start-day::after {\r\n        content: "START";\r\n        font-size: 0.5em;\r\n        line-height: 1;\r\n        margin-top: 0.1em;\r\n        opacity: 0.7;\r\n        font-weight: 600;\r\n      }\r\n      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }\r\n      .tracker-notes__stats > div { transition: opacity 0.2s ease; }\r\n      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }\r\n      .tracker-notes__heatmap { transition: opacity 0.15s ease; }\r\n      .tracker-notes__chart { transition: opacity 0.15s ease; }\r\n      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }\r\n      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }\r\n      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }\r\n      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }\r\n      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }\r\n      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }\r\n      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      \r\n      /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */\r\n      @media (max-width: 768px) {\r\n        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }\r\n        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }\r\n        .tracker-notes__header-title { font-size: 1em; }\r\n        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }\r\n        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker-container { padding: 0; }\r\n        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }\r\n        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }\r\n        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }\r\n        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__rating { gap: 0.2em; justify-content: center; }\r\n        .tracker-notes__rating-star { font-size: 1.2em; }\r\n        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }\r\n        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }\r\n        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }\r\n        .tracker-notes__calendar-day { font-size: 0.65em; }\r\n        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }\r\n        .tracker-notes__chart canvas { height: 140px !important; }\r\n        .tracker-notes__hierarchy { gap: 1em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }\r\n        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }\r\n      }\r\n      \r\n      @media (max-width: 480px) {\r\n        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }\r\n        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }\r\n        .tracker-notes__header-title { font-size: 0.95em; }\r\n        .tracker-notes__trackers { gap: 0.4em; }\r\n        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker { gap: 0.25em; }\r\n        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }\r\n        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }\r\n        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__rating-star { font-size: 1.1em; }\r\n        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }\r\n        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }\r\n        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }\r\n        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }\r\n        .tracker-notes__calendar-day { font-size: 0.6em; }\r\n        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }\r\n        .tracker-notes__chart canvas { height: 120px !important; }\r\n        .tracker-notes__hierarchy { gap: 0.75em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }\r\n      }\r\n      \r\n      /* Modal buttons (Delete and Save) */\r\n      .tracker-modal-buttons {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        margin-top: 1.5em;\r\n      }\r\n      \r\n      .tracker-modal-buttons button {\r\n        padding: 0.5em 1em;\r\n        border-radius: 5px;\r\n        cursor: pointer;\r\n        border: 1px solid var(--background-modifier-border);\r\n        transition: all 0.2s ease;\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning {\r\n        background: var(--interactive-normal);\r\n        color: var(--text-normal);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning:hover {\r\n        background: var(--text-error);\r\n        border-color: var(--text-error);\r\n        color: var(--text-on-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta {\r\n        background: var(--interactive-accent);\r\n        color: var(--text-on-accent);\r\n        border-color: var(--interactive-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta:hover {\r\n        background: var(--interactive-accent-hover);\r\n        border-color: var(--interactive-accent-hover);\r\n      }';
 
 // src/core/tracker-plugin.ts
 Chart.register(...registerables);
@@ -16195,7 +16350,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     trackerItem.dataset.filePath = file.path;
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const baseName = fileOpts.name?.trim() || file.basename;
+    const baseName = file.basename;
     const unit = fileOpts.unit || "";
     const displayName = unit ? `${baseName} (${unit})` : baseName;
     const titleLink = header.createEl("a", {

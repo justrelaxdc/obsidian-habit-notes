@@ -420,7 +420,7 @@ export default class TrackerPlugin extends Plugin {
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     // Получаем единицу измерения для отображения в названии
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const baseName = (fileOpts.name?.trim() || file.basename);
+    const baseName = file.basename;
     const unit = fileOpts.unit || "";
     const displayName = unit ? `${baseName} (${unit})` : baseName;
     const titleLink = header.createEl("a", { 

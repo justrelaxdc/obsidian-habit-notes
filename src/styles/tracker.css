@@ -196,3 +196,40 @@
         .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
         .tracker-notes__folder-header.level-3 { font-size: 0.85em; }
       }
+      
+      /* Modal buttons (Delete and Save) */
+      .tracker-modal-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.5em;
+      }
+      
+      .tracker-modal-buttons button {
+        padding: 0.5em 1em;
+        border-radius: 5px;
+        cursor: pointer;
+        border: 1px solid var(--background-modifier-border);
+        transition: all 0.2s ease;
+      }
+      
+      .tracker-modal-buttons button.mod-warning {
+        background: var(--interactive-normal);
+        color: var(--text-normal);
+      }
+      
+      .tracker-modal-buttons button.mod-warning:hover {
+        background: var(--text-error);
+        border-color: var(--text-error);
+        color: var(--text-on-accent);
+      }
+      
+      .tracker-modal-buttons button.mod-cta {
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+        border-color: var(--interactive-accent);
+      }
+      
+      .tracker-modal-buttons button.mod-cta:hover {
+        background: var(--interactive-accent-hover);
+        border-color: var(--interactive-accent-hover);
+      }

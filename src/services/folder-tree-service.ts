@@ -1,22 +1,14 @@
 import { App, TFile, TFolder } from "obsidian";
 import type { FolderNode } from "../domain/types";
+import { normalizePath } from "../utils/path";
 
 export class FolderTreeService {
   private readonly cache = new Map<string, FolderNode | null>();
 
   constructor(private readonly app: App) {}
 
-  private normalizePath(path: string): string {
-    return (path || "")
-      .trim()
-      .replace(/\\/g, "/")
-      .replace(/\/+/g, "/")
-      .replace(/^\/+/, "")
-      .replace(/\/$/, "");
-  }
-
   private cacheKey(folderPath: string, maxDepth: number): string {
-    return `${this.normalizePath(folderPath)}::${maxDepth}`;
+    return `${normalizePath(folderPath)}::${maxDepth}`;
   }
 
   getFolderTree(folderPath: string, maxDepth: number = 3): FolderNode | null {
@@ -88,7 +80,7 @@ export class FolderTreeService {
       this.cache.clear();
       return;
     }
-    const normalized = this.normalizePath(folderPath);
+    const normalized = normalizePath(folderPath);
     for (const key of Array.from(this.cache.keys())) {
       const [cachedPath] = key.split("::");
       if (

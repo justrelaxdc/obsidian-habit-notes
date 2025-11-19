@@ -144,7 +144,6 @@ showStats: true
 
 ```markdown
 ---
-name: Название трекера
 type: checkbox
 maxRating: 5  # только для типа rating
 minValue: 0  # только для типа scale
@@ -153,6 +152,8 @@ step: 1  # только для типа scale
 data: {}
 ---
 ```
+
+**Имя трекера** определяется именем файла (без расширения .md).
 
 Все записи хранятся в секции `data` frontmatter в формате `"YYYY-MM-DD": значение`.
 

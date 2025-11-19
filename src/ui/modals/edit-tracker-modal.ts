@@ -1,6 +1,7 @@
 import type { App, TFile } from "obsidian";
 import { Modal, Notice, Setting } from "obsidian";
 import type TrackerPlugin from "../../core/tracker-plugin";
+import { MODAL_LABELS, ERROR_MESSAGES, SUCCESS_MESSAGES } from "../../constants";
 
 export class EditTrackerModal extends Modal {
   private readonly plugin: TrackerPlugin;
@@ -236,8 +237,39 @@ export class EditTrackerModal extends Modal {
       typeDropdown.onchange = updateFieldsVisibility;
     }
 
-    new Setting(contentEl).addButton((button) => {
-      button.setButtonText("Сохранить").setCta().onClick(async () => {
+    // Создаем контейнер для кнопок по краям
+    const buttonsWrapper = contentEl.createDiv({ cls: "tracker-modal-buttons" });
+    
+    // Кнопка "Удалить" (слева)
+    const deleteBtn = buttonsWrapper.createEl("button", { 
+      text: MODAL_LABELS.DELETE,
+      cls: "mod-warning"
+    });
+    deleteBtn.addEventListener("click", async () => {
+      try {
+        // Удаляем файл сразу
+        await this.app.vault.delete(this.file);
+        
+        new Notice(`${SUCCESS_MESSAGES.TRACKER_DELETED}: ${this.file.basename}`);
+        
+        // Обновляем UI
+        const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
+        await this.plugin.onTrackerCreated(fileFolderPath);
+        
+        this.close();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        new Notice(`${ERROR_MESSAGES.UPDATE_ERROR}: ${errorMsg}`);
+        console.error("Tracker: ошибка удаления трекера", error);
+      }
+    });
+    
+    // Кнопка "Сохранить" (справа)
+    const saveBtn = buttonsWrapper.createEl("button", { 
+      text: MODAL_LABELS.SAVE,
+      cls: "mod-cta"
+    });
+    saveBtn.addEventListener("click", async () => {
         const nameInput = nameSetting.controlEl.querySelector("input") as HTMLInputElement;
         const name = nameInput.value.trim();
         if (!name) {
@@ -282,8 +314,7 @@ export class EditTrackerModal extends Modal {
             existingData = this.plugin.parseFrontmatterData(frontmatterMatch[1]);
           }
 
-          const escapedName = name.replace(/"/g, '\\"');
-          let newFrontmatter = `name: "${escapedName}"\ntype: "${type}"\n`;
+          let newFrontmatter = `type: "${type}"\n`;
           if (type === "scale") {
             newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
             newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
@@ -328,7 +359,6 @@ export class EditTrackerModal extends Modal {
           new Notice(`Ошибка при обновлении трекера: ${errorMsg}`);
           console.error("Tracker: ошибка обновления трекера", error);
         }
-      });
     });
   }
 

@@ -1,15 +1,14 @@
 import { App, TFile } from "obsidian";
-import type { TrackerSettings, TrackerFileOptions } from "../domain/types";
+import type { TrackerSettings, TrackerFileOptions, ModifyGuards } from "../domain/types";
 import { addDays, formatDate, parseDate } from "../utils/date";
 import { parseMaybeNumber } from "../utils/misc";
 import { TrackerDataCache } from "./tracker-data-cache";
+import { ERROR_MESSAGES, MAX_DAYS_BACK, TrackerType } from "../constants";
+import { isTrackerValueTrue } from "../utils/validation";
 
 export class TrackerFileService {
   private readonly cache: TrackerDataCache;
-  private modifyGuards?: {
-    onBeforeModify?: (path: string) => void;
-    onAfterModify?: (path: string) => void;
-  };
+  private modifyGuards?: ModifyGuards;
 
   constructor(private readonly app: App) {
     this.cache = new TrackerDataCache();
@@ -22,8 +21,7 @@ export class TrackerFileService {
     if (dir && !this.app.vault.getAbstractFileByPath(dir)) {
       await this.app.vault.createFolder(dir);
     }
-    const name = filePath.split("/").pop()?.replace(".md", "") || "Untitled";
-    const content = `---\nname: "${name.replace(/"/g, '\\"')}"\ntype: "${type}"\ndata: {}\n---\n`;
+    const content = `---\ntype: "${type}"\ndata: {}\n---\n`;
     return this.app.vault.create(filePath, content);
   }
 
@@ -129,7 +127,7 @@ export class TrackerFileService {
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
 
       if (!frontmatterMatch) {
-        throw new Error("Frontmatter не найден");
+        throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
       }
 
       const frontmatter = frontmatterMatch[1];
@@ -177,11 +175,7 @@ export class TrackerFileService {
         if (frontmatterMatch) {
           const frontmatter = frontmatterMatch[1];
           const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
-          fileOpts.mode = typeMatch && typeMatch[1] ? typeMatch[1].trim() : "good-habit";
-          const nameMatch = frontmatter.match(/^name:\s*["']?([^"'\n]+)["']?/m);
-          if (nameMatch && nameMatch[1]) {
-            fileOpts.name = nameMatch[1].trim();
-          }
+          fileOpts.mode = (typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT) as any;
           const maxRatingMatch = frontmatter.match(/^maxRating:\s*(\d+)/m);
           if (maxRatingMatch) fileOpts.maxRating = maxRatingMatch[1];
           const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
@@ -199,11 +193,11 @@ export class TrackerFileService {
             fileOpts.unit = unitMatch[1].trim();
           }
         } else {
-          fileOpts.mode = "good-habit";
+          fileOpts.mode = TrackerType.GOOD_HABIT;
         }
       } catch (error) {
         console.error("Tracker: ошибка чтения frontmatter", error);
-        fileOpts.mode = "good-habit";
+        fileOpts.mode = TrackerType.GOOD_HABIT;
       }
       return fileOpts;
     });
@@ -278,10 +272,9 @@ export class TrackerFileService {
       startTrackingDate = m ? m(endDate).subtract(365, "days") : addDays(endDate, -365);
     }
 
-    const maxDaysBack = 3650;
     let daysChecked = 0;
 
-    while (daysChecked < maxDaysBack) {
+    while (daysChecked < MAX_DAYS_BACK) {
       if (m) {
         if (currentDate.isBefore(startTrackingDate)) break;
       } else if (currentDate < startTrackingDate) {
@@ -296,17 +289,11 @@ export class TrackerFileService {
         if (val == null) {
           isSuccess = true;
         } else {
-          const valStr = String(val);
-          const hasValue =
-            typeof val === "number" ? val !== 0 : valStr === "1" || valStr === "true" || valStr.trim() !== "";
+          const hasValue = isTrackerValueTrue(val);
           isSuccess = !hasValue;
         }
       } else if (val != null) {
-        const valStr = String(val);
-        isSuccess =
-          typeof val === "number"
-            ? val !== 0
-            : valStr === "1" || valStr === "true" || valStr.trim() !== "";
+        isSuccess = isTrackerValueTrue(val);
       }
 
       if (isSuccess) {
@@ -335,7 +322,7 @@ export class TrackerFileService {
     this.cache.invalidateAll();
   }
 
-  setModifyGuards(guards: { onBeforeModify?: (path: string) => void; onAfterModify?: (path: string) => void }) {
+  setModifyGuards(guards: ModifyGuards) {
     this.modifyGuards = guards;
   }
 }
