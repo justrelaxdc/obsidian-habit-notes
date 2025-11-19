@@ -172,6 +172,10 @@ export class TrackerFileService {
         const frontmatter = frontmatterMatch[1];
         const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
         fileOpts.mode = typeMatch && typeMatch[1] ? typeMatch[1].trim() : "good-habit";
+        const nameMatch = frontmatter.match(/^name:\s*["']?([^"'\n]+)["']?/m);
+        if (nameMatch && nameMatch[1]) {
+          fileOpts.name = nameMatch[1].trim();
+        }
         const maxRatingMatch = frontmatter.match(/^maxRating:\s*(\d+)/m);
         if (maxRatingMatch) fileOpts.maxRating = maxRatingMatch[1];
         const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);

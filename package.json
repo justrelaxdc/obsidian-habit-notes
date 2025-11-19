@@ -3,8 +3,8 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --target=es2020 --outfile=main.js --format=cjs --external:obsidian",
-    "dev": "esbuild src/main.ts --bundle --target=es2020 --outfile=main.js --format=cjs --external:obsidian --watch"
+    "build": "esbuild src/main.ts --bundle --target=es2020 --outfile=main.js --format=cjs --external:obsidian --loader:.css=text",
+    "dev": "esbuild src/main.ts --bundle --target=es2020 --outfile=main.js --format=cjs --external:obsidian --loader:.css=text --watch"
   },
   "dependencies": {
     "chart.js": "^4.4.0"

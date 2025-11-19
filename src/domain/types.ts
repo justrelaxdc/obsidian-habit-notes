@@ -37,5 +37,6 @@ export interface TrackerFileOptions {
   minLimit?: string;
   maxLimit?: string;
   unit?: string;
+  name?: string;
 }
 

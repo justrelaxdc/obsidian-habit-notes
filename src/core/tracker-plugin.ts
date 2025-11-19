@@ -2,7 +2,7 @@ import { App, MarkdownPostProcessorContext, Notice, Plugin, TFile } from "obsidi
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 import { TrackerBlockRenderChild } from "../ui/tracker-block-render-child";
-import type { TrackerSettings } from "../domain/types";
+import type { TrackerSettings, TrackerFileOptions } from "../domain/types";
 import { DEFAULT_SETTINGS } from "../domain/types";
 import { FolderTreeService } from "../services/folder-tree-service";
 import { TrackerFileService } from "../services/tracker-file-service";
@@ -12,12 +12,14 @@ import { TrackerSettingsTab } from "../ui/tracker-settings-tab";
 import { CreateTrackerModal } from "../ui/modals/create-tracker-modal";
 import { EditTrackerModal } from "../ui/modals/edit-tracker-modal";
 import { FilePickerModal } from "../ui/modals/file-picker-modal";
+import trackerStyles from "../styles/tracker.css";
 
 export default class TrackerPlugin extends Plugin {
   settings: TrackerSettings;
   activeBlocks: Set<TrackerBlockRenderChild> = new Set();
   private folderTreeService: FolderTreeService;
   private trackerFileService: TrackerFileService;
+  private styleEl?: HTMLStyleElement;
 
   private isMobileDevice(): boolean {
     return window.innerWidth <= 768;
@@ -52,13 +54,23 @@ export default class TrackerPlugin extends Plugin {
   }
 
   private isFileInTrackersFolder(file: TFile): boolean {
-    const fileFolderPath = this.normalizePath(this.getFolderPathFromFile(file.path));
+    const fileFolderPath = this.getFolderPathFromFile(file.path);
     const trackersFolderPath = this.normalizePath(this.settings.trackersFolder);
-    return fileFolderPath === trackersFolderPath || file.path.startsWith(this.settings.trackersFolder + "/");
+    if (!trackersFolderPath) {
+      return fileFolderPath === "";
+    }
+    const normalizedFilePath = this.normalizePath(file.path);
+    return fileFolderPath === trackersFolderPath || normalizedFilePath.startsWith(`${trackersFolderPath}/`);
   }
 
   getFolderPathFromFile(filePath: string): string {
-    return filePath.substring(0, filePath.lastIndexOf('/'));
+    if (!filePath) return "";
+    const normalizedPath = this.normalizePath(filePath);
+    const lastSlash = normalizedPath.lastIndexOf("/");
+    if (lastSlash === -1) {
+      return "";
+    }
+    return normalizedPath.substring(0, lastSlash);
   }
 
   getFolderTree(folderPath: string) {
@@ -66,203 +78,17 @@ export default class TrackerPlugin extends Plugin {
   }
 
   addStyleSheet() {
+    if (this.styleEl) return;
     const styleEl = document.createElement("style");
-    styleEl.textContent = `
-      .markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,
-      .markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }
-      .tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }
-      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }
-      .tracker-notes__header-icon { font-size: 1.3em; }
-      .tracker-notes__header-label { }
-      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }
-      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }
-      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
-      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }
-      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }
-      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
-      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }
-      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }
-      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }
-      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }
-      .tracker-notes__value.updated { animation: pulse 0.3s ease; }
-      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-      .tracker-notes input { outline: none !important; }
-      .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }
-      .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }
-      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }
-      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }
-      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }
-      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
-      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
-      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }
-      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }
-      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }
-      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }
-      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; z-index: 0; }
-      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 2; white-space: nowrap; }
-      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }
-      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }
-      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
-      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-      .tracker-notes button:active { transform: scale(0.95) translateY(0); }
-      .tracker-notes__rating { display: flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }
-      .tracker-notes__rating-star { font-size: 1.4em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; flex-shrink: 0; }
-      .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }
-      .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
-      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }
-      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }
-      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }
-      .tracker-notes__stats > div { margin: 0.3em 0; }
-      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }
-      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }
-      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-      .tracker-notes__calendar-day:hover { transform: scale(1.1); }
-      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }
-      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }
-      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }
-      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }
-      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }
-      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }
-      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }
-      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }
-      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }
-      .tracker-notes__heatmap { display: flex; gap: 0.3em; overflow-x: auto; scroll-behavior: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }
-      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }
-      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }
-      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
-      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }
-      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }
-      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }
-      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }
-      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }
-      .tracker-notes__heatmap-day.start-day { 
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        line-height: 1;
-      }
-      .tracker-notes__heatmap-day.start-day::after {
-        content: "START";
-        font-size: 0.5em;
-        line-height: 1;
-        margin-top: 0.1em;
-        opacity: 0.7;
-        font-weight: 600;
-      }
-      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }
-      .tracker-notes__stats > div { transition: opacity 0.2s ease; }
-      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }
-      .tracker-notes__heatmap { transition: opacity 0.15s ease; }
-      .tracker-notes__chart { transition: opacity 0.15s ease; }
-      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }
-      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }
-      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }
-      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }
-      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }
-      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }
-      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }
-      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }
-      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }
-      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
-      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }
-      
-      /* Медиа-запросы для мобильных устройств */
-      @media (max-width: 768px) {
-        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }
-        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }
-        .tracker-notes__header-title { font-size: 1em; }
-        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }
-        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }
-        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }
-        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
-        .tracker-notes__date-picker-container { padding: 0; }
-        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }
-        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }
-        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }
-        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }
-        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }
-        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
-        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
-        .tracker-notes__rating { gap: 0.2em; justify-content: center; }
-        .tracker-notes__rating-star { font-size: 1.2em; }
-        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
-        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }
-        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }
-        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }
-        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
-        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
-        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
-        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }
-        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }
-        .tracker-notes__calendar-day { font-size: 0.65em; }
-        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }
-        .tracker-notes__chart canvas { height: 140px !important; }
-        .tracker-notes__hierarchy { gap: 1em; }
-        .tracker-notes__folder-node { margin-bottom: 0.75em; }
-        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }
-        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }
-        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }
-        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }
-        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }
-        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }
-        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }
-        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }
-        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }
-      }
-      
-      @media (max-width: 480px) {
-        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }
-        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }
-        .tracker-notes__header-title { font-size: 0.95em; }
-        .tracker-notes__trackers { gap: 0.4em; }
-        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }
-        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }
-        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
-        .tracker-notes__date-picker { gap: 0.25em; }
-        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }
-        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }
-        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }
-        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }
-        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
-        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
-        .tracker-notes__rating-star { font-size: 1.1em; }
-        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }
-        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }
-        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }
-        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }
-        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }
-        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }
-        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }
-        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }
-        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }
-        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }
-        .tracker-notes__calendar-day { font-size: 0.6em; }
-        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }
-        .tracker-notes__chart canvas { height: 120px !important; }
-        .tracker-notes__hierarchy { gap: 0.75em; }
-        .tracker-notes__folder-node { margin-bottom: 0.5em; }
-        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }
-        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }
-        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }
-        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }
-        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }
-        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }
-        .tracker-notes__folder-header.level-1 { font-size: 1em; }
-        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }
-        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }
-      }
-    `;
+    styleEl.textContent = trackerStyles;
     document.head.appendChild(styleEl);
+    this.styleEl = styleEl;
+    this.register(() => {
+      styleEl.remove();
+      if (this.styleEl === styleEl) {
+        this.styleEl = undefined;
+      }
+    });
   }
 
   async onunload() {
@@ -403,11 +229,17 @@ export default class TrackerPlugin extends Plugin {
   }
 
   private normalizePath(path: string): string {
-    return path.replace(/\/+/g, '/').replace(/\/$/, '');
+    if (!path) return "";
+    return path
+      .trim()
+      .replace(/\\/g, "/")
+      .replace(/\/+/g, "/")
+      .replace(/^\/+/, "")
+      .replace(/\/$/, "");
   }
 
   // Вспомогательная функция для получения типа из frontmatter файла
-  async getFileTypeFromFrontmatter(file: TFile): Promise<Record<string, string>> {
+  async getFileTypeFromFrontmatter(file: TFile): Promise<TrackerFileOptions> {
     return this.trackerFileService.getFileTypeFromFrontmatter(file);
   }
 
@@ -466,9 +298,9 @@ export default class TrackerPlugin extends Plugin {
     const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
     // Получаем единицу измерения для отображения в названии
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const fileName = file.basename;
+    const baseName = (fileOpts.name?.trim() || file.basename);
     const unit = fileOpts.unit || "";
-    const displayName = unit ? `${fileName} (${unit})` : fileName;
+    const displayName = unit ? `${baseName} (${unit})` : baseName;
     const titleLink = header.createEl("a", { 
       text: displayName, 
       cls: "tracker-notes__tracker-title internal-link",
@@ -903,9 +735,12 @@ export default class TrackerPlugin extends Plugin {
     const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
     
     // Функция для обновления только конкретного дня в хитмапе
-    const updateHeatmapDay = async (dateStr: string, dayDiv: HTMLElement) => {
-      const entries = await this.readAllEntries(file);
-      const hasValue = entries.has(dateStr) && (entries.get(dateStr) === 1 || entries.get(dateStr) === "1" || String(entries.get(dateStr)) === "true");
+    const updateHeatmapDay = (dateStr: string, dayDiv: HTMLElement) => {
+      const value = entries.get(dateStr);
+      const hasValue =
+        value === 1 ||
+        value === "1" ||
+        String(value) === "true";
       
       if (hasValue) {
         dayDiv.addClass("has-value");
@@ -915,8 +750,7 @@ export default class TrackerPlugin extends Plugin {
     };
     
     // Функция для обновления всех классов start-day в хитмапе
-    const updateAllStartDays = async () => {
-      const entries = await this.readAllEntries(file);
+    const updateAllStartDays = () => {
       const currentStartDateStr = this.getStartTrackingDate(entries, file);
       
       // Обновляем класс start-day для всех дней в хитмапе
@@ -939,9 +773,9 @@ export default class TrackerPlugin extends Plugin {
       
       // Обновляем только конкретный день в хитмапе, если указан
       if (updatedDateStr && updatedDayDiv) {
-        await updateHeatmapDay(updatedDateStr, updatedDayDiv);
+        updateHeatmapDay(updatedDateStr, updatedDayDiv);
         // Всегда обновляем все классы start-day после изменения записи
-        await updateAllStartDays();
+        updateAllStartDays();
       }
       
       // Получаем текущую дату из общего date-input блока
@@ -991,22 +825,17 @@ export default class TrackerPlugin extends Plugin {
       
       // Устанавливаем обработчик события для всех элементов (включая существующие)
       dayDiv.onclick = async () => {
-        const currentValue = await this.readValueForDate(file, dateStr);
+        const currentValue = entries.get(dateStr);
         const isChecked = currentValue === 1 || currentValue === "1" || String(currentValue) === "true";
         const newValue = isChecked ? 0 : 1;
         await this.writeLogLine(file, dateStr, String(newValue));
+        entries.set(dateStr, newValue);
         new Notice(`✓ Записано: ${dateStr}: ${newValue}`, 2000);
         // Обновляем только этот день и другие визуализации, не пересоздавая весь хитмап
         await updateVisualizations(dateStr, dayDiv);
       };
       
-      const hasValue = entries.has(dateStr) && (entries.get(dateStr) === 1 || entries.get(dateStr) === "1" || String(entries.get(dateStr)) === "true");
-      
-      if (hasValue) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
+      updateHeatmapDay(dateStr, dayDiv);
       
       // Добавляем класс start-day если это день начала отслеживания
       if (dateStr === startTrackingDateStr) {
@@ -1048,149 +877,11 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async renderTrackerHeatmap(container: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string) {
-    // Проверяем, существует ли уже хитмап
-    const existingHeatmap = container.querySelector(".tracker-notes__heatmap") as HTMLElement;
-    let heatmapDiv: HTMLElement;
-    
-    if (existingHeatmap) {
-      // Обновляем существующий хитмап на месте
-      heatmapDiv = existingHeatmap;
-      await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
-      return;
+    let heatmapDiv = container.querySelector(".tracker-notes__heatmap") as HTMLElement;
+    if (!heatmapDiv) {
+      heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
     }
-
-    // Создаем новый хитмап
-    heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
-    
-    const m = (window as any).moment;
-    const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
-    const startDate = m ? m(endDate).subtract(daysToShow - 1, 'days') : addDays(endDate, -(daysToShow - 1));
-    
-    const entries = await this.readAllEntries(file);
-    
-    // Получаем дату начала отслеживания
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-    
-    // Находим родительский контейнер для обновления визуализаций
-    const trackerItem = container.closest(".tracker-notes__tracker") as HTMLElement;
-    const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
-    
-    // Функция для обновления только конкретного дня в хитмапе
-    const updateHeatmapDay = async (dateStr: string, dayDiv: HTMLElement) => {
-      const entries = await this.readAllEntries(file);
-      const hasValue = entries.has(dateStr) && (entries.get(dateStr) === 1 || entries.get(dateStr) === "1" || String(entries.get(dateStr)) === "true");
-      
-      if (hasValue) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
-    };
-    
-    // Функция для обновления всех классов start-day в хитмапе
-    const updateAllStartDays = async () => {
-      const entries = await this.readAllEntries(file);
-      const currentStartDateStr = this.getStartTrackingDate(entries, file);
-      
-      // Обновляем класс start-day для всех дней в хитмапе
-      const allDayElements = Array.from(heatmapDiv.children) as HTMLElement[];
-      for (const dayDiv of allDayElements) {
-        const dayDateStr = (dayDiv as any).dataset?.dateStr;
-        if (dayDateStr) {
-          if (dayDateStr === currentStartDateStr) {
-            dayDiv.addClass("start-day");
-          } else {
-            dayDiv.removeClass("start-day");
-          }
-        }
-      }
-    };
-    
-    // Функция для обновления визуализаций после записи данных
-    const updateVisualizations = async (updatedDateStr?: string, updatedDayDiv?: HTMLElement) => {
-      if (!trackerItem) return;
-      
-      // Обновляем только конкретный день в хитмапе, если указан
-      if (updatedDateStr && updatedDayDiv) {
-        await updateHeatmapDay(updatedDateStr, updatedDayDiv);
-        // Всегда обновляем все классы start-day после изменения записи
-        await updateAllStartDays();
-      }
-      
-      // Получаем текущую дату из общего date-input блока
-      const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
-      
-      // Обновляем график если он есть
-      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-      if (chartDiv) {
-        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
-        await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, days);
-      }
-      
-      // Обновляем статистику если она есть
-      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-      if (statsDiv) {
-        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
-        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, days, trackerType);
-      }
-    };
-    
-    for (let i = 0; i < daysToShow; i++) {
-      const date = m ? m(startDate).add(i, 'days') : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      const dayNum = m ? date.date() : date.getDate();
-      
-      const dayDiv = heatmapDiv.createDiv({ cls: "tracker-notes__heatmap-day" });
-      dayDiv.setText(dayNum.toString());
-      dayDiv.addClass(trackerType);
-      // Сохраняем dateStr в data-атрибуте для последующего обновления start-day
-      (dayDiv as any).dataset.dateStr = dateStr;
-      
-      const hasValue = entries.has(dateStr) && (entries.get(dateStr) === 1 || entries.get(dateStr) === "1" || String(entries.get(dateStr)) === "true");
-      
-      if (hasValue) {
-        dayDiv.addClass("has-value");
-      }
-      
-      // Добавляем класс start-day если это день начала отслеживания
-      if (dateStr === startTrackingDateStr) {
-        dayDiv.addClass("start-day");
-      }
-      
-      dayDiv.onclick = async () => {
-        const currentValue = await this.readValueForDate(file, dateStr);
-        const isChecked = currentValue === 1 || currentValue === "1" || String(currentValue) === "true";
-        const newValue = isChecked ? 0 : 1;
-        await this.writeLogLine(file, dateStr, String(newValue));
-        new Notice(`✓ Записано: ${dateStr}: ${newValue}`, 2000);
-        // Обновляем только этот день и другие визуализации, не пересоздавая весь хитмап
-        await updateVisualizations(dateStr, dayDiv);
-      };
-    }
-    
-    // Прокручиваем хитмап в конец, чтобы был виден текущий день
-    // Используем двойной requestAnimationFrame для гарантии, что layout завершен и размеры вычислены
-    const performScroll = () => {
-      const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-      if (maxScroll > 0) {
-        // Всегда скроллим в конец для отображения текущего дня
-        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
-      } else {
-        // Если размеры еще не вычислены, повторяем попытку
-        setTimeout(() => {
-          const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-          if (retryMaxScroll > 0) {
-            heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
-          }
-        }, 50);
-      }
-    };
-    
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        performScroll();
-      });
-    });
+    await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
   }
 
 
