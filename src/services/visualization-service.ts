@@ -137,35 +137,5 @@ export class VisualizationService {
       dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_START);
     }
   }
-  
-  /**
-   * Auto-scrolls heatmap to the right (most recent days)
-   */
-  autoScrollHeatmap(heatmapDiv: HTMLElement): void {
-    if (heatmapDiv.dataset.autoscrolled === "true") {
-      return;
-    }
-    
-    const performScroll = () => {
-      const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-      if (maxScroll > 0) {
-        heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
-      } else {
-        setTimeout(() => {
-          const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-          if (retryMaxScroll > 0) {
-            heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
-          }
-        }, 50);
-      }
-    };
-    
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        performScroll();
-        heatmapDiv.dataset.autoscrolled = "true";
-      });
-    });
-  }
 }
 

@@ -30,15 +30,20 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
   }
 
   async render() {
-    this.containerEl.empty();
+    // Создаем временный контейнер для off-screen рендеринга
+    const tempContainer = document.createElement('div');
+    tempContainer.className = this.containerEl.className;
 
     try {
       const folderTree = this.plugin.getFolderTree(this.folderPath);
       if (!folderTree || (folderTree.files.length === 0 && folderTree.children.length === 0)) {
-        this.containerEl.createEl("div", {
+        tempContainer.createEl("div", {
           text: `tracker: в папке ${this.folderPath} не найдено трекеров`,
           cls: "tracker-notes__error",
         });
+        // Атомарная замена содержимого
+        this.containerEl.empty();
+        this.containerEl.appendChild(tempContainer);
         return;
       }
 
@@ -118,7 +123,7 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       let pendingDateIso: string | null = null;
       let isProcessingDateUpdate = false;
 
-      const mainContainer = this.containerEl.createDiv({ cls: "tracker-notes" });
+      const mainContainer = tempContainer.createDiv({ cls: "tracker-notes" });
 
       const trackerDateUpdate = async (targetIso: string) => {
         dateIso = targetIso;
@@ -195,8 +200,8 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       };
 
       if (view === "control") {
-        const blockHeader = this.containerEl.createDiv({ cls: "tracker-notes__header" });
-        this.containerEl.insertBefore(blockHeader, mainContainer);
+        const blockHeader = tempContainer.createDiv({ cls: "tracker-notes__header" });
+        tempContainer.insertBefore(blockHeader, mainContainer);
 
         const headerTitle = blockHeader.createDiv({ cls: "tracker-notes__header-title" });
         const folderName = this.folderPath.split("/").pop() || this.folderPath;
@@ -237,12 +242,23 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
 
       const trackersContainer = mainContainer.createDiv({ cls: "tracker-notes__hierarchy" });
       await this.renderFolderNode(folderTree, trackersContainer, dateIso, view, this.opts);
+      
+      // Атомарная замена: весь контент готов, заменяем за одну операцию
+      this.containerEl.empty();
+      while (tempContainer.firstChild) {
+        this.containerEl.appendChild(tempContainer.firstChild);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.containerEl.createEl("div", {
+      tempContainer.createEl("div", {
         text: `tracker: ошибка при обработке блока: ${errorMsg}`,
         cls: "tracker-notes__error",
       });
+      // Атомарная замена даже при ошибке
+      this.containerEl.empty();
+      while (tempContainer.firstChild) {
+        this.containerEl.appendChild(tempContainer.firstChild);
+      }
       console.error("Tracker: ошибка обработки блока", error);
     }
   }
@@ -254,12 +270,10 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
     view: string,
     opts: Record<string, string>,
   ): Promise<void> {
-    const fragment = document.createDocumentFragment();
+    // Создаем контейнер узла
     const nodeContainer = document.createElement("div");
     nodeContainer.addClass("tracker-notes__folder-node");
     nodeContainer.addClass(`level-${node.level}`);
-    fragment.appendChild(nodeContainer);
-    parentEl.appendChild(fragment);
 
     const shouldShowHeader =
       node.files.length > 0 || (node.level > 0 && node.children.length > 0);
@@ -274,6 +288,7 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
     if (node.files.length > 0) {
       const trackersContainer = nodeContainer.createDiv({ cls: "tracker-notes__trackers" });
 
+      // Рендерим все трекеры параллельно
       const renderPromises = node.files.map(async (file) => {
         try {
           await this.plugin.renderTracker(trackersContainer, file, dateIso, view, opts);
@@ -284,9 +299,13 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       await Promise.all(renderPromises);
     }
 
+    // Рекурсивно рендерим дочерние узлы
     for (const childNode of node.children) {
       await this.renderFolderNode(childNode, nodeContainer, dateIso, view, opts);
     }
+    
+    // Добавляем готовый узел в родитель одной операцией
+    parentEl.appendChild(nodeContainer);
   }
 
   getFolderPath(): string {

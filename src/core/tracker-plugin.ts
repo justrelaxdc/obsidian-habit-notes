@@ -217,8 +217,101 @@ export default class TrackerPlugin extends Plugin {
       trackers.forEach((trackerItem) => {
         const parent = trackerItem.parentElement as HTMLElement | null;
         if (!parent) return;
+        
+        // Сохраняем позицию трекера перед обновлением
+        const oldBasename = file.basename;
+        const siblings = Array.from(parent.children).filter(
+          (el) => el.classList.contains('tracker-notes__tracker')
+        ) as HTMLElement[];
+        const currentIndex = siblings.indexOf(trackerItem);
+        const nextSibling = currentIndex < siblings.length - 1 ? siblings[currentIndex + 1] : null;
+        
         refreshPromises.push(
-          this.renderTracker(parent, file, activeDateIso, view, opts, trackerItem),
+          this.renderTracker(parent, file, activeDateIso, view, opts, trackerItem).then(() => {
+            // Восстанавливаем позицию после обновления
+            const newBasename = file.basename;
+            const updatedTracker = parent.querySelector(
+              `.tracker-notes__tracker[data-file-path="${file.path}"]`
+            ) as HTMLElement | null;
+            
+            if (!updatedTracker) return;
+            
+            // Проверяем текущую позицию трекера
+            const currentSiblings = Array.from(parent.children).filter(
+              (el) => el.classList.contains('tracker-notes__tracker')
+            ) as HTMLElement[];
+            const currentPosition = currentSiblings.indexOf(updatedTracker);
+            
+            // Если имя не изменилось, восстанавливаем исходную позицию
+            if (oldBasename === newBasename) {
+              // Проверяем, изменилась ли позиция
+              if (currentPosition !== currentIndex) {
+                if (nextSibling && nextSibling.parentElement === parent && nextSibling !== updatedTracker) {
+                  parent.insertBefore(updatedTracker, nextSibling);
+                } else if (currentIndex === 0 && currentPosition !== 0) {
+                  const firstTracker = Array.from(parent.children).find(
+                    (el) => el.classList.contains('tracker-notes__tracker') && el !== updatedTracker
+                  );
+                  if (firstTracker) {
+                    parent.insertBefore(updatedTracker, firstTracker);
+                  }
+                } else if (currentIndex > 0 && currentPosition !== currentIndex) {
+                  // Вставляем после предыдущего соседа
+                  const prevSibling = currentIndex > 0 ? siblings[currentIndex - 1] : null;
+                  if (prevSibling && prevSibling.parentElement === parent) {
+                    const afterPrev = prevSibling.nextElementSibling;
+                    if (afterPrev && afterPrev !== updatedTracker) {
+                      parent.insertBefore(updatedTracker, afterPrev);
+                    } else if (!afterPrev) {
+                      parent.appendChild(updatedTracker);
+                    }
+                  }
+                }
+              }
+            } else {
+              // Если имя изменилось, находим правильную позицию по сортировке
+              const allTrackers = Array.from(parent.children).filter(
+                (el) => el.classList.contains('tracker-notes__tracker')
+              ) as HTMLElement[];
+              
+              // Сортируем трекеры по basename файла
+              const sortedTrackers = [...allTrackers].sort((a, b) => {
+                const aPath = a.dataset.filePath || '';
+                const bPath = b.dataset.filePath || '';
+                const aFile = this.app.vault.getAbstractFileByPath(aPath);
+                const bFile = this.app.vault.getAbstractFileByPath(bPath);
+                if (aFile instanceof TFile && bFile instanceof TFile) {
+                  return aFile.basename.localeCompare(bFile.basename, undefined, { sensitivity: "base" });
+                }
+                return 0;
+              });
+              
+              // Находим правильную позицию для обновленного трекера
+              const correctIndex = sortedTrackers.indexOf(updatedTracker);
+              if (correctIndex >= 0 && correctIndex < sortedTrackers.length) {
+                // Проверяем, находится ли трекер уже на правильной позиции
+                if (currentPosition !== correctIndex) {
+                  const correctNextSibling = correctIndex < sortedTrackers.length - 1 
+                    ? sortedTrackers[correctIndex + 1] 
+                    : null;
+                  
+                  if (correctNextSibling && correctNextSibling !== updatedTracker) {
+                    parent.insertBefore(updatedTracker, correctNextSibling);
+                  } else if (correctIndex === 0 && currentPosition !== 0) {
+                    const firstTracker = Array.from(parent.children).find(
+                      (el) => el.classList.contains('tracker-notes__tracker') && el !== updatedTracker
+                    );
+                    if (firstTracker) {
+                      parent.insertBefore(updatedTracker, firstTracker);
+                    }
+                  } else if (correctIndex === sortedTrackers.length - 1 && currentPosition !== correctIndex) {
+                    // Если трекер должен быть последним, перемещаем в конец
+                    parent.appendChild(updatedTracker);
+                  }
+                }
+              }
+            }
+          }),
         );
       });
     }
@@ -399,17 +492,13 @@ export default class TrackerPlugin extends Plugin {
     opts: Record<string, string>,
     existingTracker?: HTMLElement,
   ) {
-    const trackerItem =
-      existingTracker ??
-      parentEl.createDiv({
-        cls: "tracker-notes__tracker",
-      });
+    // Создаем trackerItem вне DOM если это новый трекер
+    let trackerItem: HTMLElement;
+    let isNewTracker = false;
     
-    // Оптимизация: не очищаем полностью если трекер уже существует
-    if (!existingTracker) {
-      trackerItem.empty();
-    } else {
-      // Удаляем только содержимое, сохраняя dataset для последующей проверки
+    if (existingTracker) {
+      trackerItem = existingTracker;
+      // Удаляем только содержимое, сохраняя dataset
       const header = trackerItem.querySelector('.tracker-notes__tracker-header');
       const controls = trackerItem.querySelector('.tracker-notes__controls');
       const chart = trackerItem.querySelector('.tracker-notes__chart');
@@ -419,6 +508,10 @@ export default class TrackerPlugin extends Plugin {
       controls?.remove();
       chart?.remove();
       stats?.remove();
+    } else {
+      // Создаем вне DOM
+      trackerItem = document.createElement('div');
+      isNewTracker = true;
     }
     
     trackerItem.classList.add("tracker-notes__tracker");
@@ -497,6 +590,11 @@ export default class TrackerPlugin extends Plugin {
     }
     if (shouldShowStats) {
       await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
+    }
+    
+    // Добавляем в DOM только если это новый трекер (одна операция)
+    if (isNewTracker) {
+      parentEl.appendChild(trackerItem);
     }
   }
 
@@ -940,6 +1038,8 @@ export default class TrackerPlugin extends Plugin {
     };
     
     // Получаем существующие элементы дней
+    // При flex-direction: row-reverse порядок визуального отображения инвертируется
+    // Поэтому элементы в DOM должны быть от старых к новым, чтобы визуально было от новых к старым
     const dayElements = Array.from(heatmapDiv.children) as HTMLElement[];
     const fragment = document.createDocumentFragment();
     
@@ -992,33 +1092,11 @@ export default class TrackerPlugin extends Plugin {
       dayElements[dayElements.length - 1].remove();
       dayElements.pop();
     }
-    
-    if (heatmapDiv.dataset.autoscrolled !== "true") {
-      const performScroll = () => {
-        const maxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-        if (maxScroll > 0) {
-          heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
-        } else {
-          setTimeout(() => {
-            const retryMaxScroll = heatmapDiv.scrollWidth - heatmapDiv.clientWidth;
-            if (retryMaxScroll > 0) {
-              heatmapDiv.scrollLeft = heatmapDiv.scrollWidth;
-            }
-          }, 50);
-        }
-      };
-      
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          performScroll();
-          heatmapDiv.dataset.autoscrolled = "true";
-        });
-      });
-    }
   }
 
   async renderTrackerHeatmap(container: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string) {
     let heatmapDiv = container.querySelector(".tracker-notes__heatmap") as HTMLElement;
+    
     if (!heatmapDiv) {
       heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
       
@@ -1077,6 +1155,7 @@ export default class TrackerPlugin extends Plugin {
         }
       });
     }
+    
     await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
   }
 
@@ -2031,6 +2110,16 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async saveSettings() { await this.saveData(this.settings); }
+
+  // Методы для безопасной модификации файлов (игнорирование внутренних изменений)
+  markFileAsInternallyModified(path: string) {
+    this.internalWritePaths.add(this.normalizePath(path));
+  }
+
+  unmarkFileAsInternallyModified(path: string) {
+    const normalized = this.normalizePath(path);
+    window.setTimeout(() => this.internalWritePaths.delete(normalized), 0);
+  }
 }
 
 

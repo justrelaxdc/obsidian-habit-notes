@@ -337,20 +337,28 @@ export class EditTrackerModal extends Modal {
 
           const newContent = `---\n${newFrontmatter}---${body ? `\n\n${body}` : ""}`;
 
-          // Модифицируем содержимое
-          await this.app.vault.modify(this.file, newContent);
-
-          // Переименовываем если нужно
-          if (name !== this.file.basename) {
-            const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-            const newPath = this.file.path.replace(this.file.name, newFileName);
-            await this.app.vault.rename(this.file, newPath);
-          }
-
-          new Notice(`Трекер обновлен: ${name}`);
-          this.close();
+          // Помечаем файл как внутренне модифицируемый чтобы event listener игнорировал изменение
+          this.plugin.markFileAsInternallyModified(this.file.path);
           
-          // Event listeners в tracker-plugin.ts автоматически обработают modify и rename события
+          try {
+            // Модифицируем содержимое
+            await this.app.vault.modify(this.file, newContent);
+
+            // Переименовываем если нужно
+            if (name !== this.file.basename) {
+              const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+              const newPath = this.file.path.replace(this.file.name, newFileName);
+              await this.app.vault.rename(this.file, newPath);
+            }
+
+            new Notice(`Трекер обновлен: ${name}`);
+            this.close();
+            
+            // Event listener для rename обработает обновление UI с задержкой
+          } finally {
+            // Снимаем пометку после завершения операций
+            this.plugin.unmarkFileAsInternallyModified(this.file.path);
+          }
 
           this.close();
         } catch (error) {
