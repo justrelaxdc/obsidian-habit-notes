@@ -147,6 +147,45 @@ export class HeatmapService {
     if (!heatmapDiv) {
       heatmapDiv = container.createDiv({ cls: CSS_CLASSES.HEATMAP });
       
+      // Обработчики touch-событий для предотвращения открытия бокового меню при горизонтальном скролле
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let isScrolling = false;
+      
+      heatmapDiv.addEventListener('touchstart', (e: TouchEvent) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          isScrolling = false;
+        }
+      }, { passive: true });
+      
+      heatmapDiv.addEventListener('touchmove', (e: TouchEvent) => {
+        if (e.touches.length === 1 && touchStartX !== 0) {
+          const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+          const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+          
+          // Блокируем распространение только при явном горизонтальном скролле
+          // Если движение в основном горизонтальное (deltaX значительно больше deltaY), предотвращаем распространение
+          if (deltaX > deltaY * 1.5 && deltaX > 10) {
+            isScrolling = true;
+            e.stopPropagation();
+          } else {
+            // При вертикальном или смешанном движении не блокируем, чтобы вертикальный скролл работал
+            isScrolling = false;
+          }
+        }
+      }, { passive: true });
+      
+      heatmapDiv.addEventListener('touchend', (e: TouchEvent) => {
+        if (isScrolling) {
+          e.stopPropagation();
+        }
+        touchStartX = 0;
+        touchStartY = 0;
+        isScrolling = false;
+      }, { passive: true });
+      
       // Event delegation: один обработчик на весь хитмап вместо N обработчиков на каждый день
       heatmapDiv.addEventListener('click', async (e) => {
         const dayDiv = (e.target as HTMLElement).closest(`.${CSS_CLASSES.HEATMAP_DAY}`) as HTMLElement;

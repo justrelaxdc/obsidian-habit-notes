@@ -135,8 +135,8 @@ export class CreateTrackerModal extends Modal {
     limitsDescription.style.marginTop = "0.5em";
     limitsDescription.style.marginBottom = "1em";
 
-    const minLimitSetting = new Setting(contentEl)
-      .setName(MODAL_LABELS.LOWER_LIMIT)
+    const maxLimitSetting = new Setting(contentEl)
+      .setName(MODAL_LABELS.UPPER_LIMIT)
       .addText((text) => {
         text
           .setPlaceholder(PLACEHOLDERS.LIMIT_NONE)
@@ -145,8 +145,8 @@ export class CreateTrackerModal extends Modal {
         text.inputEl.style.width = "100%";
       });
 
-    const maxLimitSetting = new Setting(contentEl)
-      .setName(MODAL_LABELS.UPPER_LIMIT)
+    const minLimitSetting = new Setting(contentEl)
+      .setName(MODAL_LABELS.LOWER_LIMIT)
       .addText((text) => {
         text
           .setPlaceholder(PLACEHOLDERS.LIMIT_NONE)
@@ -246,6 +246,16 @@ export class CreateTrackerModal extends Modal {
         const maxLimitInput = maxLimitSetting.controlEl.querySelector("input") as HTMLInputElement;
         const minLimit = minLimitInput?.value.trim() || "";
         const maxLimit = maxLimitInput?.value.trim() || "";
+
+        // Валидация: верхняя граница должна быть больше нижней границы
+        if (minLimit && maxLimit) {
+          const minLimitNum = parseFloat(minLimit);
+          const maxLimitNum = parseFloat(maxLimit);
+          if (!isNaN(minLimitNum) && !isNaN(maxLimitNum) && maxLimitNum <= minLimitNum) {
+            new Notice("Верхняя граница должна быть больше нижней границы");
+            return;
+          }
+        }
 
         const unitInputValue = unitSetting.controlEl.querySelector("input") as HTMLInputElement;
         const unitRaw = unitInputValue?.value.trim() || "";
