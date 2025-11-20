@@ -7,6 +7,13 @@ export const MAX_CACHE_SIZE = 100;
 export const SCROLL_RESTORE_DELAY_MS = 50;
 export const DEBOUNCE_DELAY_MS = 300;
 
+// Timeout and delay constants
+export const FILE_UPDATE_DELAY_MS = 300; // Delay for file update after create/rename
+export const ANIMATION_DURATION_MS = 300; // Animation duration for UI updates
+export const ANIMATION_DURATION_SHORT_MS = 200; // Short animation duration for UI updates
+export const SCROLL_RESTORE_DELAY_2_MS = 100; // Second delay for scroll restoration
+export const IMMEDIATE_TIMEOUT_MS = 0; // Immediate timeout
+
 // Tracker types
 export const TrackerType = {
   GOOD_HABIT: 'good-habit',

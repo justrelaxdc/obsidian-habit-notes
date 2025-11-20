@@ -7,12 +7,20 @@ import { DEFAULT_SETTINGS } from "../domain/types";
 import { FolderTreeService } from "../services/folder-tree-service";
 import { TrackerFileService } from "../services/tracker-file-service";
 import { resolveDateIso, formatDate, parseDate, addDays } from "../utils/date";
-import { countWords } from "../utils/misc";
+import { countWords, parseMaybeNumber } from "../utils/misc";
+import { isTrackerValueTrue } from "../utils/validation";
 import { TrackerSettingsTab } from "../ui/tracker-settings-tab";
 import { CreateTrackerModal } from "../ui/modals/create-tracker-modal";
 import { EditTrackerModal } from "../ui/modals/edit-tracker-modal";
 import { FilePickerModal } from "../ui/modals/file-picker-modal";
 import trackerStyles from "../styles/tracker.css";
+import { DateService } from "../services/date-service";
+import { HeatmapService } from "../services/heatmap-service";
+import { ControlsRenderer } from "../services/controls-renderer";
+import { TrackerRenderer } from "../services/tracker-renderer";
+import { FILE_UPDATE_DELAY_MS, ANIMATION_DURATION_MS, ANIMATION_DURATION_SHORT_MS, SCROLL_RESTORE_DELAY_2_MS, IMMEDIATE_TIMEOUT_MS } from "../constants";
+import { getThemeColors, colorToRgba } from "../utils/theme";
+import { showNoticeIfNotMobile } from "../utils/notifications";
 
 export default class TrackerPlugin extends Plugin {
   settings: TrackerSettings;
@@ -20,7 +28,10 @@ export default class TrackerPlugin extends Plugin {
   private folderTreeService: FolderTreeService;
   private trackerFileService: TrackerFileService;
   private styleEl?: HTMLStyleElement;
-  private internalWritePaths: Set<string> = new Set();
+  private trackerState: Map<string, { entries: Map<string, string | number>; fileOpts: TrackerFileOptions }> = new Map();
+  private heatmapService: HeatmapService;
+  private controlsRenderer: ControlsRenderer;
+  private trackerRenderer: TrackerRenderer;
 
   private isMobileDevice(): boolean {
     return window.innerWidth <= 768;
@@ -30,15 +41,48 @@ export default class TrackerPlugin extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.folderTreeService = new FolderTreeService(this.app);
     this.trackerFileService = new TrackerFileService(this.app);
-    this.trackerFileService.setModifyGuards({
-      onBeforeModify: (path) => {
-        this.internalWritePaths.add(this.normalizePath(path));
+    
+    // Инициализируем сервисы рендеринга
+    this.heatmapService = new HeatmapService(
+      this.settings,
+      (file: TFile) => this.readAllEntries(file),
+      (file: TFile, dateIso: string, value: string) => this.writeLogLine(file, dateIso, value),
+      (entries: Map<string, string | number>, fileOpts?: TrackerFileOptions) => {
+        return this.trackerFileService.getStartTrackingDate(entries, this.settings, fileOpts);
       },
-      onAfterModify: (path) => {
-        const normalized = this.normalizePath(path);
-        window.setTimeout(() => this.internalWritePaths.delete(normalized), 0);
-      },
-    });
+      (file: TFile) => this.getFileTypeFromFrontmatter(file),
+      (chartDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, entries?: Map<string, string | number>) => 
+        this.updateChart(chartDiv, file, dateIso, daysToShow, entries),
+      (statsDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string, entries?: Map<string, string | number>) => 
+        this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries)
+    );
+    
+    this.controlsRenderer = new ControlsRenderer(
+      this.settings,
+      (file: TFile) => this.getFileTypeFromFrontmatter(file),
+      (file: TFile, dateIso: string) => this.readValueForDate(file, dateIso),
+      (file: TFile) => this.readAllEntries(file),
+      (file: TFile, dateIso: string, value: string) => this.writeLogLine(file, dateIso, value),
+      this.heatmapService,
+      (chartDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, entries?: Map<string, string | number>) => 
+        this.updateChart(chartDiv, file, dateIso, daysToShow, entries),
+      (statsDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string, entries?: Map<string, string | number>) => 
+        this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries)
+    );
+    
+    this.trackerRenderer = new TrackerRenderer(
+      this.settings,
+      (file: TFile) => this.getFileTypeFromFrontmatter(file),
+      (file: TFile, dateIso: string) => this.readValueForDate(file, dateIso),
+      this.controlsRenderer,
+      (container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, entries?: Map<string, string | number>) => 
+        this.renderChart(container, file, dateIso, daysToShow, entries),
+      (container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string, entries?: Map<string, string | number>) => 
+        this.renderStats(container, file, dateIso, daysToShow, trackerType, entries),
+      () => this.isMobileDevice(),
+      (file: TFile) => this.editTracker(file)
+    );
+    
     this.addStyleSheet();
     this.addSettingTab(new TrackerSettingsTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor("tracker", this.processTrackerBlock.bind(this));
@@ -49,74 +93,6 @@ export default class TrackerPlugin extends Plugin {
       name: "Create new tracker",
       callback: () => this.createNewTracker()
     });
-
-    // Слушаем события создания файлов для автоматического обновления блоков
-    this.registerEvent(
-      this.app.vault.on("create", (file) => {
-        if (file instanceof TFile && file.extension === "md" && this.isFileInTrackersFolder(file)) {
-          const fileFolderPath = this.getFolderPathFromFile(file.path);
-          this.folderTreeService.invalidate(fileFolderPath);
-          setTimeout(() => {
-            this.refreshBlocksForFolder(fileFolderPath);
-          }, 300);
-        }
-      })
-    );
-
-    this.registerEvent(
-      this.app.vault.on("modify", (file) => {
-        if (file instanceof TFile) {
-          this.trackerFileService.invalidateCacheForPath(file.path);
-          if (
-            this.isFileInTrackersFolder(file) &&
-            !this.internalWritePaths.has(this.normalizePath(file.path))
-          ) {
-            void this.refreshTrackersForFile(file);
-          }
-        }
-      })
-    );
-
-    this.registerEvent(
-      this.app.vault.on("delete", (file) => {
-        if (file instanceof TFile) {
-          this.trackerFileService.invalidateCacheForPath(file.path);
-          const folderPath = this.getFolderPathFromFile(file.path);
-          this.folderTreeService.invalidate(folderPath);
-          void this.refreshBlocksForFolder(folderPath);
-        }
-      })
-    );
-
-    this.registerEvent(
-      this.app.vault.on("rename", (file, oldPath) => {
-        if (!(file instanceof TFile)) {
-          return;
-        }
-
-        this.trackerFileService.invalidateCacheForPath(file.path);
-        const folderPath = this.getFolderPathFromFile(file.path);
-        this.folderTreeService.invalidate(folderPath);
-
-        if (typeof oldPath === "string") {
-          this.trackerFileService.invalidateCacheForPath(oldPath);
-          const oldFolderPath = this.getFolderPathFromFile(oldPath);
-          this.folderTreeService.invalidate(oldFolderPath);
-          
-          // Добавляем задержку для обновления UI после переименования
-          setTimeout(() => {
-            void this.refreshBlocksForFolder(folderPath);
-            if (oldFolderPath !== folderPath) {
-              void this.refreshBlocksForFolder(oldFolderPath);
-            }
-          }, 300);
-        } else {
-          setTimeout(() => {
-            void this.refreshBlocksForFolder(folderPath);
-          }, 300);
-        }
-      })
-    );
   }
 
   private isFileInTrackersFolder(file: TFile): boolean {
@@ -198,7 +174,7 @@ export default class TrackerPlugin extends Plugin {
     }
   }
 
-  private async refreshTrackersForFile(file: TFile) {
+  async refreshTrackersForFile(file: TFile) {
     const refreshPromises: Promise<void>[] = [];
     for (const block of Array.from(this.activeBlocks)) {
       const trackers = block.containerEl.querySelectorAll<HTMLElement>(
@@ -218,100 +194,89 @@ export default class TrackerPlugin extends Plugin {
         const parent = trackerItem.parentElement as HTMLElement | null;
         if (!parent) return;
         
-        // Сохраняем позицию трекера перед обновлением
-        const oldBasename = file.basename;
-        const siblings = Array.from(parent.children).filter(
-          (el) => el.classList.contains('tracker-notes__tracker')
-        ) as HTMLElement[];
-        const currentIndex = siblings.indexOf(trackerItem);
-        const nextSibling = currentIndex < siblings.length - 1 ? siblings[currentIndex + 1] : null;
-        
         refreshPromises.push(
-          this.renderTracker(parent, file, activeDateIso, view, opts, trackerItem).then(() => {
-            // Восстанавливаем позицию после обновления
-            const newBasename = file.basename;
-            const updatedTracker = parent.querySelector(
-              `.tracker-notes__tracker[data-file-path="${file.path}"]`
-            ) as HTMLElement | null;
+          (async () => {
+            // Получаем frontmatter для проверки изменений
+            const fileOpts = await this.getFileTypeFromFrontmatter(file);
+            const baseName = file.basename;
+            const unit = fileOpts.unit || "";
+            const displayName = unit ? `${baseName} (${unit})` : baseName;
             
-            if (!updatedTracker) return;
+            // Обновляем только название в header без полного пересоздания
+            const titleLink = trackerItem.querySelector('.tracker-notes__tracker-title') as HTMLElement;
+            if (titleLink) {
+              titleLink.textContent = displayName;
+              titleLink.setAttribute('href', file.path);
+              titleLink.setAttribute('data-href', file.path);
+            }
             
-            // Проверяем текущую позицию трекера
-            const currentSiblings = Array.from(parent.children).filter(
-              (el) => el.classList.contains('tracker-notes__tracker')
-            ) as HTMLElement[];
-            const currentPosition = currentSiblings.indexOf(updatedTracker);
+            // Обновляем dataset.filePath на случай переименования
+            trackerItem.dataset.filePath = file.path;
             
-            // Если имя не изменилось, восстанавливаем исходную позицию
-            if (oldBasename === newBasename) {
-              // Проверяем, изменилась ли позиция
-              if (currentPosition !== currentIndex) {
-                if (nextSibling && nextSibling.parentElement === parent && nextSibling !== updatedTracker) {
-                  parent.insertBefore(updatedTracker, nextSibling);
-                } else if (currentIndex === 0 && currentPosition !== 0) {
-                  const firstTracker = Array.from(parent.children).find(
-                    (el) => el.classList.contains('tracker-notes__tracker') && el !== updatedTracker
-                  );
-                  if (firstTracker) {
-                    parent.insertBefore(updatedTracker, firstTracker);
-                  }
-                } else if (currentIndex > 0 && currentPosition !== currentIndex) {
-                  // Вставляем после предыдущего соседа
-                  const prevSibling = currentIndex > 0 ? siblings[currentIndex - 1] : null;
-                  if (prevSibling && prevSibling.parentElement === parent) {
-                    const afterPrev = prevSibling.nextElementSibling;
-                    if (afterPrev && afterPrev !== updatedTracker) {
-                      parent.insertBefore(updatedTracker, afterPrev);
-                    } else if (!afterPrev) {
-                      parent.appendChild(updatedTracker);
-                    }
-                  }
-                }
+            // Читаем данные один раз
+            const entries = await this.readAllEntries(file);
+            
+            // Обновляем визуализации с актуальными данными
+            const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
+            const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
+            
+            const chartDiv = trackerItem.querySelector(".tracker-notes__chart") as HTMLElement;
+            if (chartDiv) {
+              await this.updateChart(chartDiv, file, activeDateIso, daysToShow, entries);
+            }
+            
+            const statsDiv = trackerItem.querySelector(".tracker-notes__stats") as HTMLElement;
+            if (statsDiv) {
+              await this.updateStats(statsDiv, file, activeDateIso, daysToShow, trackerType, entries);
+            }
+            
+            // Обновляем хитмап для трекеров привычек
+            if (trackerType === "good-habit" || trackerType === "bad-habit") {
+              const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap") as HTMLElement;
+              if (heatmapDiv) {
+                await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, activeDateIso, daysToShow, trackerType);
               }
-            } else {
-              // Если имя изменилось, находим правильную позицию по сортировке
+            } else if (view === "control") {
+              // Для метрик пересоздаем контролы, чтобы они использовали актуальные настройки из frontmatter
+              // Это особенно важно для scale, где minValue/maxValue могут измениться
+              const controlsContainer = trackerItem.querySelector(".tracker-notes__controls") as HTMLElement;
+              if (controlsContainer) {
+                const { mode, ...optsWithoutMode } = opts;
+                const mergedOpts = { ...optsWithoutMode, ...fileOpts };
+                await this.controlsRenderer.renderControlsForDate(controlsContainer, file, activeDateIso, mergedOpts);
+              }
+            }
+            // Если имя изменилось, обновляем позицию трекера по алфавиту
+            const newBasename = file.basename;
+            if (newBasename !== baseName) {
               const allTrackers = Array.from(parent.children).filter(
                 (el) => el.classList.contains('tracker-notes__tracker')
               ) as HTMLElement[];
               
-              // Сортируем трекеры по basename файла
-              const sortedTrackers = [...allTrackers].sort((a, b) => {
-                const aPath = a.dataset.filePath || '';
-                const bPath = b.dataset.filePath || '';
-                const aFile = this.app.vault.getAbstractFileByPath(aPath);
-                const bFile = this.app.vault.getAbstractFileByPath(bPath);
-                if (aFile instanceof TFile && bFile instanceof TFile) {
-                  return aFile.basename.localeCompare(bFile.basename, undefined, { sensitivity: "base" });
-                }
-                return 0;
-              });
-              
-              // Находим правильную позицию для обновленного трекера
-              const correctIndex = sortedTrackers.indexOf(updatedTracker);
-              if (correctIndex >= 0 && correctIndex < sortedTrackers.length) {
-                // Проверяем, находится ли трекер уже на правильной позиции
-                if (currentPosition !== correctIndex) {
-                  const correctNextSibling = correctIndex < sortedTrackers.length - 1 
-                    ? sortedTrackers[correctIndex + 1] 
-                    : null;
-                  
-                  if (correctNextSibling && correctNextSibling !== updatedTracker) {
-                    parent.insertBefore(updatedTracker, correctNextSibling);
-                  } else if (correctIndex === 0 && currentPosition !== 0) {
-                    const firstTracker = Array.from(parent.children).find(
-                      (el) => el.classList.contains('tracker-notes__tracker') && el !== updatedTracker
-                    );
-                    if (firstTracker) {
-                      parent.insertBefore(updatedTracker, firstTracker);
-                    }
-                  } else if (correctIndex === sortedTrackers.length - 1 && currentPosition !== correctIndex) {
-                    // Если трекер должен быть последним, перемещаем в конец
-                    parent.appendChild(updatedTracker);
+              // Находим правильную позицию для вставки
+              let correctInsertBefore: HTMLElement | null = null;
+              for (const tracker of allTrackers) {
+                if (tracker === trackerItem) continue;
+                const trackerPath = tracker.dataset.filePath;
+                if (!trackerPath) continue;
+                const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
+                if (trackerFile instanceof TFile) {
+                  if (trackerFile.basename.localeCompare(newBasename, undefined, { sensitivity: "base" }) > 0) {
+                    correctInsertBefore = tracker;
+                    break;
                   }
                 }
               }
+              
+              // Перемещаем трекер
+              if (correctInsertBefore && correctInsertBefore !== trackerItem) {
+                parent.insertBefore(trackerItem, correctInsertBefore);
+              } else if (!correctInsertBefore) {
+                // Должен быть последним
+                parent.appendChild(trackerItem);
+              }
             }
-          }),
+          })(),
         );
       });
     }
@@ -416,10 +381,10 @@ export default class TrackerPlugin extends Plugin {
         // Также пробуем восстановить после небольшой задержки
         setTimeout(() => {
           restoreScroll();
-        }, 50);
+        }, IMMEDIATE_TIMEOUT_MS);
         setTimeout(() => {
           restoreScroll();
-        }, 100);
+        }, SCROLL_RESTORE_DELAY_2_MS);
       });
     });
   }
@@ -436,7 +401,8 @@ export default class TrackerPlugin extends Plugin {
 
   // Вспомогательная функция для получения типа из frontmatter файла
   async getFileTypeFromFrontmatter(file: TFile): Promise<TrackerFileOptions> {
-    return this.trackerFileService.getFileTypeFromFrontmatter(file);
+    const state = await this.ensureTrackerState(file);
+    return state.fileOpts;
   }
 
   async updateTrackerDate(trackerItem: HTMLElement, file: TFile, dateIso: string, opts: Record<string, string>) {
@@ -448,719 +414,51 @@ export default class TrackerPlugin extends Plugin {
     const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
     
+    // Читаем данные один раз
+    const entries = await this.readAllEntries(file);
+    
     // Проверяем, есть ли уже хитмап (для трекеров он находится в controlsContainer)
     const existingHeatmap = controlsContainer.querySelector(".tracker-notes__heatmap") as HTMLElement;
     
     if (trackerType === "good-habit" || trackerType === "bad-habit") {
       // Для трекеров обновляем хитмап на месте, не пересоздавая контролы
       if (existingHeatmap) {
-        await this.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
+        await this.heatmapService.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
       } else {
         // Если хитмапа нет, пересоздаем контролы
         controlsContainer.empty();
         const { mode, ...optsWithoutMode } = opts;
         const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-        await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+        await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
       }
     } else {
-      // Для других типов обновляем контролы как обычно
+      // Для метрик всегда пересоздаем контролы с новой датой
+      // Это гарантирует, что обработчики событий будут использовать актуальную дату
       controlsContainer.empty();
       const { mode, ...optsWithoutMode } = opts;
       const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-      await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+      await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
     }
     
-    // Обновляем визуализации с новой датой
+    // Обновляем визуализации с новой датой и локальными данными
     // Обновляем график если он есть
     const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
     if (chartDiv) {
-      await this.updateChart(chartDiv as HTMLElement, file, dateIso, daysToShow);
+      await this.updateChart(chartDiv as HTMLElement, file, dateIso, daysToShow, entries);
     }
     
     // Обновляем статистику если она есть
     const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
     if (statsDiv) {
-      await this.updateStats(statsDiv as HTMLElement, file, dateIso, daysToShow, trackerType);
-    }
-  }
-
-  async renderTracker(
-    parentEl: HTMLElement,
-    file: TFile,
-    dateIso: string,
-    view: string,
-    opts: Record<string, string>,
-    existingTracker?: HTMLElement,
-  ) {
-    // Создаем trackerItem вне DOM если это новый трекер
-    let trackerItem: HTMLElement;
-    let isNewTracker = false;
-    
-    if (existingTracker) {
-      trackerItem = existingTracker;
-      // Удаляем только содержимое, сохраняя dataset
-      const header = trackerItem.querySelector('.tracker-notes__tracker-header');
-      const controls = trackerItem.querySelector('.tracker-notes__controls');
-      const chart = trackerItem.querySelector('.tracker-notes__chart');
-      const stats = trackerItem.querySelector('.tracker-notes__stats');
-      
-      header?.remove();
-      controls?.remove();
-      chart?.remove();
-      stats?.remove();
-    } else {
-      // Создаем вне DOM
-      trackerItem = document.createElement('div');
-      isNewTracker = true;
-    }
-    
-    trackerItem.classList.add("tracker-notes__tracker");
-    trackerItem.dataset.filePath = file.path;
-    
-    // Заголовок с названием трекера
-    const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
-    // Получаем единицу измерения для отображения в названии
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const baseName = file.basename;
-    const unit = fileOpts.unit || "";
-    const displayName = unit ? `${baseName} (${unit})` : baseName;
-    const titleLink = header.createEl("a", { 
-      text: displayName, 
-      cls: "tracker-notes__tracker-title internal-link",
-      href: file.path
-    });
-    titleLink.setAttribute("data-href", file.path);
-    
-    // Кнопка "Настройки" для редактирования параметров трекера
-    const settingsButton = header.createEl("button", {
-      text: "⚙️",
-      cls: "tracker-notes__settings-btn"
-    });
-    settingsButton.title = "Настройки трекера";
-    settingsButton.onclick = () => {
-      new EditTrackerModal(this.app, this, file).open();
-    };
-    
-    const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
-
-    if (view === "display") {
-      const value = await this.readValueForDate(file, dateIso);
-      trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "—"}` });
-      
-      // Показываем дополнительные визуализации если запрошено
-      const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-      const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
-      
-      // Используем настройки по умолчанию, если параметры не заданы напрямую
-      const shouldShowChart = (opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault)) && 
-                               !(this.isMobileDevice() && this.settings.hideChartOnMobile);
-      const shouldShowStats = (opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault)) && 
-                              !(this.isMobileDevice() && this.settings.hideStatsOnMobile);
-      
-      if (shouldShowChart) {
-        await this.renderChart(trackerItem, file, dateIso, daysToShow);
-      }
-      if (shouldShowStats) {
-        await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
-      }
-      return;
-    }
-
-    // control view - рендерим контролы
-    // Всегда определяем тип из frontmatter (игнорируем mode из opts)
-    // Используем уже полученный fileOpts из строки 610
-    // Убираем mode из opts, чтобы использовать только из fileOpts
-    const { mode, ...optsWithoutMode } = opts;
-    const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-    
-    await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
-
-    // Показываем дополнительные визуализации если запрошено
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    
-    // Используем настройки по умолчанию, если параметры не заданы напрямую
-    const shouldShowChart = (opts.showChart === "true" || (opts.showChart === undefined && this.settings.showChartByDefault)) && 
-                             !(this.isMobileDevice() && this.settings.hideChartOnMobile);
-    const shouldShowStats = (opts.showStats === "true" || (opts.showStats === undefined && this.settings.showStatsByDefault)) && 
-                            !(this.isMobileDevice() && this.settings.hideStatsOnMobile);
-    
-    if (shouldShowChart) {
-      await this.renderChart(trackerItem, file, dateIso, daysToShow);
-    }
-    if (shouldShowStats) {
-      await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
-    }
-    
-    // Добавляем в DOM только если это новый трекер (одна операция)
-    if (isNewTracker) {
-      parentEl.appendChild(trackerItem);
-    }
-  }
-
-  async renderControlsForDate(container: HTMLElement, file: TFile, dateIso: string, opts: Record<string, string>) {
-    // Всегда определяем тип из frontmatter, игнорируя mode из opts
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const mode = (fileOpts.mode ?? "good-habit").toLowerCase();
-    
-    // Оптимизация: проверяем, изменился ли режим
-    const currentMode = container.dataset.trackerMode;
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    
-    // Для хитмапа можем обновить без полного пересоздания
-    if (currentMode === mode && (mode === "good-habit" || mode === "bad-habit")) {
-      const heatmapDiv = container.querySelector(".tracker-notes__heatmap") as HTMLElement;
-      if (heatmapDiv) {
-        await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, mode);
-        return;
-      }
-    }
-    
-    // Очищаем контейнер перед созданием новых элементов только если режим изменился
-    container.empty();
-    container.dataset.trackerMode = mode;
-    
-    // Находим родительский контейнер для обновления визуализаций
-    const trackerItem = container.closest(".tracker-notes__tracker") as HTMLElement;
-    const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
-    
-    // Функция для обновления визуализаций после записи данных
-    const updateVisualizations = async () => {
-      if (!trackerItem) return;
-      // Ищем date-input в общем header блока или используем переданную дату
-      const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
-      
-      // Получаем тип трекера один раз
-      const fileOptsForViz = await this.getFileTypeFromFrontmatter(file);
-      const trackerTypeForViz = (fileOptsForViz.mode ?? "good-habit").toLowerCase();
-      
-      // Обновляем график/хитмап если он есть
-      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-      const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
-      if (chartDiv) {
-        await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, daysToShow);
-      }
-      // Хитмап обновляется через updateHeatmapDay, не нужно пересоздавать
-      
-      // Обновляем статистику если она есть
-      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-      if (statsDiv) {
-        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, daysToShow, trackerTypeForViz);
-      }
-    };
-    
-    if (mode === "good-habit" || mode === "bad-habit") {
-      // Для трекеров показываем только хитмап
-      await this.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
-    } else if (mode === "checkbox") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const label = wrap.createEl("label", { text: "Выполнено" });
-      const input = wrap.createEl("input", { type: "checkbox" });
-      label.prepend(input);
-      const current = await this.readValueForDate(file, dateIso);
-      input.checked = current === 1 || current === "1" || String(current) === "true";
-      input.onchange = async () => {
-        const val = input.checked ? 1 : 0;
-        await this.writeLogLine(file, dateIso, String(val));
-        new Notice(`✓ Записано: ${dateIso}: ${val}`, 2000);
-        // Визуальная обратная связь
-        input.style.transform = "scale(1.1)";
-        setTimeout(() => input.style.transform = "", 200);
-        // Обновляем визуализации
-        await updateVisualizations();
-      };
-    } else if (mode === "number") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const input = wrap.createEl("input", { type: "number", placeholder: "0" }) as HTMLInputElement;
-      const current = await this.readValueForDate(file, dateIso);
-      if (current != null && !isNaN(Number(current))) input.value = String(current);
-      
-      const updateValue = async () => {
-        const val = Number(input.value);
-        if (input.value === "" || isNaN(val)) return;
-        await this.writeLogLine(file, dateIso, String(val));
-        new Notice(`✓ Записано: ${dateIso}: ${val}`, 2000);
-        input.value = String(val);
-        // Визуальная обратная связь
-        input.style.transform = "scale(0.98)";
-        setTimeout(() => input.style.transform = "", 200);
-        // Обновляем визуализации
-        await updateVisualizations();
-      };
-      
-      // Добавляем кнопку "Set" для фиксации значения
-      const setButton = wrap.createEl("button", { text: "Set" });
-      setButton.onclick = updateValue;
-      
-      input.onchange = updateValue;
-      input.onkeypress = async (e) => {
-        if (e.key === "Enter") {
-          await updateValue();
-        }
-      };
-    } else if (mode === "plusminus") {
-      // Получаем step из frontmatter, по умолчанию 1
-      const fileOpts = await this.getFileTypeFromFrontmatter(file);
-      const step = parseFloat(fileOpts.step || "1") || 1;
-      
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const minus = wrap.createEl("button", { text: "−" });
-      const valEl = wrap.createEl("span", { text: "0", cls: "tracker-notes__value" });
-      const plus  = wrap.createEl("button", { text: "+" });
-      let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
-      if (!isNaN(current)) valEl.setText(String(current));
-      minus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) - step;
-        valEl.setText(String(current));
-        valEl.addClass("updated");
-        await this.writeLogLine(file, dateIso, String(current));
-        setTimeout(() => valEl.removeClass("updated"), 300);
-        // Обновляем визуализации
-        await updateVisualizations();
-      };
-      plus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) + step;
-        valEl.setText(String(current));
-        valEl.addClass("updated");
-        await this.writeLogLine(file, dateIso, String(current));
-        setTimeout(() => valEl.removeClass("updated"), 300);
-        // Обновляем визуализации
-        await updateVisualizations();
-      };
-    } else if (mode === "rating") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const ratingDiv = wrap.createDiv({ cls: "tracker-notes__rating" });
-      const maxRating = parseInt(opts.maxRating || "5");
-      const current = await this.readValueForDate(file, dateIso);
-      let currentRating = typeof current === "number" ? current : (current ? parseInt(String(current)) : 0);
-      if (isNaN(currentRating)) currentRating = 0;
-      
-      for (let i = 1; i <= maxRating; i++) {
-        const star = ratingDiv.createEl("span", { text: "★", cls: "tracker-notes__rating-star" });
-        if (i <= currentRating) star.addClass("active");
-        star.onclick = async () => {
-          currentRating = i;
-          ratingDiv.querySelectorAll(".tracker-notes__rating-star").forEach((s, idx) => {
-            if (idx + 1 <= i) s.addClass("active");
-            else s.removeClass("active");
-          });
-          await this.writeLogLine(file, dateIso, String(i));
-          new Notice(`⭐ Оценка: ${dateIso}: ${i}/${maxRating}`, 2000);
-          // Обновляем визуализации
-          await updateVisualizations();
-        };
-      }
-    } else if (mode === "text") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const input = wrap.createEl("textarea", { 
-        cls: "tracker-notes__text-input",
-        placeholder: "Введите текст..."
-      }) as HTMLTextAreaElement;
-      const current = await this.readValueForDate(file, dateIso);
-      if (current != null && typeof current === "string") input.value = current;
-      const btn = wrap.createEl("button", { text: "Сохранить" });
-      btn.onclick = async () => {
-        const val = input.value.trim();
-        await this.writeLogLine(file, dateIso, val);
-        new Notice(`✓ Записано: ${dateIso}`, 2000);
-        // Визуальная обратная связь
-        btn.style.transform = "scale(0.95)";
-        setTimeout(() => btn.style.transform = "", 200);
-        // Обновляем визуализации
-        await updateVisualizations();
-      };
-    } else if (mode === "scale") {
-      const minValue = parseFloat(opts.minValue || "0");
-      const maxValue = parseFloat(opts.maxValue || "10");
-      const step = parseFloat(opts.step || "1");
-      const current = await this.readValueForDate(file, dateIso);
-      let currentValue = minValue;
-      if (current != null && !isNaN(Number(current))) {
-        const numVal = Number(current);
-        currentValue = Math.max(minValue, Math.min(maxValue, numVal));
-      }
-      
-      // Создаем контейнер для progress bar slider
-      const wrapper = container.createDiv({ cls: "tracker-notes__progress-bar-wrapper" });
-      wrapper.setAttribute("data-internal-value", String(currentValue));
-      
-      // Основной интерактивный контейнер
-      const progressBarInput = wrapper.createDiv({ cls: "tracker-notes__progress-bar-input" });
-      progressBarInput.setAttribute("tabindex", "0");
-      progressBarInput.setAttribute("role", "button");
-      progressBarInput.setAttribute("aria-label", String(currentValue));
-      progressBarInput.setAttribute("aria-valuemin", String(minValue));
-      progressBarInput.setAttribute("aria-valuemax", String(maxValue));
-      progressBarInput.setAttribute("aria-valuenow", String(currentValue));
-      
-      // Элемент прогресса (заполненная часть)
-      const progressBar = progressBarInput.createDiv({ cls: "tracker-notes__progress-bar-progress" });
-      progressBar.setAttribute("role", "slider");
-      progressBar.setAttribute("tabindex", "0");
-      progressBar.setAttribute("aria-valuemin", String(minValue));
-      progressBar.setAttribute("aria-valuemax", String(maxValue));
-      progressBar.setAttribute("aria-valuenow", String(currentValue));
-      
-      // Текущее значение (по центру)
-      const valueDisplay = progressBarInput.createEl("span", {
-        text: String(currentValue),
-        cls: "tracker-notes__progress-bar-value"
-      });
-      
-      // Минимальное значение (слева)
-      const labelLeft = progressBarInput.createEl("span", {
-        text: String(minValue),
-        cls: "tracker-notes__progress-bar-label-left"
-      });
-      
-      // Максимальное значение (справа)
-      const labelRight = progressBarInput.createEl("span", {
-        text: String(maxValue),
-        cls: "tracker-notes__progress-bar-label-right"
-      });
-      
-      // Функция для расчета значения из позиции клика
-      const calculateValueFromPosition = (clientX: number): number => {
-        const rect = progressBarInput.getBoundingClientRect();
-        const clickX = clientX - rect.left;
-        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-        const rawValue = minValue + (maxValue - minValue) * percentage;
-        // Округляем до ближайшего шага
-        const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
-        return Math.max(minValue, Math.min(maxValue, steppedValue));
-      };
-      
-      // Функция для обновления визуального отображения
-      const updateProgressBar = (value: number) => {
-        const percentage = ((value - minValue) / (maxValue - minValue)) * 100;
-        progressBar.style.width = `${percentage}%`;
-        valueDisplay.setText(String(value));
-        progressBarInput.setAttribute("aria-valuenow", String(value));
-        progressBarInput.setAttribute("aria-label", String(value));
-        progressBar.setAttribute("aria-valuenow", String(value));
-        wrapper.setAttribute("data-internal-value", String(value));
-      };
-      
-      // Инициализация прогресс бара
-      updateProgressBar(currentValue);
-      
-      let isDragging = false;
-      let hasMoved = false;
-      
-      // Обработчик начала перетаскивания
-      const handleMouseDown = (e: MouseEvent) => {
-        if (e.button !== 0) return; // Только левая кнопка мыши
-        isDragging = true;
-        hasMoved = false;
-        progressBarInput.style.cursor = "col-resize";
-        const newValue = calculateValueFromPosition(e.clientX);
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-        e.preventDefault();
-      };
-      
-      // Обработчик движения мыши при перетаскивании
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isDragging) return;
-        hasMoved = true;
-        const newValue = calculateValueFromPosition(e.clientX);
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-      };
-      
-      // Обработчик окончания перетаскивания
-      const handleMouseUp = async () => {
-        if (isDragging) {
-          isDragging = false;
-          progressBarInput.style.cursor = "";
-          if (hasMoved) {
-            await this.writeLogLine(file, dateIso, String(currentValue));
-            new Notice(`✓ Записано: ${dateIso}: ${currentValue}`, 2000);
-            await updateVisualizations();
-          }
-        }
-      };
-      
-      // Обработчик клика (сохранение при клике, если не было перетаскивания)
-      const handleClick = async (e: MouseEvent) => {
-        // Игнорируем клики, если было перетаскивание
-        if (hasMoved) {
-          hasMoved = false;
-          return;
-        }
-        // Игнорируем клики по самому progress элементу
-        if (e.target === progressBar || e.target === valueDisplay || e.target === labelLeft || e.target === labelRight) {
-          return;
-        }
-        const newValue = calculateValueFromPosition(e.clientX);
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-        // Сохранение при клике
-        await this.writeLogLine(file, dateIso, String(currentValue));
-        new Notice(`✓ Записано: ${dateIso}: ${currentValue}`, 2000);
-        await updateVisualizations();
-      };
-      
-      // Поддержка клавиатуры
-      const handleKeyDown = (e: KeyboardEvent) => {
-        let newValue = currentValue;
-        if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-          e.preventDefault();
-          newValue = Math.max(minValue, currentValue - step);
-        } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-          e.preventDefault();
-          newValue = Math.min(maxValue, currentValue + step);
-        } else if (e.key === "Home") {
-          e.preventDefault();
-          newValue = minValue;
-        } else if (e.key === "End") {
-          e.preventDefault();
-          newValue = maxValue;
-        } else {
-          return;
-        }
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-      };
-      
-      const handleKeyUp = async (e: KeyboardEvent) => {
-        if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
-          await this.writeLogLine(file, dateIso, String(currentValue));
-          new Notice(`✓ Записано: ${dateIso}: ${currentValue}`, 2000);
-          await updateVisualizations();
-        }
-      };
-      
-      // Добавляем обработчики событий
-      progressBarInput.addEventListener("click", handleClick);
-      progressBarInput.addEventListener("mousedown", handleMouseDown);
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      progressBarInput.addEventListener("keydown", handleKeyDown);
-      progressBarInput.addEventListener("keyup", handleKeyUp);
-      
-      // Очистка обработчиков при удалении элемента (используем MutationObserver)
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.removedNodes.forEach((node) => {
-            if (node === wrapper || (node instanceof Node && wrapper.contains(node))) {
-              document.removeEventListener("mousemove", handleMouseMove);
-              document.removeEventListener("mouseup", handleMouseUp);
-              observer.disconnect();
-            }
-          });
-        });
-      });
-      if (wrapper.parentNode) {
-        observer.observe(wrapper.parentNode, { childList: true, subtree: true });
-      }
-    } else {
-      container.createEl("div", { text: `Неизвестный mode: ${mode}. Доступны: good-habit, bad-habit, number, plusminus, rating, text, scale` });
+      await this.updateStats(statsDiv as HTMLElement, file, dateIso, daysToShow, trackerType, entries);
     }
   }
 
   // ---- Визуализация ---------------------------------------------------------
 
-  async updateTrackerHeatmap(heatmapDiv: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string) {
-    const m = (window as any).moment;
-    const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
-    const startDate = m ? m(endDate).subtract(daysToShow - 1, 'days') : addDays(endDate, -(daysToShow - 1));
-    
-    const entries = await this.readAllEntries(file);
-    
-    // Получаем дату начала отслеживания
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-    
-    // Находим родительский контейнер для обновления визуализаций
-    const trackerItem = heatmapDiv.closest(".tracker-notes__tracker") as HTMLElement;
-    const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
-    
-    // Функция для обновления только конкретного дня в хитмапе
-    const updateHeatmapDay = (dateStr: string, dayDiv: HTMLElement) => {
-      const value = entries.get(dateStr);
-      const hasValue =
-        value === 1 ||
-        value === "1" ||
-        String(value) === "true";
-      
-      if (hasValue) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
-    };
-    
-    // Функция для обновления всех классов start-day в хитмапе
-    const updateAllStartDays = () => {
-      const currentStartDateStr = this.getStartTrackingDate(entries, file);
-      
-      // Обновляем класс start-day для всех дней в хитмапе
-      const allDayElements = Array.from(heatmapDiv.children) as HTMLElement[];
-      for (const dayDiv of allDayElements) {
-        const dayDateStr = (dayDiv as any).dataset?.dateStr;
-        if (dayDateStr) {
-          if (dayDateStr === currentStartDateStr) {
-            dayDiv.addClass("start-day");
-          } else {
-            dayDiv.removeClass("start-day");
-          }
-        }
-      }
-    };
-    
-    // Функция для обновления визуализаций после записи данных
-    const updateVisualizations = async (updatedDateStr?: string, updatedDayDiv?: HTMLElement) => {
-      if (!trackerItem) return;
-      
-      // Обновляем только конкретный день в хитмапе, если указан
-      if (updatedDateStr && updatedDayDiv) {
-        updateHeatmapDay(updatedDateStr, updatedDayDiv);
-        // Всегда обновляем все классы start-day после изменения записи
-        updateAllStartDays();
-      }
-      
-      // Получаем текущую дату из общего date-input блока
-      const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
-      
-      // Обновляем график если он есть
-      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-      if (chartDiv) {
-        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
-        await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, days);
-      }
-      
-      // Обновляем статистику если она есть
-      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-      if (statsDiv) {
-        const days = parseInt((trackerItem as any).daysToShow) || daysToShow;
-        await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, days, trackerType);
-      }
-    };
-    
-    // Получаем существующие элементы дней
-    // При flex-direction: row-reverse порядок визуального отображения инвертируется
-    // Поэтому элементы в DOM должны быть от старых к новым, чтобы визуально было от новых к старым
-    const dayElements = Array.from(heatmapDiv.children) as HTMLElement[];
-    const fragment = document.createDocumentFragment();
-    
-    for (let i = 0; i < daysToShow; i++) {
-      const date = m ? m(startDate).add(i, 'days') : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      const dayNum = m ? date.date() : date.getDate();
-      
-      let dayDiv: HTMLElement;
-      if (i < dayElements.length) {
-        // Переиспользуем существующий элемент
-        dayDiv = dayElements[i];
-        dayDiv.setText(dayNum.toString());
-        // Обновляем класс типа трекера
-        dayDiv.removeClass("good-habit");
-        dayDiv.removeClass("bad-habit");
-        dayDiv.addClass(trackerType);
-      } else {
-        // Создаем новый элемент в fragment для batch добавления
-        dayDiv = document.createElement('div');
-        dayDiv.addClass("tracker-notes__heatmap-day");
-        dayDiv.setText(dayNum.toString());
-        dayDiv.addClass(trackerType);
-        fragment.appendChild(dayDiv);
-      }
-      
-      // Сохраняем dateStr в data-атрибуте для event delegation
-      dayDiv.dataset.dateStr = dateStr;
-      
-      // НЕ устанавливаем onclick - используем event delegation из renderTrackerHeatmap
-      
-      // Обновляем визуальное состояние дня
-      updateHeatmapDay(dateStr, dayDiv);
-      
-      // Обновляем класс start-day
-      if (dateStr === startTrackingDateStr) {
-        dayDiv.addClass("start-day");
-      } else {
-        dayDiv.removeClass("start-day");
-      }
-    }
-    
-    // Добавляем новые элементы одним батчем
-    if (fragment.childNodes.length > 0) {
-      heatmapDiv.appendChild(fragment);
-    }
-    
-    // Удаляем лишние элементы если их больше чем нужно
-    while (dayElements.length > daysToShow) {
-      dayElements[dayElements.length - 1].remove();
-      dayElements.pop();
-    }
-  }
-
-  async renderTrackerHeatmap(container: HTMLElement, file: TFile, dateIso: string, daysToShow: number, trackerType: string) {
-    let heatmapDiv = container.querySelector(".tracker-notes__heatmap") as HTMLElement;
-    
-    if (!heatmapDiv) {
-      heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
-      
-      // Event delegation: один обработчик на весь хитмап вместо N обработчиков на каждый день
-      heatmapDiv.addEventListener('click', async (e) => {
-        const dayDiv = (e.target as HTMLElement).closest('.tracker-notes__heatmap-day') as HTMLElement;
-        if (!dayDiv) return;
-        
-        const dateStr = dayDiv.dataset.dateStr;
-        if (!dateStr) return;
-        
-        // Получаем актуальные данные
-        const entries = await this.readAllEntries(file);
-        const currentValue = entries.get(dateStr);
-        const isChecked = currentValue === 1 || currentValue === "1" || String(currentValue) === "true";
-        const newValue = isChecked ? 0 : 1;
-        
-        await this.writeLogLine(file, dateStr, String(newValue));
-        entries.set(dateStr, newValue);
-        new Notice(`✓ Записано: ${dateStr}: ${newValue}`, 2000);
-        
-        // Обновляем только визуальное состояние этого дня
-        if (newValue === 1) {
-          dayDiv.addClass("has-value");
-        } else {
-          dayDiv.removeClass("has-value");
-        }
-        
-        // Обновляем start-day маркеры и другие визуализации
-        const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-        const allDayElements = Array.from(heatmapDiv.children) as HTMLElement[];
-        for (const dayEl of allDayElements) {
-          const dayDateStr = dayEl.dataset.dateStr;
-          if (dayDateStr) {
-            if (dayDateStr === startTrackingDateStr) {
-              dayEl.addClass("start-day");
-            } else {
-              dayEl.removeClass("start-day");
-            }
-          }
-        }
-        
-        // Обновляем график и статистику
-        const trackerItem = heatmapDiv.closest(".tracker-notes__tracker") as HTMLElement;
-        const mainContainer = trackerItem?.closest(".tracker-notes") as HTMLElement;
-        if (trackerItem) {
-          const currentDateIso = (mainContainer?.querySelector(".tracker-notes__date-input") as HTMLInputElement)?.value || dateIso;
-          const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-          if (chartDiv) {
-            await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, daysToShow);
-          }
-          const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-          if (statsDiv) {
-            await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, daysToShow, trackerType);
-          }
-        }
-      });
-    }
-    
-    await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
-  }
 
 
-  async renderChart(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number) {
+  async renderChart(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, entries?: Map<string, string | number>) {
     // Получаем тип метрики из frontmatter
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const metricType = (fileOpts.mode ?? "good-habit").toLowerCase();
@@ -1170,7 +468,7 @@ export default class TrackerPlugin extends Plugin {
     if (metricType === "good-habit" || metricType === "bad-habit") {
       const endDate = dateIso || resolveDateIso("today", this.settings.dateFormat);
       const days = daysToShow || this.settings.daysToShow;
-      await this.renderTrackerHeatmap(container, file, endDate, days, metricType);
+      await this.heatmapService.renderTrackerHeatmap(container, file, endDate, days, metricType);
       return;
     }
     
@@ -1187,82 +485,29 @@ export default class TrackerPlugin extends Plugin {
     const chartDiv = container.createDiv({ cls: "tracker-notes__chart" });
     const canvas = chartDiv.createEl("canvas");
     
-    // Получаем цвета из CSS переменных Obsidian
-    // Используем body для более надежного получения переменных темы
-    const root = document.body || document.documentElement;
-    const getCSSVar = (varName: string, fallback: string = '#000000') => {
-      const value = getComputedStyle(root).getPropertyValue(varName).trim();
-      // Если значение пустое или равно fallback, возвращаем fallback
-      return value || fallback;
-    };
+    // Получаем цвета из темы Obsidian
+    const colors = getThemeColors();
     
-    // Получаем accent цвет - пробуем разные варианты переменных
-    // Создаем временный элемент для более надежного получения CSS переменных
-    const tempEl = document.createElement('div');
-    tempEl.style.position = 'absolute';
-    tempEl.style.visibility = 'hidden';
-    document.body.appendChild(tempEl);
-    
-    let accentColor = getComputedStyle(tempEl).getPropertyValue('--interactive-accent').trim();
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue('--color-accent').trim();
-    }
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue('--accent-color').trim();
-    }
-    // Если ничего не найдено, пробуем из root
-    if (!accentColor) {
-      accentColor = getComputedStyle(root).getPropertyValue('--interactive-accent').trim();
-    }
-    // Если ничего не найдено, используем fallback
-    if (!accentColor) {
-      accentColor = '#7f6df2';
-    }
-    
-    document.body.removeChild(tempEl);
-    const textMuted = getCSSVar('--text-muted', '#999999');
-    const textFaint = getCSSVar('--text-faint', '#666666');
-    const borderColor = getCSSVar('--background-modifier-border', '#e0e0e0');
-    const bgPrimary = getCSSVar('--background-primary', '#ffffff');
-    
-    // Функция для преобразования цвета в rgba
-    const colorToRgba = (color: string, alpha: number): string => {
-      if (color.startsWith('#')) {
-        const r = parseInt(color.slice(1, 3), 16);
-        const g = parseInt(color.slice(3, 5), 16);
-        const b = parseInt(color.slice(5, 7), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-      } else if (color.startsWith('rgb')) {
-        return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
-      }
-      return color;
-    };
-    
-    const m = (window as any).moment;
     // Получаем текущую дату
-    const today = m ? m() : new Date();
-    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
+    const today = DateService.now();
+    const todayStr = DateService.format(today, this.settings.dateFormat);
     
     // Получаем активную дату (дату из dateIso в формате ISO YYYY-MM-DD или текущую дату)
     // dateIso приходит в формате ISO (YYYY-MM-DD), парсим его правильно
-    let activeDate: any;
-    if (dateIso) {
-      activeDate = m ? m(dateIso, 'YYYY-MM-DD') : parseDate(dateIso, 'YYYY-MM-DD');
-    } else {
-      activeDate = today;
-    }
-    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
+    const activeDate = dateIso 
+      ? DateService.parse(dateIso, 'YYYY-MM-DD')
+      : today;
+    const activeDateStr = DateService.format(activeDate, this.settings.dateFormat);
     
     // Для визуализации графика используем активную дату + 5 дней вперед как endDate
     // Это нужно только для отображения, активная дата остается исходной
-    // Используем clone() для moment, чтобы не мутировать исходную дату
-    const endDate = m ? m(activeDate).clone().add(5, 'days') : addDays(new Date(activeDate.getTime()), 5);
+    const endDate = activeDate.clone().add(5, 'days');
     const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, 'days') : addDays(endDate, -(days - 1));
-    const entries = await this.readAllEntries(file);
+    const startDate = endDate.clone().subtract(days - 1, 'days');
+    const entriesMap = entries ?? await this.readAllEntries(file);
     
     // Получаем дату начала отслеживания
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
+    const startTrackingDateStr = this.trackerFileService.getStartTrackingDate(entriesMap, this.settings, fileOpts);
     let startTrackingIndex: number | null = null;
     let activeDateIndex: number | null = null;
     
@@ -1274,9 +519,6 @@ export default class TrackerPlugin extends Plugin {
     const scaleMinValue = (metricType === "scale" && fileOpts.minValue) ? parseFloat(fileOpts.minValue) : null;
     const scaleMaxValue = (metricType === "scale" && fileOpts.maxValue) ? parseFloat(fileOpts.maxValue) : null;
     
-    // Получаем цвет для точек вне диапазона
-    const errorColor = getCSSVar('--text-error', '#c00000');
-    
     // Подготавливаем данные для Chart.js
     const labels: string[] = [];
     const values: number[] = [];
@@ -1286,9 +528,8 @@ export default class TrackerPlugin extends Plugin {
     let maxValue = 0;
     
     for (let i = 0; i < days; i++) {
-      // Используем clone() для moment, чтобы не мутировать startDate
-      const date = m ? m(startDate).clone().add(i, 'days') : addDays(new Date(startDate.getTime()), i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
+      const date = startDate.clone().add(i, 'days');
+      const dateStr = DateService.format(date, this.settings.dateFormat);
       
       // Сохраняем индекс дня начала отслеживания
       if (dateStr === startTrackingDateStr) {
@@ -1301,17 +542,18 @@ export default class TrackerPlugin extends Plugin {
       
       // Форматируем дату для подписи
       let label = '';
+      const m = (window as any).moment;
       if (m) {
-        label = m(date).format("D MMM");
+        label = m(date.toDate()).format("D MMM");
       } else {
         const day = date.getDate();
-        const month = date.toLocaleDateString("ru", { month: "short" });
+        const month = date.toDate().toLocaleDateString("ru", { month: "short" });
         label = `${day} ${month}`;
       }
       labels.push(label);
       dateStrings.push(dateStr); // Сохраняем дату для этой точки
       
-      const val = entries.get(dateStr);
+      const val = entriesMap.get(dateStr);
       let numVal = 0;
       if (val != null) {
         // Для метрики типа "text" используем количество слов
@@ -1330,8 +572,8 @@ export default class TrackerPlugin extends Plugin {
       
       // Определяем цвет точки: зеленый если в диапазоне, красный если вне диапазона (начиная со дня старта)
       // Для нейтральных точек (до дня старта, после текущей даты или когда лимиты не заданы) используем accentColor без границы
-      let pointColor = accentColor;
-      let pointBorder = accentColor; // Убираем белую границу для нейтральных точек
+      let pointColor = colors.accentColor;
+      let pointBorder = colors.accentColor; // Убираем белую границу для нейтральных точек
       // Сравниваем даты как строки в формате YYYY-MM-DD для корректного сравнения
       const isAfterToday = dateStr > todayStr;
       const hasLimits = (minLimit !== null || maxLimit !== null);
@@ -1341,13 +583,12 @@ export default class TrackerPlugin extends Plugin {
         const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
         if (isInRange) {
           // Точка в диапазоне - зеленый цвет
-          const successColor = getCSSVar('--text-success', '#00c000');
-          pointColor = successColor;
-          pointBorder = successColor;
+          pointColor = colors.successColor;
+          pointBorder = colors.successColor;
         } else {
           // Точка вне диапазона - красный цвет
-          pointColor = errorColor;
-          pointBorder = errorColor;
+          pointColor = colors.errorColor;
+          pointBorder = colors.errorColor;
         }
       }
       pointBackgroundColors.push(pointColor);
@@ -1362,11 +603,6 @@ export default class TrackerPlugin extends Plugin {
       // Все точки одинаковые, не меняем border для активной точки
       pointRadii.push(3);
       pointBorderWidths.push(2);
-    }
-    
-    if (maxValue === 0) {
-      chartDiv.setText("Нет данных");
-      return;
     }
     
     // Автоматически настраиваем min/max оси Y на основе лимитов и значений scale
@@ -1386,11 +622,24 @@ export default class TrackerPlugin extends Plugin {
     // Находим максимальное значение из всех доступных (лимиты и scale)
     const allMaxValues: number[] = [maxValue]; // Добавляем максимальное значение из данных
     if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (minLimit !== null) allMaxValues.push(minLimit);
     if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    if (scaleMinValue !== null) allMaxValues.push(scaleMinValue);
     
     if (allMaxValues.length > 0) {
       const maxFromAll = Math.max(...allMaxValues);
       yAxisMax = Math.max(yAxisMax, maxFromAll);
+    }
+    
+    // Если все значения нулевые и нет лимитов, устанавливаем минимальный диапазон для отображения
+    if (yAxisMax === 0 && minLimit === null && maxLimit === null && scaleMinValue === null && scaleMaxValue === null) {
+      yAxisMax = 1; // Минимальный диапазон для отображения нулевых значений
+    }
+    
+    // Если max не больше min (например, только minLimit задан), расширяем диапазон вверх
+    if (yAxisMax <= yAxisMin) {
+      const padding = Math.max(1, Math.abs(yAxisMin) * 0.1 || 1);
+      yAxisMax = yAxisMin + padding;
     }
     
     // Создаем градиент для заливки
@@ -1398,8 +647,8 @@ export default class TrackerPlugin extends Plugin {
     let gradient: CanvasGradient | null = null;
     if (ctx) {
       gradient = ctx.createLinearGradient(0, 0, 0, 180);
-      gradient.addColorStop(0, colorToRgba(accentColor, 0.25));
-      gradient.addColorStop(1, colorToRgba(accentColor, 0));
+      gradient.addColorStop(0, colorToRgba(colors.accentColor, 0.25));
+      gradient.addColorStop(1, colorToRgba(colors.accentColor, 0));
     }
     
     // Определяем подпись для графика в зависимости от типа метрики и единицы измерения
@@ -1412,7 +661,7 @@ export default class TrackerPlugin extends Plugin {
     }
     
     // Получаем цвет для вертикальной линии (используем accent цвет с прозрачностью)
-    const startLineColor = getCSSVar('--text-accent', accentColor);
+    const startLineColor = colors.startLineColor;
     
     // Функция для рисования пунктирной вертикальной линии начала отслеживания
     const drawStartLine = (chart: any, index: number, color: string) => {
@@ -1460,6 +709,25 @@ export default class TrackerPlugin extends Plugin {
       ctx.restore();
     };
     
+    // Валидация данных перед созданием графика
+    const hasInvalidValues = values.some(v => !isFinite(v) || isNaN(v));
+    if (hasInvalidValues) {
+      console.error("Tracker: Invalid values in chart data", { values, labels, dateStrings });
+      // Заменяем невалидные значения на 0
+      const validValues = values.map(v => isFinite(v) && !isNaN(v) ? v : 0);
+      values.length = 0;
+      values.push(...validValues);
+    }
+    
+    // Проверяем что все массивы имеют одинаковую длину
+    if (labels.length !== values.length || values.length !== dateStrings.length) {
+      console.error("Tracker: Mismatched array lengths", { 
+        labels: labels.length, 
+        values: values.length, 
+        dateStrings: dateStrings.length 
+      });
+    }
+    
     // Конфигурация графика Chart.js с поддержкой темы Obsidian
     const chartConfig = {
       type: 'line' as const,
@@ -1468,8 +736,8 @@ export default class TrackerPlugin extends Plugin {
         datasets: [{
           label: chartLabel,
           data: values,
-          borderColor: accentColor,
-          backgroundColor: gradient || colorToRgba(accentColor, 0.1),
+          borderColor: colors.accentColor,
+          backgroundColor: gradient || colorToRgba(colors.accentColor, 0.1),
           borderWidth: 2.5,
           fill: false,
           tension: 0.4,
@@ -1482,11 +750,11 @@ export default class TrackerPlugin extends Plugin {
           // Явно отключаем изменение цветов при наведении - используем функции, которые возвращают те же цвета
           pointHoverBackgroundColor: (ctx: any) => {
             const index = ctx.dataIndex;
-            return pointBackgroundColors[index] || pointBackgroundColors[0] || accentColor;
+            return pointBackgroundColors[index] || pointBackgroundColors[0] || colors.accentColor;
           },
           pointHoverBorderColor: (ctx: any) => {
             const index = ctx.dataIndex;
-            return pointBorderColors[index] || pointBorderColors[0] || accentColor;
+            return pointBorderColors[index] || pointBorderColors[0] || colors.accentColor;
           },
           pointHoverBorderWidth: (ctx: any) => {
             const index = ctx.dataIndex;
@@ -1503,10 +771,10 @@ export default class TrackerPlugin extends Plugin {
           },
           tooltip: {
             enabled: true,
-            backgroundColor: bgPrimary,
-            titleColor: textMuted,
-            bodyColor: textMuted,
-            borderColor: borderColor,
+            backgroundColor: colors.bgPrimary,
+            titleColor: colors.textMuted,
+            bodyColor: colors.textMuted,
+            borderColor: colors.borderColor,
             borderWidth: 1,
             padding: 8,
             displayColors: false,
@@ -1527,12 +795,12 @@ export default class TrackerPlugin extends Plugin {
           x: {
             grid: {
               display: true,
-              color: colorToRgba(borderColor, 0.3),
+              color: colorToRgba(colors.borderColor, 0.3),
               lineWidth: 1,
               drawBorder: false,
             },
             ticks: {
-              color: textFaint,
+              color: colors.textFaint,
               font: {
                 family: 'var(--font-text)',
                 size: 11
@@ -1545,12 +813,12 @@ export default class TrackerPlugin extends Plugin {
           y: {
             grid: {
               display: true,
-              color: colorToRgba(borderColor, 0.3),
+              color: colorToRgba(colors.borderColor, 0.3),
               lineWidth: 1,
               drawBorder: false,
             },
             ticks: {
-              color: textFaint,
+              color: colors.textFaint,
               font: {
                 family: 'var(--font-text)',
                 size: 11
@@ -1594,20 +862,14 @@ export default class TrackerPlugin extends Plugin {
               
               if (dateInput) {
                 // Преобразуем дату в формат ISO (YYYY-MM-DD) для input type="date"
-                const m = (window as any).moment;
                 let dateIsoValue: string;
                 
                 try {
-                  if (m) {
-                    const dateObj = m(clickedDateStr, this.settings.dateFormat);
-                    if (dateObj.isValid()) {
-                      dateIsoValue = dateObj.format('YYYY-MM-DD');
-                    } else {
-                      return;
-                    }
+                  const dateObj = DateService.parse(clickedDateStr, this.settings.dateFormat);
+                  if (dateObj.isValid()) {
+                    dateIsoValue = DateService.format(dateObj, 'YYYY-MM-DD');
                   } else {
-                    const dateObj = parseDate(clickedDateStr, this.settings.dateFormat);
-                    dateIsoValue = formatDate(dateObj, 'YYYY-MM-DD');
+                    return;
                   }
                   
                   // Устанавливаем новое значение и вызываем событие change для обновления всех трекеров
@@ -1629,7 +891,7 @@ export default class TrackerPlugin extends Plugin {
             : startTrackingIndex;
           const lineColor = (chart as any).startLineColor !== undefined 
             ? (chart as any).startLineColor 
-            : startLineColor;
+            : colors.startLineColor;
           // Перерисовываем сплошную вертикальную линию для выбранного дня при изменении размера
           const activeIdx = (chart as any).activeDateIndex !== undefined 
             ? (chart as any).activeDateIndex 
@@ -1663,7 +925,7 @@ export default class TrackerPlugin extends Plugin {
           // Получаем цвет из экземпляра графика или используем текущий
           const lineColor = (chart as any).startLineColor !== undefined 
             ? (chart as any).startLineColor 
-            : startLineColor;
+            : colors.startLineColor;
           // Рисуем сплошную вертикальную линию для выбранного дня
           const activeIdx = (chart as any).activeDateIndex !== undefined 
             ? (chart as any).activeDateIndex 
@@ -1717,7 +979,7 @@ export default class TrackerPlugin extends Plugin {
       (chartDiv as any).chartInstance = chartInstance;
       // Сохраняем индекс начала отслеживания и цвет в экземпляре графика
       (chartInstance as any).startTrackingIndex = startTrackingIndex;
-      (chartInstance as any).startLineColor = startLineColor;
+      (chartInstance as any).startLineColor = colors.startLineColor;
       // Сохраняем массив дат для обработки клика
       (chartInstance as any).dateStrings = dateStrings;
       // Сохраняем лимиты успешности в экземпляре графика
@@ -1729,11 +991,11 @@ export default class TrackerPlugin extends Plugin {
     }
   }
 
-  async updateChart(chartDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number) {
+  async updateChart(chartDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, entries?: Map<string, string | number>) {
     const chartInstance = (chartDiv as any).chartInstance;
     if (!chartInstance) {
       // Если графика нет, создаем новый
-      await this.renderChart(chartDiv.parentElement!, file, dateIso, daysToShow);
+      await this.renderChart(chartDiv.parentElement!, file, dateIso, daysToShow, entries);
       return;
     }
 
@@ -1746,31 +1008,27 @@ export default class TrackerPlugin extends Plugin {
       return;
     }
 
-    const m = (window as any).moment;
     // Получаем текущую дату
-    const today = m ? m() : new Date();
-    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
+    const today = DateService.now();
+    const todayStr = DateService.format(today, this.settings.dateFormat);
     
     // Получаем активную дату (дату из dateIso в формате ISO YYYY-MM-DD или текущую дату)
     // dateIso приходит в формате ISO (YYYY-MM-DD), парсим его правильно
-    let activeDate: any;
-    if (dateIso) {
-      activeDate = m ? m(dateIso, 'YYYY-MM-DD') : parseDate(dateIso, 'YYYY-MM-DD');
-    } else {
-      activeDate = today;
-    }
-    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
+    const activeDate = dateIso 
+      ? DateService.parse(dateIso, 'YYYY-MM-DD')
+      : today;
+    const activeDateStr = DateService.format(activeDate, this.settings.dateFormat);
     
     // Для визуализации графика используем активную дату + 5 дней вперед как endDate
     // Это нужно только для отображения, активная дата остается исходной
-    // Используем clone() для moment, чтобы не мутировать исходную дату
-    const endDate = m ? m(activeDate).clone().add(5, 'days') : addDays(new Date(activeDate.getTime()), 5);
+    const endDate = activeDate.clone().add(5, 'days');
     const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, 'days') : addDays(endDate, -(days - 1));
-    const entries = await this.readAllEntries(file);
+    const startDate = endDate.clone().subtract(days - 1, 'days');
+    // Используем переданные entries или читаем из файла
+    const entriesToUse = entries ?? await this.readAllEntries(file);
     
     // Получаем дату начала отслеживания
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
+    const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
     let startTrackingIndex: number | null = null;
     let activeDateIndex: number | null = null;
     
@@ -1782,41 +1040,8 @@ export default class TrackerPlugin extends Plugin {
     const scaleMinValue = (metricType === "scale" && fileOpts.minValue) ? parseFloat(fileOpts.minValue) : null;
     const scaleMaxValue = (metricType === "scale" && fileOpts.maxValue) ? parseFloat(fileOpts.maxValue) : null;
     
-    // Получаем цвет для вертикальной линии
-    // Используем body для более надежного получения переменных темы
-    const root = document.body || document.documentElement;
-    const getCSSVar = (varName: string, fallback: string = '#000000') => {
-      const value = getComputedStyle(root).getPropertyValue(varName).trim();
-      return value || fallback;
-    };
-    
-    // Получаем accent цвет - пробуем разные варианты переменных
-    // Создаем временный элемент для более надежного получения CSS переменных
-    const tempEl = document.createElement('div');
-    tempEl.style.position = 'absolute';
-    tempEl.style.visibility = 'hidden';
-    document.body.appendChild(tempEl);
-    
-    let accentColor = getComputedStyle(tempEl).getPropertyValue('--interactive-accent').trim();
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue('--color-accent').trim();
-    }
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue('--accent-color').trim();
-    }
-    // Если ничего не найдено, пробуем из root
-    if (!accentColor) {
-      accentColor = getComputedStyle(root).getPropertyValue('--interactive-accent').trim();
-    }
-    // Если ничего не найдено, используем fallback
-    if (!accentColor) {
-      accentColor = '#7f6df2';
-    }
-    
-    document.body.removeChild(tempEl);
-    const startLineColor = getCSSVar('--text-accent', accentColor);
-    const errorColor = getCSSVar('--text-error', '#c00000');
-    const bgPrimary = getCSSVar('--background-primary', '#ffffff');
+    // Получаем цвета из темы Obsidian
+    const colors = getThemeColors();
     
     // Подготавливаем данные для Chart.js
     const labels: string[] = [];
@@ -1827,9 +1052,8 @@ export default class TrackerPlugin extends Plugin {
     let maxValue = 0;
     
     for (let i = 0; i < days; i++) {
-      // Используем clone() для moment, чтобы не мутировать startDate
-      const date = m ? m(startDate).clone().add(i, 'days') : addDays(new Date(startDate.getTime()), i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
+      const date = startDate.clone().add(i, 'days');
+      const dateStr = DateService.format(date, this.settings.dateFormat);
       
       // Сохраняем индекс дня начала отслеживания
       if (dateStr === startTrackingDateStr) {
@@ -1842,17 +1066,18 @@ export default class TrackerPlugin extends Plugin {
       
       // Форматируем дату для подписи
       let label = '';
+      const m = (window as any).moment;
       if (m) {
-        label = m(date).format("D MMM");
+        label = m(date.toDate()).format("D MMM");
       } else {
         const day = date.getDate();
-        const month = date.toLocaleDateString("ru", { month: "short" });
+        const month = date.toDate().toLocaleDateString("ru", { month: "short" });
         label = `${day} ${month}`;
       }
       labels.push(label);
       dateStrings.push(dateStr); // Сохраняем дату для этой точки
       
-      const val = entries.get(dateStr);
+      const val = entriesToUse.get(dateStr);
       let numVal = 0;
       if (val != null) {
         // Для метрики типа "text" используем количество слов
@@ -1871,8 +1096,8 @@ export default class TrackerPlugin extends Plugin {
       
       // Определяем цвет точки: зеленый если в диапазоне, красный если вне диапазона (начиная со дня старта)
       // Для нейтральных точек (до дня старта, после текущей даты или когда лимиты не заданы) используем accentColor без границы
-      let pointColor = accentColor;
-      let pointBorder = accentColor; // Убираем белую границу для нейтральных точек
+      let pointColor = colors.accentColor;
+      let pointBorder = colors.accentColor; // Убираем белую границу для нейтральных точек
       // Сравниваем даты как строки в формате YYYY-MM-DD для корректного сравнения
       const isAfterToday = dateStr > todayStr;
       const hasLimits = (minLimit !== null || maxLimit !== null);
@@ -1882,13 +1107,12 @@ export default class TrackerPlugin extends Plugin {
         const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
         if (isInRange) {
           // Точка в диапазоне - зеленый цвет
-          const successColor = getCSSVar('--text-success', '#00c000');
-          pointColor = successColor;
-          pointBorder = successColor;
+          pointColor = colors.successColor;
+          pointBorder = colors.successColor;
         } else {
           // Точка вне диапазона - красный цвет
-          pointColor = errorColor;
-          pointBorder = errorColor;
+          pointColor = colors.errorColor;
+          pointBorder = colors.errorColor;
         }
       }
       pointBackgroundColors.push(pointColor);
@@ -1922,16 +1146,29 @@ export default class TrackerPlugin extends Plugin {
     // Находим максимальное значение из всех доступных (лимиты и scale)
     const allMaxValues: number[] = [maxValue]; // Добавляем максимальное значение из данных
     if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (minLimit !== null) allMaxValues.push(minLimit);
     if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    if (scaleMinValue !== null) allMaxValues.push(scaleMinValue);
     
     if (allMaxValues.length > 0) {
       const maxFromAll = Math.max(...allMaxValues);
       yAxisMax = Math.max(yAxisMax, maxFromAll);
     }
     
+    // Если все значения нулевые и нет лимитов, устанавливаем минимальный диапазон для отображения
+    if (yAxisMax === 0 && minLimit === null && maxLimit === null && scaleMinValue === null && scaleMaxValue === null) {
+      yAxisMax = 1; // Минимальный диапазон для отображения нулевых значений
+    }
+    
+    // Если max не больше min (например, задан только minLimit), расширяем диапазон вверх
+    if (yAxisMax <= yAxisMin) {
+      const padding = Math.max(1, Math.abs(yAxisMin) * 0.1 || 1);
+      yAxisMax = yAxisMin + padding;
+    }
+    
     // Сохраняем индекс начала отслеживания и цвет в экземпляре графика для использования плагином
     (chartInstance as any).startTrackingIndex = startTrackingIndex;
-    (chartInstance as any).startLineColor = startLineColor;
+    (chartInstance as any).startLineColor = colors.startLineColor;
     // Сохраняем массив дат для обработки клика
     (chartInstance as any).dateStrings = dateStrings;
     // Сохраняем лимиты успешности в экземпляре графика
@@ -1958,24 +1195,26 @@ export default class TrackerPlugin extends Plugin {
     chartInstance.update('none'); // 'none' для мгновенного обновления без анимации
   }
 
-  async updateStats(statsDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string) {
-    const entries = await this.readAllEntries(file);
+  async updateStats(statsDiv: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string, entries?: Map<string, string | number>) {
+    // Используем переданные entries или читаем из файла
+    const entriesToUse = entries ?? await this.readAllEntries(file);
     
     // Получаем тип трекера из frontmatter
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const metricType = trackerType || (fileOpts.mode ?? "good-habit").toLowerCase();
     
-    const m = (window as any).moment;
-    const endDate = dateIso ? (m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat)) : (m ? m() : new Date());
+    const endDate = dateIso 
+      ? DateService.parse(dateIso, this.settings.dateFormat)
+      : DateService.now();
     const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, 'days') : addDays(endDate, -(days - 1));
+    const startDate = endDate.clone().subtract(days - 1, 'days');
     
     const periodDays: number[] = [];
     
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, 'days') : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      const val = entries.get(dateStr);
+      const date = startDate.clone().add(i, 'days');
+      const dateStr = DateService.format(date, this.settings.dateFormat);
+      const val = entriesToUse.get(dateStr);
       let numVal = 0;
       if (val != null) {
         // Для метрики типа "text" используем количество слов
@@ -2000,10 +1239,10 @@ export default class TrackerPlugin extends Plugin {
     
     const sum = periodDays.reduce((a, b) => a + b, 0);
     const avg = sum / days;
-    const total = entries.size;
+    const total = entriesToUse.size;
     
     // Вычисляем текущий стрик (последовательные дни с записью)
-    const currentStreak = this.calculateStreak(entries, m, endDate, metricType, file);
+    const currentStreak = this.calculateStreak(entriesToUse, endDate, metricType, file);
     
     // Обновляем содержимое на месте
     const children = Array.from(statsDiv.children);
@@ -2037,21 +1276,72 @@ export default class TrackerPlugin extends Plugin {
     }
   }
 
-  async renderStats(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string) {
+  async renderStats(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string, entries?: Map<string, string | number>) {
     const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
-    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType);
+    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries);
   }
   
-  getStartTrackingDate(entries: Map<string, string | number>, file?: TFile): string | null {
-    return this.trackerFileService.getStartTrackingDate(entries, this.settings, file);
+  private async ensureTrackerState(file: TFile, forceReload = false) {
+    if (!forceReload) {
+      const existing = this.trackerState.get(file.path);
+      if (existing) {
+        return existing;
+      }
+    } else {
+      this.trackerState.delete(file.path);
+    }
+    
+    const [entries, fileOpts] = await Promise.all([
+      this.trackerFileService.readAllEntries(file),
+      this.trackerFileService.getFileTypeFromFrontmatter(file)
+    ]);
+    const state = { entries, fileOpts };
+    this.trackerState.set(file.path, state);
+    return state;
+  }
+  
+  private async reloadTrackerState(file: TFile): Promise<void> {
+    await this.ensureTrackerState(file, true);
+  }
+  
+  private clearTrackerState(path: string): void {
+    this.trackerState.delete(path);
+  }
+  
+  private moveTrackerState(oldPath: string, newPath: string): void {
+    if (oldPath === newPath) return;
+    const state = this.trackerState.get(oldPath);
+    if (state) {
+      this.trackerState.delete(oldPath);
+      this.trackerState.set(newPath, state);
+    } else {
+      this.trackerState.delete(newPath);
+    }
+  }
+  
+  handleTrackerRenamed(oldPath: string, file: TFile): void {
+    this.moveTrackerState(oldPath, file.path);
+  }
+  
+  async getStartTrackingDate(entries: Map<string, string | number>, file?: TFile): Promise<string | null> {
+    if (!file) {
+      return DateService.format(DateService.now(), this.settings.dateFormat);
+    }
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    return this.trackerFileService.getStartTrackingDate(entries, this.settings, fileOpts);
+  }
+  
+  invalidateCacheForFile(file: TFile): void {
+    this.clearTrackerState(file.path);
   }
 
-  calculateStreak(entries: Map<string, string | number>, m: any, endDate: Date | any, trackerType?: string, file?: TFile): number {
+  calculateStreak(entries: Map<string, string | number>, endDate: Date | any, trackerType?: string, file?: TFile): number {
     return this.trackerFileService.calculateStreak(entries, this.settings, endDate, trackerType, file);
   }
 
   async readAllEntries(file: TFile): Promise<Map<string, string | number>> {
-    return this.trackerFileService.readAllEntries(file);
+    const state = await this.ensureTrackerState(file);
+    return state.entries;
   }
 
   // ---- Создание привычки ----------------------------------------------------
@@ -2060,9 +1350,92 @@ export default class TrackerPlugin extends Plugin {
     new CreateTrackerModal(this.app, this).open();
   }
 
-  async onTrackerCreated(folderPath: string) {
+  async onTrackerCreated(folderPath: string, file: TFile) {
     this.folderTreeService.invalidate(folderPath);
-    await this.refreshBlocksForFolder(folderPath);
+    await this.reloadTrackerState(file);
+    const normalizedFolderPath = this.normalizePath(folderPath);
+    
+    // Динамически добавляем новый трекер без полной перерисовки
+    for (const block of Array.from(this.activeBlocks)) {
+      const blockFolderPath = block.getFolderPath();
+      const normalizedBlockPath = this.normalizePath(blockFolderPath);
+      if (!this.isFolderRelevant(normalizedFolderPath, normalizedBlockPath)) continue;
+      
+      const opts = block.getOptions();
+      const view = (opts.view ?? "control").toLowerCase();
+      const dateInput = block.containerEl.querySelector(".tracker-notes__date-input") as HTMLInputElement | null;
+      const activeDateIso = dateInput?.value || resolveDateIso(opts.date, this.settings.dateFormat);
+      
+      const trackersContainers = Array.from(
+        block.containerEl.querySelectorAll<HTMLElement>(
+          `.tracker-notes__trackers[data-folder-path="${normalizedFolderPath}"]`
+        )
+      );
+      
+      // Если контейнер не найден (например, новая папка), перерисовываем весь блок
+      if (trackersContainers.length === 0) {
+        await block.render();
+        continue;
+      }
+      
+      for (const trackersContainer of trackersContainers) {
+        const existingTrackers = Array.from(trackersContainer.children).filter(
+          (el) => el.classList.contains('tracker-notes__tracker')
+        ) as HTMLElement[];
+        
+        let insertBefore: HTMLElement | null = null;
+        for (const tracker of existingTrackers) {
+          const trackerPath = tracker.dataset.filePath;
+          if (!trackerPath) continue;
+          const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
+          if (trackerFile instanceof TFile) {
+            if (trackerFile.basename.localeCompare(file.basename, undefined, { sensitivity: "base" }) > 0) {
+              insertBefore = tracker;
+              break;
+            }
+          }
+        }
+        
+        await this.trackerRenderer.renderTracker(trackersContainer, file, activeDateIso, view, opts);
+        
+        const newTracker = trackersContainer.querySelector(
+          `.tracker-notes__tracker[data-file-path="${file.path}"]`
+        ) as HTMLElement;
+        if (newTracker && insertBefore && newTracker.parentElement === trackersContainer) {
+          trackersContainer.insertBefore(newTracker, insertBefore);
+        }
+      }
+    }
+  }
+
+  async onTrackerDeleted(filePath: string) {
+    // Удаляем состояние для удаленного файла
+    this.clearTrackerState(filePath);
+    
+    // Находим и удаляем все трекеры с этим путем из всех активных блоков
+    for (const block of Array.from(this.activeBlocks)) {
+      const trackersContainers = Array.from(
+        block.containerEl.querySelectorAll<HTMLElement>(".tracker-notes__trackers")
+      );
+      if (trackersContainers.length === 0) continue;
+      
+      for (const trackersContainer of trackersContainers) {
+        const trackersToDelete = Array.from(trackersContainer.querySelectorAll(
+          `.tracker-notes__tracker[data-file-path="${filePath}"]`
+        )) as HTMLElement[];
+        
+        if (trackersToDelete.length === 0) continue;
+        
+        for (const tracker of trackersToDelete) {
+          tracker.style.transition = "opacity 0.2s ease";
+          tracker.style.opacity = "0";
+          
+          setTimeout(() => {
+            tracker.remove();
+          }, 200);
+        }
+      }
+    }
   }
 
 
@@ -2083,11 +1456,15 @@ export default class TrackerPlugin extends Plugin {
   }
 
   async readValueForDate(file: TFile, dateIso: string): Promise<string | number | null> {
-    return this.trackerFileService.readValueForDate(file, dateIso);
+    const entries = await this.readAllEntries(file);
+    return entries.get(dateIso) ?? null;
   }
 
   async writeLogLine(file: TFile, dateIso: string, value: string) {
     try {
+      const entries = await this.readAllEntries(file);
+      const normalizedValue = parseMaybeNumber(value);
+      entries.set(dateIso, normalizedValue);
       await this.trackerFileService.writeLogLine(file, dateIso, value);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -2111,15 +1488,11 @@ export default class TrackerPlugin extends Plugin {
 
   async saveSettings() { await this.saveData(this.settings); }
 
-  // Методы для безопасной модификации файлов (игнорирование внутренних изменений)
-  markFileAsInternallyModified(path: string) {
-    this.internalWritePaths.add(this.normalizePath(path));
+  editTracker(file: TFile): void {
+    new EditTrackerModal(this.app, this, file).open();
   }
 
-  unmarkFileAsInternallyModified(path: string) {
-    const normalized = this.normalizePath(path);
-    window.setTimeout(() => this.internalWritePaths.delete(normalized), 0);
-  }
+  // Методы для безопасной модификации файлов (игнорирование внутренних изменений)
 }
 
 

@@ -1,4 +1,5 @@
-import type { App, TFile } from "obsidian";
+import type { App } from "obsidian";
+import { TFile } from "obsidian";
 import { Modal, Notice, Setting } from "obsidian";
 import type TrackerPlugin from "../../core/tracker-plugin";
 import { MODAL_LABELS, ERROR_MESSAGES, SUCCESS_MESSAGES } from "../../constants";
@@ -27,6 +28,7 @@ export class EditTrackerModal extends Modal {
     const currentStep = fileOpts.step || "";
     const currentMinLimit = fileOpts.minLimit || "";
     const currentMaxLimit = fileOpts.maxLimit || "";
+    const currentStartDate = fileOpts.trackingStartDate || new Date().toISOString().split('T')[0];
 
     const nameSetting = new Setting(contentEl).setName("Название").addText((text) => {
       text.setPlaceholder("Например: Утренняя зарядка");
@@ -84,6 +86,14 @@ export class EditTrackerModal extends Modal {
       typeDropdown.value = currentType;
       typeDropdown.disabled = true;
     }
+
+    const startDateSetting = new Setting(contentEl)
+      .setName("Начало отслеживания")
+      .addText((text) => {
+        text.setValue(currentStartDate);
+        text.inputEl.type = "date";
+        text.inputEl.style.width = "100%";
+      });
 
     const parametersHeader = contentEl.createEl("h3", { text: "Параметры" });
     const parametersDescription = contentEl.createEl("p", {
@@ -247,14 +257,17 @@ export class EditTrackerModal extends Modal {
     });
     deleteBtn.addEventListener("click", async () => {
       try {
-        // Удаляем файл сразу
+        // Сохраняем путь файла до удаления
+        const filePath = this.file.path;
+        const fileName = this.file.basename;
+        
+        // Удаляем трекер из UI динамически ДО удаления файла
+        await this.plugin.onTrackerDeleted(filePath);
+        
+        // Удаляем файл
         await this.app.vault.delete(this.file);
         
-        new Notice(`${SUCCESS_MESSAGES.TRACKER_DELETED}: ${this.file.basename}`);
-        
-        // Обновляем UI
-        const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
-        await this.plugin.onTrackerCreated(fileFolderPath);
+        new Notice(`${SUCCESS_MESSAGES.TRACKER_DELETED}: ${fileName}`);
         
         this.close();
       } catch (error) {
@@ -303,6 +316,9 @@ export class EditTrackerModal extends Modal {
         const unit = type === "text" ? "слов" : unitRaw;
         const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
 
+        const startDateInput = startDateSetting.controlEl.querySelector("input") as HTMLInputElement;
+        const startDate = startDateInput?.value || currentStartDate;
+
         try {
           const content = await this.app.vault.read(this.file);
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -315,6 +331,7 @@ export class EditTrackerModal extends Modal {
           }
 
           let newFrontmatter = `type: "${type}"\n`;
+          newFrontmatter += `trackingStartDate: "${startDate}"\n`;
           if (type === "scale") {
             newFrontmatter += `minValue: ${parseFloat(minValue) || 0}\n`;
             newFrontmatter += `maxValue: ${parseFloat(maxValue) || 10}\n`;
@@ -337,30 +354,79 @@ export class EditTrackerModal extends Modal {
 
           const newContent = `---\n${newFrontmatter}---${body ? `\n\n${body}` : ""}`;
 
-          // Помечаем файл как внутренне модифицируемый чтобы event listener игнорировал изменение
-          this.plugin.markFileAsInternallyModified(this.file.path);
-          
           try {
+            // Сохраняем старый путь ДО модификации файла
+            const oldPath = this.file.path;
+            const oldBasename = this.file.basename;
+            
             // Модифицируем содержимое
             await this.app.vault.modify(this.file, newContent);
 
+            let updatedFile: TFile = this.file;
+            
             // Переименовываем если нужно
-            if (name !== this.file.basename) {
-              const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-              const newPath = this.file.path.replace(this.file.name, newFileName);
-              await this.app.vault.rename(this.file, newPath);
+            if (name !== oldBasename) {
+              try {
+                const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+                
+                // Более надежный способ формирования пути: получаем директорию и объединяем с новым именем
+                const folderPath = this.file.parent?.path || "";
+                const newPath = folderPath ? `${folderPath}/${newFileName}` : newFileName;
+                
+                const renamedFile = await this.app.vault.rename(this.file, newPath);
+                
+                // Используем файл, который вернул rename, или исходный файл, если rename вернул null
+                // Но главное - проверяем изменение пути файла для определения успешности переименования
+                const fileToCheck = renamedFile || this.file;
+                
+                // Проверяем успешность переименования по изменению пути файла
+                // Это более надежный способ, чем проверка instanceof, так как vault.rename
+                // может вернуть тот же объект файла (обновленный) или null, даже если переименование успешно
+                if (fileToCheck.path !== oldPath) {
+                  // Путь изменился - переименование успешно
+                  updatedFile = fileToCheck;
+                  this.plugin.handleTrackerRenamed(oldPath, updatedFile);
+                }
+              } catch (renameError) {
+                // Если переименование выбросило исключение, логируем и используем исходный файл
+                const errorMsg = renameError instanceof Error ? renameError.message : String(renameError);
+                console.error("Tracker: ошибка при переименовании файла", {
+                  oldPath,
+                  newFileName: name.replace(/[<>:"/\\|?*]/g, "_") + ".md",
+                  error: errorMsg,
+                  renameError
+                });
+                // Продолжаем работу с исходным файлом
+              }
             }
 
             new Notice(`Трекер обновлен: ${name}`);
-            this.close();
             
-            // Event listener для rename обработает обновление UI с задержкой
-          } finally {
-            // Снимаем пометку после завершения операций
-            this.plugin.unmarkFileAsInternallyModified(this.file.path);
+            // Инвалидируем кеш для файла, чтобы новые данные frontmatter были прочитаны
+            this.plugin.invalidateCacheForFile(updatedFile);
+            
+            // Обновляем визуализации трекеров с новым файлом
+            // Если файл был переименован, обновляем dataset.filePath у всех трекеров
+            if (oldPath !== updatedFile.path) {
+              // Находим все трекеры со старым путем и обновляем их
+              for (const block of Array.from(this.plugin.activeBlocks)) {
+                const trackers = block.containerEl.querySelectorAll<HTMLElement>(
+                  `.tracker-notes__tracker[data-file-path="${oldPath}"]`
+                );
+                trackers.forEach(tracker => {
+                  tracker.dataset.filePath = updatedFile.path;
+                });
+              }
+            }
+            
+            await this.plugin.refreshTrackersForFile(updatedFile);
+            
+            this.close();
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            new Notice(`Ошибка при обновлении трекера: ${errorMsg}`);
+            console.error("Tracker: ошибка обновления трекера", error);
           }
-
-          this.close();
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           new Notice(`Ошибка при обновлении трекера: ${errorMsg}`);

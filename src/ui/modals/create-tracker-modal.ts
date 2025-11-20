@@ -48,6 +48,15 @@ export class CreateTrackerModal extends Modal {
       populateTrackerTypeSelector(typeDropdown, TrackerType.GOOD_HABIT);
     }
 
+    const startDateSetting = new Setting(contentEl)
+      .setName("Начало отслеживания")
+      .addText((text) => {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        text.setValue(today);
+        text.inputEl.type = "date";
+        text.inputEl.style.width = "100%";
+      });
+
     const parametersHeader = contentEl.createEl("h3", { text: MODAL_LABELS.PARAMETERS });
     const parametersDescription = contentEl.createEl("p", {
       text: "Единица измерения - не обязательное поле. Можно оставить пустым.",
@@ -243,6 +252,9 @@ export class CreateTrackerModal extends Modal {
         const unit = type === TrackerType.TEXT ? DEFAULTS.TEXT_UNIT : unitRaw;
         const isMetric = isMetricType(type);
 
+        const startDateInput = startDateSetting.controlEl.querySelector("input") as HTMLInputElement;
+        const startDate = startDateInput?.value || new Date().toISOString().split('T')[0];
+
         const fileName = sanitizeFileName(name) + ".md";
         const folderInput = folderSetting.controlEl.querySelector("input") as HTMLInputElement;
         let inputFolder = folderInput?.value.trim() || "";
@@ -259,6 +271,7 @@ export class CreateTrackerModal extends Modal {
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
 
           let newFrontmatter = `type: "${type}"\n`;
+          newFrontmatter += `trackingStartDate: "${startDate}"\n`;
           if (type === TrackerType.SCALE) {
             newFrontmatter += `minValue: ${parseFloat(minValue) || DEFAULTS.MIN_VALUE}\n`;
             newFrontmatter += `maxValue: ${parseFloat(maxValue) || DEFAULTS.MAX_VALUE}\n`;
@@ -286,7 +299,7 @@ export class CreateTrackerModal extends Modal {
           new Notice(`${SUCCESS_MESSAGES.TRACKER_CREATED}: ${name}`);
 
           const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
-          await this.plugin.onTrackerCreated(fileFolderPath);
+          await this.plugin.onTrackerCreated(fileFolderPath, file);
 
           this.close();
         } catch (error) {

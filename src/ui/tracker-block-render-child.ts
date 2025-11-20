@@ -6,7 +6,9 @@ import {
 import type TrackerPlugin from "../core/tracker-plugin";
 import type { FolderNode } from "../domain/types";
 import { parseOptions } from "../utils/options";
-import { resolveDateIso, formatDate, parseDate, addDays } from "../utils/date";
+import { resolveDateIso } from "../utils/date";
+import { DateService } from "../services/date-service";
+import { normalizePath } from "../utils/path";
 
 export class TrackerBlockRenderChild extends MarkdownRenderChild {
   private readonly plugin: TrackerPlugin;
@@ -56,59 +58,32 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
           if (noteFile instanceof TFile) {
             const fileName = noteFile.basename;
             if (fileName) {
-              const m = (window as any).moment;
-              if (m) {
-                const dateFormats = [
-                  "YYYY-MM-DD",
-                  "YYYY/MM/DD",
-                  "DD.MM.YYYY",
-                  "YYYY-MM-DD HH:mm",
-                  "YYYY/MM/DD HH:mm",
-                ];
-                for (const fmt of dateFormats) {
-                  const parsedDate = m(fileName, fmt, true);
+              const dateFormats = [
+                "YYYY-MM-DD",
+                "YYYY/MM/DD",
+                "DD.MM.YYYY",
+                "YYYY-MM-DD HH:mm",
+                "YYYY/MM/DD HH:mm",
+              ];
+              for (const fmt of dateFormats) {
+                try {
+                  const parsedDate = DateService.parse(fileName, fmt);
                   if (parsedDate.isValid()) {
-                    initialDate = parsedDate.format(this.plugin.settings.dateFormat);
+                    initialDate = DateService.format(parsedDate, this.plugin.settings.dateFormat);
                     break;
                   }
+                } catch {
+                  // Continue to next format
                 }
-                if (!initialDate) {
-                  const datePattern = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}\.\d{2}\.\d{4})/;
-                  const match = fileName.match(datePattern);
-                  if (match) {
-                    const dateStr = match[0];
-                    const parsedDate = m(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
-                    if (parsedDate.isValid()) {
-                      initialDate = parsedDate.format(this.plugin.settings.dateFormat);
-                    }
-                  }
-                }
-              } else {
-                const datePatterns = [
-                  /(\d{4})-(\d{2})-(\d{2})/,
-                  /(\d{4})\/(\d{2})\/(\d{2})/,
-                  /(\d{2})\.(\d{2})\.(\d{4})/,
-                ];
-                for (const pattern of datePatterns) {
-                  const match = fileName.match(pattern);
-                  if (match) {
-                    let year: number;
-                    let month: number;
-                    let day: number;
-                    if (pattern === datePatterns[2]) {
-                      day = parseInt(match[1]);
-                      month = parseInt(match[2]) - 1;
-                      year = parseInt(match[3]);
-                    } else {
-                      year = parseInt(match[1]);
-                      month = parseInt(match[2]) - 1;
-                      day = parseInt(match[3]);
-                    }
-                    const date = new Date(year, month, day);
-                    if (!isNaN(date.getTime())) {
-                      initialDate = formatDate(date, this.plugin.settings.dateFormat);
-                      break;
-                    }
+              }
+              if (!initialDate) {
+                const datePattern = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}\.\d{2}\.\d{4})/;
+                const match = fileName.match(datePattern);
+                if (match) {
+                  const dateStr = match[0];
+                  const parsedDate = DateService.parseMultiple(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"]);
+                  if (parsedDate.isValid()) {
+                    initialDate = DateService.format(parsedDate, this.plugin.settings.dateFormat);
                   }
                 }
               }
@@ -186,16 +161,9 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
 
       const navigateDate = (days: number) => {
         const referenceIso = pendingDateIso ?? dateIso;
-        const m = (window as any).moment;
-        const currentDateObj = m
-          ? m(referenceIso, this.plugin.settings.dateFormat)
-          : parseDate(referenceIso, this.plugin.settings.dateFormat);
-        const newDate = m
-          ? currentDateObj.clone().add(days, "days")
-          : addDays(new Date(currentDateObj.getTime()), days);
-        const newDateStr = m
-          ? newDate.format(this.plugin.settings.dateFormat)
-          : formatDate(newDate, this.plugin.settings.dateFormat);
+        const currentDateObj = DateService.parse(referenceIso, this.plugin.settings.dateFormat);
+        const newDate = currentDateObj.clone().add(days, "days");
+        const newDateStr = DateService.format(newDate, this.plugin.settings.dateFormat);
         requestDateUpdate(newDateStr);
       };
 
@@ -287,11 +255,13 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
 
     if (node.files.length > 0) {
       const trackersContainer = nodeContainer.createDiv({ cls: "tracker-notes__trackers" });
+      trackersContainer.dataset.folderPath = normalizePath(node.path);
 
       // Рендерим все трекеры параллельно
       const renderPromises = node.files.map(async (file) => {
         try {
-          await this.plugin.renderTracker(trackersContainer, file, dateIso, view, opts);
+          await this.plugin.readAllEntries(file);
+          await this.plugin.trackerRenderer.renderTracker(trackersContainer, file, dateIso, view, opts);
         } catch (error) {
           console.error("Tracker: ошибка рендера трекера", error);
         }

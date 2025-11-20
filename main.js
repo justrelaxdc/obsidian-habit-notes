@@ -26,7 +26,7 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 
 // src/core/tracker-plugin.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // node_modules/@kurkle/color/dist/color.esm.js
 function round(v) {
@@ -14514,46 +14514,278 @@ function parseOptions(src) {
   return options;
 }
 
+// src/services/date-service.ts
+var DateService = class {
+  static momentAvailable() {
+    return typeof window.moment !== "undefined";
+  }
+  static getMoment() {
+    return window.moment;
+  }
+  /**
+   * Create a DateWrapper from a date string and format
+   */
+  static parse(dateStr, format) {
+    const m = this.getMoment();
+    if (m) {
+      const parsed = m(dateStr, format, true);
+      if (parsed.isValid()) {
+        return this.wrapMoment(parsed);
+      }
+    }
+    return this.wrapDate(this.parseNativeDate(dateStr, format));
+  }
+  /**
+   * Create a DateWrapper from multiple possible formats
+   */
+  static parseMultiple(dateStr, formats) {
+    const m = this.getMoment();
+    if (m) {
+      const parsed = m(dateStr, formats, true);
+      if (parsed.isValid()) {
+        return this.wrapMoment(parsed);
+      }
+    }
+    for (const fmt of formats) {
+      try {
+        const date = this.parseNativeDate(dateStr, fmt);
+        if (!isNaN(date.getTime())) {
+          return this.wrapDate(date);
+        }
+      } catch {
+      }
+    }
+    return this.now();
+  }
+  /**
+   * Get current date/time
+   */
+  static now() {
+    const m = this.getMoment();
+    if (m) {
+      return this.wrapMoment(m());
+    }
+    return this.wrapDate(/* @__PURE__ */ new Date());
+  }
+  /**
+   * Create DateWrapper from native Date
+   */
+  static fromDate(date) {
+    const m = this.getMoment();
+    if (m) {
+      return this.wrapMoment(m(date));
+    }
+    return this.wrapDate(new Date(date.getTime()));
+  }
+  /**
+   * Format date to string
+   */
+  static format(date, format) {
+    if (date instanceof Date) {
+      return this.formatNativeDate(date, format);
+    }
+    return date.format(format);
+  }
+  /**
+   * Add days to date
+   */
+  static addDays(date, days) {
+    if (date instanceof Date) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return this.wrapDate(result);
+    }
+    return date.clone().add(days, "days");
+  }
+  /**
+   * Subtract days from date
+   */
+  static subtractDays(date, days) {
+    if (date instanceof Date) {
+      const result = new Date(date);
+      result.setDate(result.getDate() - days);
+      return this.wrapDate(result);
+    }
+    return date.clone().subtract(days, "days");
+  }
+  /**
+   * Check if date is before another date
+   */
+  static isBefore(date, other) {
+    const date1 = date instanceof Date ? this.wrapDate(date) : date;
+    const date2 = other instanceof Date ? this.wrapDate(other) : other;
+    return date1.isBefore(date2);
+  }
+  /**
+   * Check if date is after another date
+   */
+  static isAfter(date, other) {
+    const date1 = date instanceof Date ? this.wrapDate(date) : date;
+    const date2 = other instanceof Date ? this.wrapDate(other) : other;
+    return date1.isAfter(date2);
+  }
+  /**
+   * Start of day
+   */
+  static startOfDay(date) {
+    if (date instanceof Date) {
+      const result = new Date(date);
+      result.setHours(0, 0, 0, 0);
+      return this.wrapDate(result);
+    }
+    return date.clone().startOf("day");
+  }
+  /**
+   * Resolve date string to ISO format
+   */
+  static resolveDateIso(input, fmt) {
+    if (!input || input.toLowerCase() === "today") {
+      return this.format(this.now(), fmt);
+    }
+    const m = this.getMoment();
+    if (m) {
+      const tryParse = m(input, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
+      if (tryParse.isValid()) {
+        return tryParse.format(fmt);
+      }
+      return m().format(fmt);
+    }
+    const today = /* @__PURE__ */ new Date();
+    const parsed = new Date(input);
+    if (isNaN(parsed.getTime())) {
+      return this.formatNativeDate(today, fmt);
+    }
+    return this.formatNativeDate(parsed, fmt);
+  }
+  // Private helper methods
+  static wrapMoment(momentObj) {
+    const m = this.getMoment();
+    return {
+      format: (fmt) => momentObj.format(fmt),
+      date: () => momentObj.date(),
+      month: () => momentObj.month() + 1,
+      // moment uses 0-based, we use 1-based
+      year: () => momentObj.year(),
+      getDate: () => momentObj.date(),
+      getMonth: () => momentObj.month(),
+      getFullYear: () => momentObj.year(),
+      getTime: () => momentObj.valueOf(),
+      isBefore: (other) => {
+        if (other instanceof Date) {
+          return momentObj.isBefore(m ? m(other) : other);
+        }
+        return momentObj.isBefore(other.toDate ? other.toDate() : other);
+      },
+      isAfter: (other) => {
+        if (other instanceof Date) {
+          return momentObj.isAfter(m ? m(other) : other);
+        }
+        return momentObj.isAfter(other.toDate ? other.toDate() : other);
+      },
+      isValid: () => momentObj.isValid(),
+      clone: () => this.wrapMoment(momentObj.clone()),
+      add: (amount, unit) => {
+        return this.wrapMoment(momentObj.clone().add(amount, unit));
+      },
+      subtract: (amount, unit) => {
+        return this.wrapMoment(momentObj.clone().subtract(amount, unit));
+      },
+      startOf: (unit) => {
+        return this.wrapMoment(momentObj.clone().startOf(unit));
+      },
+      toDate: () => momentObj.toDate()
+    };
+  }
+  static wrapDate(date) {
+    return {
+      format: (fmt) => this.formatNativeDate(date, fmt),
+      date: () => date.getDate(),
+      month: () => date.getMonth() + 1,
+      year: () => date.getFullYear(),
+      getDate: () => date.getDate(),
+      getMonth: () => date.getMonth(),
+      getFullYear: () => date.getFullYear(),
+      getTime: () => date.getTime(),
+      isBefore: (other) => {
+        const otherDate = other instanceof Date ? other : other.toDate();
+        return date < otherDate;
+      },
+      isAfter: (other) => {
+        const otherDate = other instanceof Date ? other : other.toDate();
+        return date > otherDate;
+      },
+      isValid: () => !isNaN(date.getTime()),
+      clone: () => this.wrapDate(new Date(date.getTime())),
+      add: (amount, unit) => {
+        const result = new Date(date);
+        if (unit === "days") {
+          result.setDate(result.getDate() + amount);
+        } else if (unit === "months") {
+          result.setMonth(result.getMonth() + amount);
+        } else if (unit === "years") {
+          result.setFullYear(result.getFullYear() + amount);
+        }
+        return this.wrapDate(result);
+      },
+      subtract: (amount, unit) => {
+        const result = new Date(date);
+        if (unit === "days") {
+          result.setDate(result.getDate() - amount);
+        } else if (unit === "months") {
+          result.setMonth(result.getMonth() - amount);
+        } else if (unit === "years") {
+          result.setFullYear(result.getFullYear() - amount);
+        }
+        return this.wrapDate(result);
+      },
+      startOf: (unit) => {
+        const result = new Date(date);
+        if (unit === "day") {
+          result.setHours(0, 0, 0, 0);
+        } else if (unit === "month") {
+          result.setDate(1);
+          result.setHours(0, 0, 0, 0);
+        } else if (unit === "year") {
+          result.setMonth(0, 1);
+          result.setHours(0, 0, 0, 0);
+        }
+        return this.wrapDate(result);
+      },
+      toDate: () => new Date(date.getTime())
+    };
+  }
+  static parseNativeDate(dateStr, format) {
+    if (format === "YYYY-MM-DD") {
+      const parts = dateStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+    }
+    return new Date(dateStr);
+  }
+  static formatNativeDate(date, format) {
+    if (format === "YYYY-MM-DD") {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    return date.toISOString().split("T")[0];
+  }
+};
+
 // src/utils/date.ts
 function resolveDateIso(input, fmt) {
-  const m = window.moment;
-  if (!m) {
-    const today = /* @__PURE__ */ new Date();
-    if (!input || input.toLowerCase() === "today") {
-      return formatDate(today, fmt);
-    }
-    const parsed = new Date(input);
-    return isNaN(parsed.getTime()) ? formatDate(today, fmt) : formatDate(parsed, fmt);
-  }
-  if (!input || input.toLowerCase() === "today") return m().format(fmt);
-  const tryParse = m(input, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
-  return tryParse.isValid() ? tryParse.format(fmt) : m().format(fmt);
+  return DateService.resolveDateIso(input, fmt);
 }
-function formatDate(date, fmt) {
-  if (fmt === "YYYY-MM-DD") {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-  return date.toISOString().split("T")[0];
-}
-function parseDate(dateStr, fmt) {
-  if (fmt === "YYYY-MM-DD") {
-    const parts = dateStr.split("-");
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      return new Date(year, month, day);
-    }
-  }
-  return new Date(dateStr);
-}
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+
+// src/utils/path.ts
+function normalizePath(path) {
+  if (!path) return "";
+  return path.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
 }
 
 // src/ui/tracker-block-render-child.ts
@@ -14588,59 +14820,31 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
           if (noteFile instanceof import_obsidian.TFile) {
             const fileName = noteFile.basename;
             if (fileName) {
-              const m = window.moment;
-              if (m) {
-                const dateFormats = [
-                  "YYYY-MM-DD",
-                  "YYYY/MM/DD",
-                  "DD.MM.YYYY",
-                  "YYYY-MM-DD HH:mm",
-                  "YYYY/MM/DD HH:mm"
-                ];
-                for (const fmt of dateFormats) {
-                  const parsedDate = m(fileName, fmt, true);
+              const dateFormats = [
+                "YYYY-MM-DD",
+                "YYYY/MM/DD",
+                "DD.MM.YYYY",
+                "YYYY-MM-DD HH:mm",
+                "YYYY/MM/DD HH:mm"
+              ];
+              for (const fmt of dateFormats) {
+                try {
+                  const parsedDate = DateService.parse(fileName, fmt);
                   if (parsedDate.isValid()) {
-                    initialDate = parsedDate.format(this.plugin.settings.dateFormat);
+                    initialDate = DateService.format(parsedDate, this.plugin.settings.dateFormat);
                     break;
                   }
+                } catch {
                 }
-                if (!initialDate) {
-                  const datePattern = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}\.\d{2}\.\d{4})/;
-                  const match = fileName.match(datePattern);
-                  if (match) {
-                    const dateStr = match[0];
-                    const parsedDate = m(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
-                    if (parsedDate.isValid()) {
-                      initialDate = parsedDate.format(this.plugin.settings.dateFormat);
-                    }
-                  }
-                }
-              } else {
-                const datePatterns = [
-                  /(\d{4})-(\d{2})-(\d{2})/,
-                  /(\d{4})\/(\d{2})\/(\d{2})/,
-                  /(\d{2})\.(\d{2})\.(\d{4})/
-                ];
-                for (const pattern of datePatterns) {
-                  const match = fileName.match(pattern);
-                  if (match) {
-                    let year;
-                    let month;
-                    let day;
-                    if (pattern === datePatterns[2]) {
-                      day = parseInt(match[1]);
-                      month = parseInt(match[2]) - 1;
-                      year = parseInt(match[3]);
-                    } else {
-                      year = parseInt(match[1]);
-                      month = parseInt(match[2]) - 1;
-                      day = parseInt(match[3]);
-                    }
-                    const date = new Date(year, month, day);
-                    if (!isNaN(date.getTime())) {
-                      initialDate = formatDate(date, this.plugin.settings.dateFormat);
-                      break;
-                    }
+              }
+              if (!initialDate) {
+                const datePattern = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}\.\d{2}\.\d{4})/;
+                const match = fileName.match(datePattern);
+                if (match) {
+                  const dateStr = match[0];
+                  const parsedDate = DateService.parseMultiple(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"]);
+                  if (parsedDate.isValid()) {
+                    initialDate = DateService.format(parsedDate, this.plugin.settings.dateFormat);
                   }
                 }
               }
@@ -14710,10 +14914,9 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
       };
       const navigateDate = (days) => {
         const referenceIso = pendingDateIso ?? dateIso;
-        const m = window.moment;
-        const currentDateObj = m ? m(referenceIso, this.plugin.settings.dateFormat) : parseDate(referenceIso, this.plugin.settings.dateFormat);
-        const newDate = m ? currentDateObj.clone().add(days, "days") : addDays(new Date(currentDateObj.getTime()), days);
-        const newDateStr = m ? newDate.format(this.plugin.settings.dateFormat) : formatDate(newDate, this.plugin.settings.dateFormat);
+        const currentDateObj = DateService.parse(referenceIso, this.plugin.settings.dateFormat);
+        const newDate = currentDateObj.clone().add(days, "days");
+        const newDateStr = DateService.format(newDate, this.plugin.settings.dateFormat);
         requestDateUpdate(newDateStr);
       };
       if (view === "control") {
@@ -14782,9 +14985,11 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
     }
     if (node.files.length > 0) {
       const trackersContainer = nodeContainer.createDiv({ cls: "tracker-notes__trackers" });
+      trackersContainer.dataset.folderPath = normalizePath(node.path);
       const renderPromises = node.files.map(async (file) => {
         try {
-          await this.plugin.renderTracker(trackersContainer, file, dateIso, view, opts);
+          await this.plugin.readAllEntries(file);
+          await this.plugin.trackerRenderer.renderTracker(trackersContainer, file, dateIso, view, opts);
         } catch (error) {
           console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0440\u0435\u043D\u0434\u0435\u0440\u0430 \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
         }
@@ -14822,14 +15027,6 @@ var DEFAULT_SETTINGS = {
 
 // src/services/folder-tree-service.ts
 var import_obsidian2 = require("obsidian");
-
-// src/utils/path.ts
-function normalizePath(path) {
-  if (!path) return "";
-  return path.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
-}
-
-// src/services/folder-tree-service.ts
 var FolderTreeService = class {
   constructor(app) {
     this.app = app;
@@ -14921,9 +15118,12 @@ function countWords(text) {
 }
 
 // src/constants/index.ts
+var MOBILE_BREAKPOINT = 768;
 var MAX_DAYS_BACK = 3650;
 var CACHE_TTL_MS = 5 * 60 * 1e3;
-var MAX_CACHE_SIZE = 100;
+var ANIMATION_DURATION_MS = 300;
+var SCROLL_RESTORE_DELAY_2_MS = 100;
+var IMMEDIATE_TIMEOUT_MS = 0;
 var TrackerType = {
   GOOD_HABIT: "good-habit",
   BAD_HABIT: "bad-habit",
@@ -14933,6 +15133,106 @@ var TrackerType = {
   TEXT: "text",
   CHECKBOX: "checkbox",
   RATING: "rating"
+};
+var ViewMode = {
+  CONTROL: "control",
+  DISPLAY: "display"
+};
+var CSS_CLASSES = {
+  // Main container
+  TRACKER_NOTES: "tracker-notes",
+  TRACKER_NOTES_HEADER: "tracker-notes__header",
+  TRACKER_NOTES_HIERARCHY: "tracker-notes__hierarchy",
+  // Tracker item
+  TRACKER: "tracker-notes__tracker",
+  TRACKER_HEADER: "tracker-notes__tracker-header",
+  TRACKER_TITLE: "tracker-notes__tracker-title",
+  TRACKER_CONTROLS: "tracker-notes__controls",
+  SETTINGS_BTN: "tracker-notes__settings-btn",
+  // Controls
+  ROW: "tracker-notes__row",
+  VALUE: "tracker-notes__value",
+  VALUE_UPDATED: "updated",
+  // Rating
+  RATING: "tracker-notes__rating",
+  RATING_STAR: "tracker-notes__rating-star",
+  RATING_STAR_ACTIVE: "active",
+  // Text input
+  TEXT_INPUT: "tracker-notes__text-input",
+  // Scale/Progress bar
+  PROGRESS_BAR_WRAPPER: "tracker-notes__progress-bar-wrapper",
+  PROGRESS_BAR_INPUT: "tracker-notes__progress-bar-input",
+  PROGRESS_BAR_PROGRESS: "tracker-notes__progress-bar-progress",
+  PROGRESS_BAR_VALUE: "tracker-notes__progress-bar-value",
+  PROGRESS_BAR_LABEL_LEFT: "tracker-notes__progress-bar-label-left",
+  PROGRESS_BAR_LABEL_RIGHT: "tracker-notes__progress-bar-label-right",
+  // Heatmap
+  HEATMAP: "tracker-notes__heatmap",
+  HEATMAP_DAY: "tracker-notes__heatmap-day",
+  HEATMAP_DAY_HAS_VALUE: "has-value",
+  HEATMAP_DAY_START: "start-day",
+  // Calendar
+  CALENDAR: "tracker-notes__calendar",
+  CALENDAR_DAY: "tracker-notes__calendar-day",
+  CALENDAR_DAY_HAS_VALUE: "has-value",
+  CALENDAR_DAY_START: "start-day",
+  // Visualizations
+  CHART: "tracker-notes__chart",
+  STATS: "tracker-notes__stats",
+  // Date picker
+  DATE_PICKER_CONTAINER: "tracker-notes__date-picker-container",
+  DATE_PICKER: "tracker-notes__date-picker",
+  DATE_INPUT: "tracker-notes__date-input",
+  DATE_INPUT_UPDATING: "is-updating",
+  DATE_NAV_BTN: "tracker-notes__date-nav-btn",
+  DATE_NAV_BTN_LEFT: "tracker-notes__date-nav-btn-left",
+  DATE_NAV_BTN_RIGHT: "tracker-notes__date-nav-btn-right",
+  // Loading
+  LOADING: "tracker-notes__loading",
+  LOADING_ACTIVE: "is-active",
+  LOADING_DOT: "tracker-notes__loading-dot",
+  // Folder structure
+  FOLDER_NODE: "tracker-notes__folder-node",
+  FOLDER_HEADER: "tracker-notes__folder-header",
+  TRACKERS_CONTAINER: "tracker-notes__trackers",
+  // Messages
+  ERROR: "tracker-notes__error",
+  SUCCESS: "tracker-notes__success"
+};
+var CSS_VARIABLES = {
+  // Colors
+  INTERACTIVE_ACCENT: "--interactive-accent",
+  COLOR_ACCENT: "--color-accent",
+  ACCENT_COLOR: "--accent-color",
+  TEXT_MUTED: "--text-muted",
+  TEXT_FAINT: "--text-faint",
+  TEXT_NORMAL: "--text-normal",
+  TEXT_ERROR: "--text-error",
+  TEXT_SUCCESS: "--text-success",
+  TEXT_ACCENT: "--text-accent",
+  TEXT_ON_ACCENT: "--text-on-accent",
+  // Backgrounds
+  BACKGROUND_PRIMARY: "--background-primary",
+  BACKGROUND_SECONDARY: "--background-secondary",
+  BACKGROUND_MODIFIER_BORDER: "--background-modifier-border",
+  BACKGROUND_MODIFIER_BORDER_HOVER: "--background-modifier-border-hover",
+  BACKGROUND_MODIFIER_BORDER_FOCUS: "--background-modifier-border-focus",
+  // Interactive
+  INTERACTIVE_NORMAL: "--interactive-normal",
+  INTERACTIVE_HOVER: "--interactive-hover",
+  INTERACTIVE_ACCENT_HOVER: "--interactive-accent-hover",
+  // Fonts
+  FONT_TEXT: "--font-text",
+  FONT_UI_SMALL: "--font-ui-small"
+};
+var FALLBACK_COLORS = {
+  ACCENT: "#7f6df2",
+  TEXT_MUTED: "#999999",
+  TEXT_FAINT: "#666666",
+  TEXT_ERROR: "#c00000",
+  TEXT_SUCCESS: "#00c000",
+  BORDER: "#e0e0e0",
+  BG_PRIMARY: "#ffffff"
 };
 var ERROR_MESSAGES = {
   NO_TRACKERS: "\u0432 \u043F\u0430\u043F\u043A\u0435 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432",
@@ -14999,109 +15299,6 @@ var DEFAULTS = {
   TEXT_UNIT: "\u0441\u043B\u043E\u0432"
 };
 
-// src/services/tracker-data-cache.ts
-var TrackerDataCache = class {
-  constructor() {
-    this.cache = /* @__PURE__ */ new Map();
-  }
-  getKey(file) {
-    return file.path;
-  }
-  getMtime(file) {
-    return file.stat?.mtime ?? 0;
-  }
-  getSize(file) {
-    return file.stat?.size ?? 0;
-  }
-  ensureEntry(file) {
-    const key = this.getKey(file);
-    let entry = this.cache.get(key);
-    if (!entry) {
-      entry = {
-        mtime: this.getMtime(file),
-        size: this.getSize(file),
-        timestamp: Date.now(),
-        lastAccessed: Date.now()
-      };
-      this.cache.set(key, entry);
-    }
-    return entry;
-  }
-  isStale(file, entry) {
-    if (!entry) return true;
-    if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-      return true;
-    }
-    if (entry.mtime !== this.getMtime(file)) {
-      return true;
-    }
-    if (entry.size !== this.getSize(file)) {
-      return true;
-    }
-    return false;
-  }
-  evictLRU() {
-    if (this.cache.size <= MAX_CACHE_SIZE) {
-      return;
-    }
-    let oldestKey = null;
-    let oldestTime = Infinity;
-    for (const [key, entry] of this.cache.entries()) {
-      if (entry.lastAccessed < oldestTime) {
-        oldestTime = entry.lastAccessed;
-        oldestKey = key;
-      }
-    }
-    if (oldestKey) {
-      this.cache.delete(oldestKey);
-    }
-  }
-  invalidate(path) {
-    this.cache.delete(path);
-  }
-  invalidateAll() {
-    this.cache.clear();
-  }
-  async getFrontmatter(file, loader) {
-    const key = this.getKey(file);
-    const entry = this.cache.get(key);
-    if (this.isStale(file, entry) || !entry?.frontmatter) {
-      this.evictLRU();
-      const freshEntry = {
-        mtime: this.getMtime(file),
-        size: this.getSize(file),
-        timestamp: Date.now(),
-        lastAccessed: Date.now(),
-        frontmatter: await loader(),
-        entries: this.isStale(file, entry) ? void 0 : entry?.entries
-      };
-      this.cache.set(key, freshEntry);
-      return freshEntry.frontmatter ?? {};
-    }
-    entry.lastAccessed = Date.now();
-    return entry.frontmatter;
-  }
-  async getEntries(file, loader) {
-    const key = this.getKey(file);
-    const entry = this.cache.get(key);
-    if (this.isStale(file, entry) || !entry?.entries) {
-      this.evictLRU();
-      const freshEntry = {
-        mtime: this.getMtime(file),
-        size: this.getSize(file),
-        timestamp: Date.now(),
-        lastAccessed: Date.now(),
-        entries: await loader(),
-        frontmatter: this.isStale(file, entry) ? void 0 : entry?.frontmatter
-      };
-      this.cache.set(key, freshEntry);
-      return freshEntry.entries ?? /* @__PURE__ */ new Map();
-    }
-    entry.lastAccessed = Date.now();
-    return entry.entries;
-  }
-};
-
 // src/utils/validation.ts
 function sanitizeFileName(name) {
   return name.replace(/[<>:"/\\|?*]/g, "_");
@@ -15121,7 +15318,6 @@ function isTrackerValueTrue(value) {
 var TrackerFileService = class {
   constructor(app) {
     this.app = app;
-    this.cache = new TrackerDataCache();
   }
   async ensureFileWithHeading(filePath, type = "good-habit") {
     const existing = this.app.vault.getAbstractFileByPath(filePath);
@@ -15196,29 +15392,26 @@ data: {}
     return yaml;
   }
   async readAllEntries(file) {
-    return this.cache.getEntries(file, async () => {
-      const entries = /* @__PURE__ */ new Map();
-      try {
-        const raw = await this.app.vault.read(file);
-        const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
-        if (!frontmatterMatch) return entries;
-        const frontmatter = frontmatterMatch[1];
-        const data = this.parseFrontmatterData(frontmatter);
-        Object.entries(data).forEach(([date, value]) => {
-          entries.set(date, value);
-        });
-      } catch (error) {
-        console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F \u0432\u0441\u0435\u0445 \u0437\u0430\u043F\u0438\u0441\u0435\u0439", error);
-      }
-      return entries;
-    });
+    const entries = /* @__PURE__ */ new Map();
+    try {
+      const raw = await this.app.vault.read(file);
+      const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
+      if (!frontmatterMatch) return entries;
+      const frontmatter = frontmatterMatch[1];
+      const data = this.parseFrontmatterData(frontmatter);
+      Object.entries(data).forEach(([date, value]) => {
+        entries.set(date, value);
+      });
+    } catch (error) {
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F \u0432\u0441\u0435\u0445 \u0437\u0430\u043F\u0438\u0441\u0435\u0439", error);
+    }
+    return entries;
   }
   async readValueForDate(file, dateIso) {
     const entries = await this.readAllEntries(file);
     return entries.get(dateIso) ?? null;
   }
   async writeLogLine(file, dateIso, value) {
-    this.modifyGuards?.onBeforeModify?.(file.path);
     try {
       const content = await this.app.vault.read(file);
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -15247,105 +15440,82 @@ data: {}
       const newContent = `---
 ${newFrontmatter}---${body}`;
       await this.app.vault.modify(file, newContent);
-      this.cache.invalidate(file.path);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", error);
       throw new Error(errorMsg);
-    } finally {
-      this.modifyGuards?.onAfterModify?.(file.path);
     }
   }
   async getFileTypeFromFrontmatter(file) {
-    return this.cache.getFrontmatter(file, async () => {
-      const fileOpts = {};
-      try {
-        const fileContent = await this.app.vault.read(file);
-        const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
-        if (frontmatterMatch) {
-          const frontmatter = frontmatterMatch[1];
-          const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
-          fileOpts.mode = typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT;
-          const maxRatingMatch = frontmatter.match(/^maxRating:\s*(\d+)/m);
-          if (maxRatingMatch) fileOpts.maxRating = maxRatingMatch[1];
-          const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
-          if (minValueMatch) fileOpts.minValue = minValueMatch[1];
-          const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);
-          if (maxValueMatch) fileOpts.maxValue = maxValueMatch[1];
-          const stepMatch = frontmatter.match(/^step:\s*([\d.]+)/m);
-          if (stepMatch) fileOpts.step = stepMatch[1];
-          const minLimitMatch = frontmatter.match(/^minLimit:\s*([\d.]+)/m);
-          if (minLimitMatch) fileOpts.minLimit = minLimitMatch[1];
-          const maxLimitMatch = frontmatter.match(/^maxLimit:\s*([\d.]+)/m);
-          if (maxLimitMatch) fileOpts.maxLimit = maxLimitMatch[1];
-          const unitMatch = frontmatter.match(/^unit:\s*["']?([^"'\n]+)["']?/m);
-          if (unitMatch && unitMatch[1]) {
-            fileOpts.unit = unitMatch[1].trim();
-          }
-        } else {
-          fileOpts.mode = TrackerType.GOOD_HABIT;
+    const fileOpts = {};
+    try {
+      const fileContent = await this.app.vault.read(file);
+      const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const frontmatter = frontmatterMatch[1];
+        const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
+        fileOpts.mode = typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT;
+        const maxRatingMatch = frontmatter.match(/^maxRating:\s*(\d+)/m);
+        if (maxRatingMatch) fileOpts.maxRating = maxRatingMatch[1];
+        const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
+        if (minValueMatch) fileOpts.minValue = minValueMatch[1];
+        const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);
+        if (maxValueMatch) fileOpts.maxValue = maxValueMatch[1];
+        const stepMatch = frontmatter.match(/^step:\s*([\d.]+)/m);
+        if (stepMatch) fileOpts.step = stepMatch[1];
+        const minLimitMatch = frontmatter.match(/^minLimit:\s*([\d.]+)/m);
+        if (minLimitMatch) fileOpts.minLimit = minLimitMatch[1];
+        const maxLimitMatch = frontmatter.match(/^maxLimit:\s*([\d.]+)/m);
+        if (maxLimitMatch) fileOpts.maxLimit = maxLimitMatch[1];
+        const unitMatch = frontmatter.match(/^unit:\s*["']?([^"'\n]+)["']?/m);
+        if (unitMatch && unitMatch[1]) {
+          fileOpts.unit = unitMatch[1].trim();
         }
-      } catch (error) {
-        console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F frontmatter", error);
+        const trackingStartDateMatch = frontmatter.match(/^trackingStartDate:\s*["']?([^"'\s\n]+)["']?/m);
+        if (trackingStartDateMatch && trackingStartDateMatch[1]) {
+          fileOpts.trackingStartDate = trackingStartDateMatch[1].trim();
+        }
+      } else {
         fileOpts.mode = TrackerType.GOOD_HABIT;
       }
-      return fileOpts;
-    });
+    } catch (error) {
+      console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0447\u0442\u0435\u043D\u0438\u044F frontmatter", error);
+      fileOpts.mode = TrackerType.GOOD_HABIT;
+    }
+    return fileOpts;
   }
-  getStartTrackingDate(entries, settings, file) {
-    const m = window.moment;
-    let startTrackingDate = null;
-    if (file?.stat?.ctime) {
-      startTrackingDate = m ? m(file.stat.ctime).startOf("day") : new Date(file.stat.ctime);
-      if (!m && startTrackingDate) {
-        startTrackingDate.setHours(0, 0, 0, 0);
-      }
+  getStartTrackingDate(entries, settings, fileOpts) {
+    if (fileOpts?.trackingStartDate) {
+      return fileOpts.trackingStartDate;
     }
-    if (entries.size > 0) {
-      const sortedDates = Array.from(entries.keys()).sort();
-      const firstDateStr = sortedDates[0];
-      const firstDate = m ? m(firstDateStr, settings.dateFormat) : parseDate(firstDateStr, settings.dateFormat);
-      if (!startTrackingDate || (m ? firstDate.isBefore(startTrackingDate) : firstDate < startTrackingDate)) {
-        startTrackingDate = firstDate;
-      }
-    }
-    if (!startTrackingDate) {
-      return null;
-    }
-    return m ? startTrackingDate.format(settings.dateFormat) : formatDate(startTrackingDate, settings.dateFormat);
+    return DateService.format(DateService.now(), settings.dateFormat);
   }
   calculateStreak(entries, settings, endDate, trackerType, file) {
     let streak = 0;
-    const m = window.moment;
-    let currentDate = m ? m(endDate) : new Date(endDate);
+    let currentDate = endDate instanceof Date ? DateService.fromDate(endDate) : DateService.fromDate(new Date(endDate));
     const metricType = (trackerType || "good-habit").toLowerCase();
     const isBadHabit = metricType === "bad-habit";
     let startTrackingDate = null;
     if (file?.stat?.ctime) {
-      startTrackingDate = m ? m(file.stat.ctime).startOf("day") : new Date(file.stat.ctime);
-      if (!m && startTrackingDate) {
-        startTrackingDate.setHours(0, 0, 0, 0);
-      }
+      startTrackingDate = DateService.startOfDay(DateService.fromDate(new Date(file.stat.ctime)));
     }
     if (entries.size > 0) {
       const sortedDates = Array.from(entries.keys()).sort();
       const firstDateStr = sortedDates[0];
-      const firstDate = m ? m(firstDateStr, settings.dateFormat) : parseDate(firstDateStr, settings.dateFormat);
-      if (!startTrackingDate || (m ? firstDate.isBefore(startTrackingDate) : firstDate < startTrackingDate)) {
+      const firstDate = DateService.parse(firstDateStr, settings.dateFormat);
+      if (!startTrackingDate || DateService.isBefore(firstDate, startTrackingDate)) {
         startTrackingDate = firstDate;
       }
     }
     if (!startTrackingDate) {
-      startTrackingDate = m ? m(endDate).subtract(365, "days") : addDays(endDate, -365);
+      startTrackingDate = DateService.subtractDays(currentDate, 365);
     }
     let daysChecked = 0;
     while (daysChecked < MAX_DAYS_BACK) {
-      if (m) {
-        if (currentDate.isBefore(startTrackingDate)) break;
-      } else if (currentDate < startTrackingDate) {
+      if (DateService.isBefore(currentDate, startTrackingDate)) {
         break;
       }
-      const dateStr = m ? currentDate.format(settings.dateFormat) : formatDate(currentDate, settings.dateFormat);
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
       const val = entries.get(dateStr);
       let isSuccess = false;
       if (isBadHabit) {
@@ -15363,23 +15533,10 @@ ${newFrontmatter}---${body}`;
       } else {
         break;
       }
-      if (m) {
-        currentDate = currentDate.subtract(1, "day");
-      } else {
-        currentDate = addDays(currentDate, -1);
-      }
+      currentDate = currentDate.subtract(1, "day");
       daysChecked++;
     }
     return streak;
-  }
-  invalidateCacheForPath(path) {
-    this.cache.invalidate(path);
-  }
-  invalidateAllCache() {
-    this.cache.invalidateAll();
-  }
-  setModifyGuards(guards) {
-    this.modifyGuards = guards;
   }
 };
 
@@ -15540,6 +15697,12 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
     if (typeDropdown) {
       populateTrackerTypeSelector(typeDropdown, TrackerType.GOOD_HABIT);
     }
+    const startDateSetting = new import_obsidian6.Setting(contentEl).setName("\u041D\u0430\u0447\u0430\u043B\u043E \u043E\u0442\u0441\u043B\u0435\u0436\u0438\u0432\u0430\u043D\u0438\u044F").addText((text) => {
+      const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+      text.setValue(today);
+      text.inputEl.type = "date";
+      text.inputEl.style.width = "100%";
+    });
     const parametersHeader = contentEl.createEl("h3", { text: MODAL_LABELS.PARAMETERS });
     const parametersDescription = contentEl.createEl("p", {
       text: "\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F - \u043D\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u043F\u043E\u043B\u0435. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u043F\u0443\u0441\u0442\u044B\u043C.",
@@ -15673,6 +15836,8 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
         const unitRaw = unitInputValue?.value.trim() || "";
         const unit = type === TrackerType.TEXT ? DEFAULTS.TEXT_UNIT : unitRaw;
         const isMetric = isMetricType(type);
+        const startDateInput = startDateSetting.controlEl.querySelector("input");
+        const startDate = startDateInput?.value || (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
         const fileName = sanitizeFileName(name) + ".md";
         const folderInput = folderSetting.controlEl.querySelector("input");
         let inputFolder = folderInput?.value.trim() || "";
@@ -15686,6 +15851,8 @@ var CreateTrackerModal = class extends import_obsidian6.Modal {
           const content = await this.app.vault.read(file);
           const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
           let newFrontmatter = `type: "${type}"
+`;
+          newFrontmatter += `trackingStartDate: "${startDate}"
 `;
           if (type === TrackerType.SCALE) {
             newFrontmatter += `minValue: ${parseFloat(minValue) || DEFAULTS.MIN_VALUE}
@@ -15721,7 +15888,7 @@ ${body}` : ""}`;
           await this.app.vault.modify(file, newContent);
           new import_obsidian6.Notice(`${SUCCESS_MESSAGES.TRACKER_CREATED}: ${name}`);
           const fileFolderPath = this.plugin.getFolderPathFromFile(file.path);
-          await this.plugin.onTrackerCreated(fileFolderPath);
+          await this.plugin.onTrackerCreated(fileFolderPath, file);
           this.close();
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
@@ -15757,6 +15924,7 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
     const currentStep = fileOpts.step || "";
     const currentMinLimit = fileOpts.minLimit || "";
     const currentMaxLimit = fileOpts.maxLimit || "";
+    const currentStartDate = fileOpts.trackingStartDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const nameSetting = new import_obsidian7.Setting(contentEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435").addText((text) => {
       text.setPlaceholder("\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u0442\u0440\u0435\u043D\u043D\u044F\u044F \u0437\u0430\u0440\u044F\u0434\u043A\u0430");
       text.setValue(currentName);
@@ -15808,6 +15976,11 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
       typeDropdown.value = currentType;
       typeDropdown.disabled = true;
     }
+    const startDateSetting = new import_obsidian7.Setting(contentEl).setName("\u041D\u0430\u0447\u0430\u043B\u043E \u043E\u0442\u0441\u043B\u0435\u0436\u0438\u0432\u0430\u043D\u0438\u044F").addText((text) => {
+      text.setValue(currentStartDate);
+      text.inputEl.type = "date";
+      text.inputEl.style.width = "100%";
+    });
     const parametersHeader = contentEl.createEl("h3", { text: "\u041F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B" });
     const parametersDescription = contentEl.createEl("p", {
       text: "\u0415\u0434\u0438\u043D\u0438\u0446\u0430 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u0438\u044F - \u043D\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u043F\u043E\u043B\u0435. \u041C\u043E\u0436\u043D\u043E \u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u043F\u0443\u0441\u0442\u044B\u043C.",
@@ -15922,10 +16095,11 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
     });
     deleteBtn.addEventListener("click", async () => {
       try {
+        const filePath = this.file.path;
+        const fileName = this.file.basename;
+        await this.plugin.onTrackerDeleted(filePath);
         await this.app.vault.delete(this.file);
-        new import_obsidian7.Notice(`${SUCCESS_MESSAGES.TRACKER_DELETED}: ${this.file.basename}`);
-        const fileFolderPath = this.plugin.getFolderPathFromFile(this.file.path);
-        await this.plugin.onTrackerCreated(fileFolderPath);
+        new import_obsidian7.Notice(`${SUCCESS_MESSAGES.TRACKER_DELETED}: ${fileName}`);
         this.close();
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -15956,6 +16130,8 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
       const unitRaw = unitInputValue?.value.trim() || "";
       const unit = type === "text" ? "\u0441\u043B\u043E\u0432" : unitRaw;
       const isMetric = ["number", "plusminus", "rating", "text", "scale"].includes(type);
+      const startDateInput = startDateSetting.controlEl.querySelector("input");
+      const startDate = startDateInput?.value || currentStartDate;
       try {
         const content = await this.app.vault.read(this.file);
         const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -15965,6 +16141,8 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
           existingData = this.plugin.parseFrontmatterData(frontmatterMatch[1]);
         }
         let newFrontmatter = `type: "${type}"
+`;
+        newFrontmatter += `trackingStartDate: "${startDate}"
 `;
         if (type === "scale") {
           newFrontmatter += `minValue: ${parseFloat(minValue) || 0}
@@ -15996,20 +16174,51 @@ var EditTrackerModal = class extends import_obsidian7.Modal {
 ${newFrontmatter}---${body ? `
 
 ${body}` : ""}`;
-        this.plugin.markFileAsInternallyModified(this.file.path);
         try {
+          const oldPath = this.file.path;
+          const oldBasename = this.file.basename;
           await this.app.vault.modify(this.file, newContent);
-          if (name !== this.file.basename) {
-            const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
-            const newPath = this.file.path.replace(this.file.name, newFileName);
-            await this.app.vault.rename(this.file, newPath);
+          let updatedFile = this.file;
+          if (name !== oldBasename) {
+            try {
+              const newFileName = name.replace(/[<>:"/\\|?*]/g, "_") + ".md";
+              const folderPath = this.file.parent?.path || "";
+              const newPath = folderPath ? `${folderPath}/${newFileName}` : newFileName;
+              const renamedFile = await this.app.vault.rename(this.file, newPath);
+              const fileToCheck = renamedFile || this.file;
+              if (fileToCheck.path !== oldPath) {
+                updatedFile = fileToCheck;
+                this.plugin.handleTrackerRenamed(oldPath, updatedFile);
+              }
+            } catch (renameError) {
+              const errorMsg = renameError instanceof Error ? renameError.message : String(renameError);
+              console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043F\u0435\u0440\u0435\u0438\u043C\u0435\u043D\u043E\u0432\u0430\u043D\u0438\u0438 \u0444\u0430\u0439\u043B\u0430", {
+                oldPath,
+                newFileName: name.replace(/[<>:"/\\|?*]/g, "_") + ".md",
+                error: errorMsg,
+                renameError
+              });
+            }
           }
           new import_obsidian7.Notice(`\u0422\u0440\u0435\u043A\u0435\u0440 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D: ${name}`);
+          this.plugin.invalidateCacheForFile(updatedFile);
+          if (oldPath !== updatedFile.path) {
+            for (const block of Array.from(this.plugin.activeBlocks)) {
+              const trackers = block.containerEl.querySelectorAll(
+                `.tracker-notes__tracker[data-file-path="${oldPath}"]`
+              );
+              trackers.forEach((tracker) => {
+                tracker.dataset.filePath = updatedFile.path;
+              });
+            }
+          }
+          await this.plugin.refreshTrackersForFile(updatedFile);
           this.close();
-        } finally {
-          this.plugin.unmarkFileAsInternallyModified(this.file.path);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          new import_obsidian7.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
+          console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F \u0442\u0440\u0435\u043A\u0435\u0440\u0430", error);
         }
-        this.close();
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         new import_obsidian7.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430: ${errorMsg}`);
@@ -16056,13 +16265,641 @@ var FilePickerModal = class extends import_obsidian8.Modal {
 // src/styles/tracker.css
 var tracker_default = '.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,\r\n.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }\r\n.tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }\r\n      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }\r\n      .tracker-notes__header-icon { font-size: 1.3em; }\r\n      .tracker-notes__header-label { }\r\n      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }\r\n      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }\r\n      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }\r\n      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }\r\n      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes__value.updated { animation: pulse 0.3s ease; }\r\n      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }\r\n      .tracker-notes input { outline: none !important; }\r\n      .tracker-notes input[type="checkbox"] { width: 1.4em; height: 1.4em; cursor: pointer; accent-color: var(--interactive-accent); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes input[type="checkbox"]:hover { transform: scale(1.1); }\r\n      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }\r\n      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }\r\n      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }\r\n      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; z-index: 0; }\r\n      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 2; white-space: nowrap; }\r\n      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }\r\n      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes button:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__rating { display: flex; gap: 0.3em; align-items: center; flex-wrap: wrap; }\r\n      .tracker-notes__rating-star { font-size: 1.4em; cursor: pointer; color: var(--text-faint); transition: all 0.2s ease; user-select: none; flex-shrink: 0; }\r\n      .tracker-notes__rating-star:hover { transform: scale(1.2); filter: brightness(1.2); }\r\n      .tracker-notes__rating-star.active { color: #ffd700; text-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }\r\n      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }\r\n      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__stats > div { margin: 0.3em 0; }\r\n      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }\r\n      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }\r\n      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }\r\n      .tracker-notes__calendar-day:hover { transform: scale(1.1); }\r\n      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }\r\n      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }\r\n      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }\r\n      .tracker-notes__loading { display: none; align-items: center; gap: 0.4em; font-size: 0.85em; color: var(--text-muted); margin-top: 0.3em; }\r\n      .tracker-notes__loading.is-active { display: flex; }\r\n      .tracker-notes__loading-dot { width: 0.8em; height: 0.8em; border-radius: 50%; border: 2px solid var(--interactive-accent); border-top-color: transparent; animation: tracker-loading-spin 0.8s linear infinite; }\r\n      @keyframes tracker-loading-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }\r\n      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }\r\n      .tracker-notes__date-input.is-updating { opacity: 0.65; cursor: progress; }\r\n      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }\r\n      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }\r\n      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }\r\n      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__heatmap { display: flex; flex-direction: row-reverse; gap: 0.3em; overflow-x: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }\r\n      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }\r\n      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }\r\n      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.start-day { \r\n        flex-direction: column;\r\n        justify-content: center;\r\n        align-items: center;\r\n        line-height: 1;\r\n      }\r\n      .tracker-notes__heatmap-day.start-day::after {\r\n        content: "START";\r\n        font-size: 0.5em;\r\n        line-height: 1;\r\n        margin-top: 0.1em;\r\n        opacity: 0.7;\r\n        font-weight: 600;\r\n      }\r\n      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }\r\n      .tracker-notes__stats > div { transition: opacity 0.2s ease; }\r\n      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }\r\n      .tracker-notes__heatmap { transition: opacity 0.15s ease; }\r\n      .tracker-notes__chart { transition: opacity 0.15s ease; }\r\n      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }\r\n      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }\r\n      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }\r\n      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }\r\n      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }\r\n      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }\r\n      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      \r\n      /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */\r\n      @media (max-width: 768px) {\r\n        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }\r\n        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }\r\n        .tracker-notes__header-title { font-size: 1em; }\r\n        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }\r\n        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker-container { padding: 0; }\r\n        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }\r\n        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; width: 140px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }\r\n        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }\r\n        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__rating { gap: 0.2em; justify-content: center; }\r\n        .tracker-notes__rating-star { font-size: 1.2em; }\r\n        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }\r\n        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }\r\n        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }\r\n        .tracker-notes__calendar-day { font-size: 0.65em; }\r\n        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }\r\n        .tracker-notes__chart canvas { height: 140px !important; }\r\n        .tracker-notes__hierarchy { gap: 1em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }\r\n        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }\r\n      }\r\n      \r\n      @media (max-width: 480px) {\r\n        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }\r\n        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }\r\n        .tracker-notes__header-title { font-size: 0.95em; }\r\n        .tracker-notes__trackers { gap: 0.4em; }\r\n        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker { gap: 0.25em; }\r\n        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; width: 120px; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }\r\n        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }\r\n        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__rating-star { font-size: 1.1em; }\r\n        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }\r\n        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }\r\n        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }\r\n        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }\r\n        .tracker-notes__calendar-day { font-size: 0.6em; }\r\n        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }\r\n        .tracker-notes__chart canvas { height: 120px !important; }\r\n        .tracker-notes__hierarchy { gap: 0.75em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }\r\n      }\r\n      \r\n      /* Modal buttons (Delete and Save) */\r\n      .tracker-modal-buttons {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        margin-top: 1.5em;\r\n      }\r\n      \r\n      .tracker-modal-buttons button {\r\n        padding: 0.5em 1em;\r\n        border-radius: 5px;\r\n        cursor: pointer;\r\n        border: 1px solid var(--background-modifier-border);\r\n        transition: all 0.2s ease;\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning {\r\n        background: var(--interactive-normal);\r\n        color: var(--text-normal);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning:hover {\r\n        background: var(--text-error);\r\n        border-color: var(--text-error);\r\n        color: var(--text-on-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta {\r\n        background: var(--interactive-accent);\r\n        color: var(--text-on-accent);\r\n        border-color: var(--interactive-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta:hover {\r\n        background: var(--interactive-accent-hover);\r\n        border-color: var(--interactive-accent-hover);\r\n      }';
 
+// src/utils/notifications.ts
+var import_obsidian9 = require("obsidian");
+function showNoticeIfNotMobile(message, timeout) {
+  if (window.innerWidth > MOBILE_BREAKPOINT) {
+    new import_obsidian9.Notice(message, timeout);
+  }
+}
+
+// src/services/heatmap-service.ts
+var HeatmapService = class {
+  constructor(settings, readAllEntries, writeLogLine, getStartTrackingDate, getFileTypeFromFrontmatter, updateChart, updateStats) {
+    this.settings = settings;
+    this.readAllEntries = readAllEntries;
+    this.writeLogLine = writeLogLine;
+    this.getStartTrackingDate = getStartTrackingDate;
+    this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
+    this.updateChart = updateChart;
+    this.updateStats = updateStats;
+  }
+  /**
+   * Updates existing heatmap with new data
+   */
+  async updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType) {
+    const endDate = DateService.parse(dateIso, this.settings.dateFormat);
+    const startDate = endDate.clone().subtract(daysToShow - 1, "days");
+    const entries = await this.readAllEntries(file);
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    const startTrackingDateStr = this.getStartTrackingDate(entries, fileOpts);
+    const trackerItem = heatmapDiv.closest(`.${CSS_CLASSES.TRACKER}`);
+    const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
+    const updateHeatmapDay = (dateStr, dayDiv) => {
+      const value = entries.get(dateStr);
+      const hasValue = isTrackerValueTrue(value);
+      if (hasValue) {
+        dayDiv.addClass("has-value");
+      } else {
+        dayDiv.removeClass("has-value");
+      }
+    };
+    const updateAllStartDays = () => {
+      const currentStartDateStr = this.getStartTrackingDate(entries, fileOpts);
+      const allDayElements = Array.from(heatmapDiv.children);
+      for (const dayDiv of allDayElements) {
+        const dayDateStr = dayDiv.dataset?.dateStr;
+        if (dayDateStr) {
+          if (dayDateStr === currentStartDateStr) {
+            dayDiv.addClass("start-day");
+          } else {
+            dayDiv.removeClass("start-day");
+          }
+        }
+      }
+    };
+    const dayElements = Array.from(heatmapDiv.children);
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < daysToShow; i++) {
+      const date = endDate.clone().subtract(i, "days");
+      const dateStr = DateService.format(date, this.settings.dateFormat);
+      const dayNum = date.getDate();
+      let dayDiv;
+      if (i < dayElements.length) {
+        dayDiv = dayElements[i];
+        dayDiv.setText(dayNum.toString());
+        dayDiv.removeClass("good-habit");
+        dayDiv.removeClass("bad-habit");
+        dayDiv.addClass(trackerType);
+      } else {
+        dayDiv = document.createElement("div");
+        dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY);
+        dayDiv.setText(dayNum.toString());
+        dayDiv.addClass(trackerType);
+        fragment.appendChild(dayDiv);
+      }
+      dayDiv.dataset.dateStr = dateStr;
+      updateHeatmapDay(dateStr, dayDiv);
+      if (dateStr === startTrackingDateStr) {
+        dayDiv.addClass("start-day");
+      } else {
+        dayDiv.removeClass("start-day");
+      }
+    }
+    if (fragment.childNodes.length > 0) {
+      heatmapDiv.appendChild(fragment);
+    }
+    while (dayElements.length > daysToShow) {
+      dayElements[dayElements.length - 1].remove();
+      dayElements.pop();
+    }
+  }
+  /**
+   * Renders a new heatmap or updates existing one
+   */
+  async renderTrackerHeatmap(container, file, dateIso, daysToShow, trackerType) {
+    let heatmapDiv = container.querySelector(`.${CSS_CLASSES.HEATMAP}`);
+    let entries = await this.readAllEntries(file);
+    if (!heatmapDiv) {
+      heatmapDiv = container.createDiv({ cls: CSS_CLASSES.HEATMAP });
+      heatmapDiv.addEventListener("click", async (e) => {
+        const dayDiv = e.target.closest(`.${CSS_CLASSES.HEATMAP_DAY}`);
+        if (!dayDiv) return;
+        const dateStr = dayDiv.dataset.dateStr;
+        if (!dateStr) return;
+        const fileOptsForClick = await this.getFileTypeFromFrontmatter(file);
+        const currentValue = entries.get(dateStr);
+        const isChecked = isTrackerValueTrue(currentValue);
+        const newValue = isChecked ? 0 : 1;
+        entries.set(dateStr, newValue);
+        this.writeLogLine(file, dateStr, String(newValue)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+        showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateStr}: ${newValue}`, 2e3);
+        if (newValue === 1) {
+          dayDiv.addClass("has-value");
+        } else {
+          dayDiv.removeClass("has-value");
+        }
+        const startTrackingDateStr = this.getStartTrackingDate(entries, fileOptsForClick);
+        const allDayElements = Array.from(heatmapDiv.children);
+        for (const dayEl of allDayElements) {
+          const dayDateStr = dayEl.dataset.dateStr;
+          if (dayDateStr) {
+            if (dayDateStr === startTrackingDateStr) {
+              dayEl.addClass("start-day");
+            } else {
+              dayEl.removeClass("start-day");
+            }
+          }
+        }
+        const trackerItem = heatmapDiv.closest(`.${CSS_CLASSES.TRACKER}`);
+        const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
+        if (trackerItem) {
+          const currentDateIso = mainContainer?.querySelector(`.${CSS_CLASSES.DATE_INPUT}`)?.value || dateIso;
+          if (this.updateChart) {
+            const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
+            if (chartDiv) {
+              await this.updateChart(chartDiv, file, currentDateIso, daysToShow, entries);
+            }
+          }
+          if (this.updateStats) {
+            const statsDiv = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
+            if (statsDiv) {
+              await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType, entries);
+            }
+          }
+        }
+      });
+    }
+    await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
+  }
+};
+
+// src/services/controls-renderer.ts
+var ControlsRenderer = class {
+  constructor(settings, getFileTypeFromFrontmatter, readValueForDate, readAllEntries, writeLogLine, heatmapService, updateChart, updateStats) {
+    this.settings = settings;
+    this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
+    this.readValueForDate = readValueForDate;
+    this.readAllEntries = readAllEntries;
+    this.writeLogLine = writeLogLine;
+    this.heatmapService = heatmapService;
+    this.updateChart = updateChart;
+    this.updateStats = updateStats;
+  }
+  /**
+   * Renders controls for a specific date
+   */
+  async renderControlsForDate(container, file, dateIso, opts) {
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    const mode = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
+    const currentMode = container.dataset.trackerMode;
+    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
+    if (currentMode === mode && (mode === TrackerType.GOOD_HABIT || mode === TrackerType.BAD_HABIT)) {
+      const heatmapDiv = container.querySelector(`.${CSS_CLASSES.HEATMAP}`);
+      if (heatmapDiv && this.heatmapService) {
+        await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, mode);
+        return;
+      }
+    }
+    container.empty();
+    container.dataset.trackerMode = mode;
+    const trackerItem = container.closest(`.${CSS_CLASSES.TRACKER}`);
+    const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
+    let entries = await this.readAllEntries(file);
+    const trackerType = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
+    const updateVisualizations = async (updatedEntries) => {
+      if (!trackerItem) return;
+      if (updatedEntries) {
+        entries = updatedEntries;
+      }
+      const currentDateIso = mainContainer?.querySelector(`.${CSS_CLASSES.DATE_INPUT}`)?.value || dateIso;
+      const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
+      if (chartDiv && this.updateChart) {
+        await this.updateChart(chartDiv, file, currentDateIso, daysToShow, entries);
+      }
+      if (this.updateStats) {
+        const statsDiv = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
+        if (statsDiv) {
+          await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType, entries);
+        }
+      }
+    };
+    if (mode === TrackerType.GOOD_HABIT || mode === TrackerType.BAD_HABIT) {
+      if (this.heatmapService) {
+        await this.heatmapService.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
+      }
+    } else if (mode === TrackerType.CHECKBOX) {
+      await this.renderCheckbox(container, file, dateIso, entries, updateVisualizations);
+    } else if (mode === TrackerType.NUMBER) {
+      await this.renderNumber(container, file, dateIso, entries, updateVisualizations);
+    } else if (mode === TrackerType.PLUSMINUS) {
+      await this.renderPlusMinus(container, file, dateIso, fileOpts, entries, updateVisualizations);
+    } else if (mode === TrackerType.RATING) {
+      await this.renderRating(container, file, dateIso, opts, entries, updateVisualizations);
+    } else if (mode === TrackerType.TEXT) {
+      await this.renderText(container, file, dateIso, entries, updateVisualizations);
+    } else if (mode === TrackerType.SCALE) {
+      await this.renderScale(container, file, dateIso, opts, fileOpts, entries, updateVisualizations);
+    } else {
+      container.createEl("div", {
+        text: `\u041D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0439 mode: ${mode}. \u0414\u043E\u0441\u0442\u0443\u043F\u043D\u044B: ${TrackerType.GOOD_HABIT}, ${TrackerType.BAD_HABIT}, ${TrackerType.NUMBER}, ${TrackerType.PLUSMINUS}, ${TrackerType.RATING}, ${TrackerType.TEXT}, ${TrackerType.SCALE}`
+      });
+    }
+  }
+  async renderCheckbox(container, file, dateIso, entries, updateVisualizations) {
+    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
+    const label = wrap.createEl("label", { text: "\u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E" });
+    const input = wrap.createEl("input", { type: "checkbox" });
+    label.prepend(input);
+    const current = await this.readValueForDate(file, dateIso);
+    input.checked = isTrackerValueTrue(current);
+    input.onchange = async () => {
+      const val = input.checked ? 1 : 0;
+      entries.set(dateIso, val);
+      this.writeLogLine(file, dateIso, String(val)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+      showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${val}`, 2e3);
+      input.style.transform = "scale(1.1)";
+      setTimeout(() => input.style.transform = "", ANIMATION_DURATION_MS);
+      await updateVisualizations(entries);
+    };
+  }
+  async renderNumber(container, file, dateIso, entries, updateVisualizations) {
+    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
+    const input = wrap.createEl("input", { type: "number", placeholder: "0" });
+    const current = await this.readValueForDate(file, dateIso);
+    if (current != null && !isNaN(Number(current))) input.value = String(current);
+    const updateValue = async () => {
+      const val = Number(input.value);
+      if (input.value === "" || isNaN(val)) return;
+      entries.set(dateIso, val);
+      this.writeLogLine(file, dateIso, String(val)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+      showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${val}`, 2e3);
+      input.value = String(val);
+      input.style.transform = "scale(0.98)";
+      setTimeout(() => input.style.transform = "", ANIMATION_DURATION_MS);
+      await updateVisualizations(entries);
+    };
+    const setButton = wrap.createEl("button", { text: "Set" });
+    setButton.onclick = updateValue;
+    input.onchange = updateValue;
+    input.onkeypress = async (e) => {
+      if (e.key === "Enter") {
+        await updateValue();
+      }
+    };
+  }
+  async renderPlusMinus(container, file, dateIso, fileOpts, entries, updateVisualizations) {
+    const step = parseFloat(fileOpts.step || "1") || 1;
+    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
+    const minus = wrap.createEl("button", { text: "\u2212" });
+    const valEl = wrap.createEl("span", { text: "0", cls: CSS_CLASSES.VALUE });
+    const plus = wrap.createEl("button", { text: "+" });
+    let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
+    if (!isNaN(current)) valEl.setText(String(current));
+    minus.onclick = async () => {
+      current = (Number.isFinite(current) ? current : 0) - step;
+      valEl.setText(String(current));
+      valEl.addClass(CSS_CLASSES.VALUE_UPDATED);
+      entries.set(dateIso, current);
+      this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+      setTimeout(() => valEl.removeClass(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
+      await updateVisualizations(entries);
+    };
+    plus.onclick = async () => {
+      current = (Number.isFinite(current) ? current : 0) + step;
+      valEl.setText(String(current));
+      valEl.addClass(CSS_CLASSES.VALUE_UPDATED);
+      entries.set(dateIso, current);
+      this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+      setTimeout(() => valEl.removeClass(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
+      await updateVisualizations(entries);
+    };
+  }
+  async renderRating(container, file, dateIso, opts, entries, updateVisualizations) {
+    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
+    const ratingDiv = wrap.createDiv({ cls: CSS_CLASSES.RATING });
+    const maxRating = parseInt(opts.maxRating || "5");
+    const current = await this.readValueForDate(file, dateIso);
+    let currentRating = typeof current === "number" ? current : current ? parseInt(String(current)) : 0;
+    if (isNaN(currentRating)) currentRating = 0;
+    for (let i = 1; i <= maxRating; i++) {
+      const star = ratingDiv.createEl("span", { text: "\u2605", cls: CSS_CLASSES.RATING_STAR });
+      if (i <= currentRating) star.addClass(CSS_CLASSES.RATING_STAR_ACTIVE);
+      star.onclick = async () => {
+        currentRating = i;
+        ratingDiv.querySelectorAll(`.${CSS_CLASSES.RATING_STAR}`).forEach((s, idx) => {
+          if (idx + 1 <= i) s.addClass(CSS_CLASSES.RATING_STAR_ACTIVE);
+          else s.removeClass(CSS_CLASSES.RATING_STAR_ACTIVE);
+        });
+        entries.set(dateIso, i);
+        this.writeLogLine(file, dateIso, String(i)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+        showNoticeIfNotMobile(`\u2B50 \u041E\u0446\u0435\u043D\u043A\u0430: ${dateIso}: ${i}/${maxRating}`, 2e3);
+        await updateVisualizations(entries);
+      };
+    }
+  }
+  async renderText(container, file, dateIso, entries, updateVisualizations) {
+    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
+    const input = wrap.createEl("textarea", {
+      cls: CSS_CLASSES.TEXT_INPUT,
+      placeholder: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0442\u0435\u043A\u0441\u0442..."
+    });
+    const current = await this.readValueForDate(file, dateIso);
+    if (current != null && typeof current === "string") input.value = current;
+    const btn = wrap.createEl("button", { text: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" });
+    btn.onclick = async () => {
+      const val = input.value.trim();
+      entries.set(dateIso, val);
+      this.writeLogLine(file, dateIso, val).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+      showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}`, 2e3);
+      btn.style.transform = "scale(0.95)";
+      setTimeout(() => btn.style.transform = "", ANIMATION_DURATION_MS);
+      await updateVisualizations(entries);
+    };
+  }
+  async renderScale(container, file, dateIso, opts, fileOpts, entries, updateVisualizations) {
+    const minValue = parseFloat(opts.minValue || fileOpts.minValue || "0");
+    const maxValue = parseFloat(opts.maxValue || fileOpts.maxValue || "10");
+    const step = parseFloat(opts.step || fileOpts.step || "1");
+    const current = await this.readValueForDate(file, dateIso);
+    let currentValue = minValue;
+    if (current != null && !isNaN(Number(current))) {
+      const numVal = Number(current);
+      currentValue = Math.max(minValue, Math.min(maxValue, numVal));
+    }
+    const wrapper = container.createDiv({ cls: CSS_CLASSES.PROGRESS_BAR_WRAPPER });
+    wrapper.setAttribute("data-internal-value", String(currentValue));
+    const progressBarInput = wrapper.createDiv({ cls: CSS_CLASSES.PROGRESS_BAR_INPUT });
+    progressBarInput.setAttribute("tabindex", "0");
+    progressBarInput.setAttribute("role", "button");
+    progressBarInput.setAttribute("aria-label", String(currentValue));
+    progressBarInput.setAttribute("aria-valuemin", String(minValue));
+    progressBarInput.setAttribute("aria-valuemax", String(maxValue));
+    progressBarInput.setAttribute("aria-valuenow", String(currentValue));
+    const progressBar = progressBarInput.createDiv({ cls: CSS_CLASSES.PROGRESS_BAR_PROGRESS });
+    progressBar.setAttribute("role", "slider");
+    progressBar.setAttribute("tabindex", "0");
+    progressBar.setAttribute("aria-valuemin", String(minValue));
+    progressBar.setAttribute("aria-valuemax", String(maxValue));
+    progressBar.setAttribute("aria-valuenow", String(currentValue));
+    const valueDisplay = progressBarInput.createEl("span", {
+      text: String(currentValue),
+      cls: CSS_CLASSES.PROGRESS_BAR_VALUE
+    });
+    const labelLeft = progressBarInput.createEl("span", {
+      text: String(minValue),
+      cls: CSS_CLASSES.PROGRESS_BAR_LABEL_LEFT
+    });
+    const labelRight = progressBarInput.createEl("span", {
+      text: String(maxValue),
+      cls: CSS_CLASSES.PROGRESS_BAR_LABEL_RIGHT
+    });
+    const calculateValueFromPosition = (clientX) => {
+      const rect = progressBarInput.getBoundingClientRect();
+      const clickX = clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+      const rawValue = minValue + (maxValue - minValue) * percentage;
+      const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
+      return Math.max(minValue, Math.min(maxValue, steppedValue));
+    };
+    const updateProgressBar = (value) => {
+      const percentage = (value - minValue) / (maxValue - minValue) * 100;
+      progressBar.style.width = `${percentage}%`;
+      valueDisplay.setText(String(value));
+      progressBarInput.setAttribute("aria-valuenow", String(value));
+      progressBarInput.setAttribute("aria-label", String(value));
+      progressBar.setAttribute("aria-valuenow", String(value));
+      wrapper.setAttribute("data-internal-value", String(value));
+    };
+    updateProgressBar(currentValue);
+    let isDragging = false;
+    let hasMoved = false;
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      hasMoved = false;
+      progressBarInput.style.cursor = "col-resize";
+      const newValue = calculateValueFromPosition(e.clientX);
+      currentValue = newValue;
+      updateProgressBar(currentValue);
+      e.preventDefault();
+    };
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      hasMoved = true;
+      const newValue = calculateValueFromPosition(e.clientX);
+      currentValue = newValue;
+      updateProgressBar(currentValue);
+    };
+    const handleMouseUp = async () => {
+      if (isDragging) {
+        isDragging = false;
+        progressBarInput.style.cursor = "";
+        if (hasMoved) {
+          entries.set(dateIso, currentValue);
+          this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+          showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
+          await updateVisualizations(entries);
+        }
+      }
+    };
+    const handleClick = async (e) => {
+      if (hasMoved) {
+        hasMoved = false;
+        return;
+      }
+      if (e.target === progressBar || e.target === valueDisplay || e.target === labelLeft || e.target === labelRight) {
+        return;
+      }
+      const newValue = calculateValueFromPosition(e.clientX);
+      currentValue = newValue;
+      updateProgressBar(currentValue);
+      entries.set(dateIso, currentValue);
+      this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+      showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
+      await updateVisualizations(entries);
+    };
+    const handleKeyDown = (e) => {
+      let newValue = currentValue;
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+        e.preventDefault();
+        newValue = Math.max(minValue, currentValue - step);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+        e.preventDefault();
+        newValue = Math.min(maxValue, currentValue + step);
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        newValue = minValue;
+      } else if (e.key === "End") {
+        e.preventDefault();
+        newValue = maxValue;
+      } else {
+        return;
+      }
+      currentValue = newValue;
+      updateProgressBar(currentValue);
+    };
+    const handleKeyUp = async (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+        entries.set(dateIso, currentValue);
+        this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", err));
+        showNoticeIfNotMobile(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
+        await updateVisualizations(entries);
+      }
+    };
+    progressBarInput.addEventListener("click", handleClick);
+    progressBarInput.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    progressBarInput.addEventListener("keydown", handleKeyDown);
+    progressBarInput.addEventListener("keyup", handleKeyUp);
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (node === wrapper || node instanceof Node && wrapper.contains(node)) {
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+            observer.disconnect();
+          }
+        });
+      });
+    });
+    if (wrapper.parentNode) {
+      observer.observe(wrapper.parentNode, { childList: true, subtree: true });
+    }
+  }
+};
+
+// src/services/tracker-renderer.ts
+var TrackerRenderer = class {
+  constructor(settings, getFileTypeFromFrontmatter, readValueForDate, controlsRenderer, renderChart, renderStats, isMobileDevice, onEditTracker) {
+    this.settings = settings;
+    this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
+    this.readValueForDate = readValueForDate;
+    this.controlsRenderer = controlsRenderer;
+    this.renderChart = renderChart;
+    this.renderStats = renderStats;
+    this.isMobileDevice = isMobileDevice;
+    this.onEditTracker = onEditTracker;
+  }
+  /**
+   * Renders a tracker item
+   */
+  async renderTracker(parentEl, file, dateIso, view, opts, existingTracker) {
+    let trackerItem;
+    let isNewTracker = false;
+    if (existingTracker) {
+      trackerItem = existingTracker;
+      const header2 = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_HEADER}`);
+      const controls = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_CONTROLS}`);
+      const chart = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
+      const stats = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
+      header2?.remove();
+      controls?.remove();
+      chart?.remove();
+      stats?.remove();
+    } else {
+      trackerItem = document.createElement("div");
+      isNewTracker = true;
+    }
+    trackerItem.classList.add(CSS_CLASSES.TRACKER);
+    trackerItem.dataset.filePath = file.path;
+    const header = trackerItem.createDiv({ cls: CSS_CLASSES.TRACKER_HEADER });
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    const baseName = file.basename;
+    const unit = fileOpts.unit || "";
+    const displayName = unit ? `${baseName} (${unit})` : baseName;
+    const titleLink = header.createEl("a", {
+      text: displayName,
+      cls: `${CSS_CLASSES.TRACKER_TITLE} internal-link`,
+      href: file.path
+    });
+    titleLink.setAttribute("data-href", file.path);
+    if (this.onEditTracker) {
+      const settingsButton = header.createEl("button", {
+        text: "\u2699\uFE0F",
+        cls: CSS_CLASSES.SETTINGS_BTN
+      });
+      settingsButton.title = "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430";
+      settingsButton.onclick = () => {
+        this.onEditTracker(file);
+      };
+    }
+    const controlsContainer = trackerItem.createDiv({ cls: CSS_CLASSES.TRACKER_CONTROLS });
+    if (view === ViewMode.DISPLAY) {
+      const value = await this.readValueForDate(file, dateIso);
+      trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "\u2014"}` });
+      const daysToShow2 = parseInt(opts.days) || this.settings.daysToShow;
+      const trackerType2 = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
+      const shouldShowChart2 = (opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault) && !(this.isMobileDevice?.() && this.settings.hideChartOnMobile);
+      const shouldShowStats2 = (opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault) && !(this.isMobileDevice?.() && this.settings.hideStatsOnMobile);
+      if (shouldShowChart2 && this.renderChart) {
+        await this.renderChart(trackerItem, file, dateIso, daysToShow2);
+      }
+      if (shouldShowStats2 && this.renderStats) {
+        await this.renderStats(trackerItem, file, dateIso, daysToShow2, trackerType2);
+      }
+      return;
+    }
+    const { mode, ...optsWithoutMode } = opts;
+    const mergedOpts = { ...optsWithoutMode, ...fileOpts };
+    await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
+    const trackerType = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
+    const shouldShowChart = (opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault) && !(this.isMobileDevice?.() && this.settings.hideChartOnMobile);
+    const shouldShowStats = (opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault) && !(this.isMobileDevice?.() && this.settings.hideStatsOnMobile);
+    if (shouldShowChart && this.renderChart) {
+      await this.renderChart(trackerItem, file, dateIso, daysToShow);
+    }
+    if (shouldShowStats && this.renderStats) {
+      await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
+    }
+    if (isNewTracker) {
+      parentEl.appendChild(trackerItem);
+    }
+  }
+};
+
+// src/utils/theme.ts
+function getCSSVar(varName, fallback = "#000000") {
+  const root = document.body || document.documentElement;
+  const value = getComputedStyle(root).getPropertyValue(varName).trim();
+  return value || fallback;
+}
+function getAccentColor() {
+  const tempEl = document.createElement("div");
+  tempEl.style.position = "absolute";
+  tempEl.style.visibility = "hidden";
+  document.body.appendChild(tempEl);
+  let accentColor = getComputedStyle(tempEl).getPropertyValue(CSS_VARIABLES.INTERACTIVE_ACCENT).trim();
+  if (!accentColor) {
+    accentColor = getComputedStyle(tempEl).getPropertyValue(CSS_VARIABLES.COLOR_ACCENT).trim();
+  }
+  if (!accentColor) {
+    accentColor = getComputedStyle(tempEl).getPropertyValue(CSS_VARIABLES.ACCENT_COLOR).trim();
+  }
+  document.body.removeChild(tempEl);
+  if (!accentColor) {
+    const root = document.body || document.documentElement;
+    accentColor = getComputedStyle(root).getPropertyValue(CSS_VARIABLES.INTERACTIVE_ACCENT).trim();
+  }
+  if (!accentColor) {
+    accentColor = FALLBACK_COLORS.ACCENT;
+  }
+  return accentColor;
+}
+function getThemeColors() {
+  const accentColor = getAccentColor();
+  return {
+    accentColor,
+    textMuted: getCSSVar(CSS_VARIABLES.TEXT_MUTED, FALLBACK_COLORS.TEXT_MUTED),
+    textFaint: getCSSVar(CSS_VARIABLES.TEXT_FAINT, FALLBACK_COLORS.TEXT_FAINT),
+    borderColor: getCSSVar(CSS_VARIABLES.BACKGROUND_MODIFIER_BORDER, FALLBACK_COLORS.BORDER),
+    bgPrimary: getCSSVar(CSS_VARIABLES.BACKGROUND_PRIMARY, FALLBACK_COLORS.BG_PRIMARY),
+    errorColor: getCSSVar(CSS_VARIABLES.TEXT_ERROR, FALLBACK_COLORS.TEXT_ERROR),
+    successColor: getCSSVar(CSS_VARIABLES.TEXT_SUCCESS, FALLBACK_COLORS.TEXT_SUCCESS),
+    startLineColor: getCSSVar(CSS_VARIABLES.TEXT_ACCENT, accentColor)
+  };
+}
+function colorToRgba(color2, alpha2) {
+  if (color2.startsWith("#")) {
+    const r = parseInt(color2.slice(1, 3), 16);
+    const g = parseInt(color2.slice(3, 5), 16);
+    const b = parseInt(color2.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha2})`;
+  } else if (color2.startsWith("rgb")) {
+    return color2.replace("rgb", "rgba").replace(")", `, ${alpha2})`);
+  }
+  return color2;
+}
+
 // src/core/tracker-plugin.ts
 Chart.register(...registerables);
-var TrackerPlugin = class extends import_obsidian9.Plugin {
+var TrackerPlugin = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
     this.activeBlocks = /* @__PURE__ */ new Set();
-    this.internalWritePaths = /* @__PURE__ */ new Set();
+    this.trackerState = /* @__PURE__ */ new Map();
   }
   isMobileDevice() {
     return window.innerWidth <= 768;
@@ -16071,15 +16908,37 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.folderTreeService = new FolderTreeService(this.app);
     this.trackerFileService = new TrackerFileService(this.app);
-    this.trackerFileService.setModifyGuards({
-      onBeforeModify: (path) => {
-        this.internalWritePaths.add(this.normalizePath(path));
+    this.heatmapService = new HeatmapService(
+      this.settings,
+      (file) => this.readAllEntries(file),
+      (file, dateIso, value) => this.writeLogLine(file, dateIso, value),
+      (entries, fileOpts) => {
+        return this.trackerFileService.getStartTrackingDate(entries, this.settings, fileOpts);
       },
-      onAfterModify: (path) => {
-        const normalized = this.normalizePath(path);
-        window.setTimeout(() => this.internalWritePaths.delete(normalized), 0);
-      }
-    });
+      (file) => this.getFileTypeFromFrontmatter(file),
+      (chartDiv, file, dateIso, daysToShow, entries) => this.updateChart(chartDiv, file, dateIso, daysToShow, entries),
+      (statsDiv, file, dateIso, daysToShow, trackerType, entries) => this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries)
+    );
+    this.controlsRenderer = new ControlsRenderer(
+      this.settings,
+      (file) => this.getFileTypeFromFrontmatter(file),
+      (file, dateIso) => this.readValueForDate(file, dateIso),
+      (file) => this.readAllEntries(file),
+      (file, dateIso, value) => this.writeLogLine(file, dateIso, value),
+      this.heatmapService,
+      (chartDiv, file, dateIso, daysToShow, entries) => this.updateChart(chartDiv, file, dateIso, daysToShow, entries),
+      (statsDiv, file, dateIso, daysToShow, trackerType, entries) => this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries)
+    );
+    this.trackerRenderer = new TrackerRenderer(
+      this.settings,
+      (file) => this.getFileTypeFromFrontmatter(file),
+      (file, dateIso) => this.readValueForDate(file, dateIso),
+      this.controlsRenderer,
+      (container, file, dateIso, daysToShow, entries) => this.renderChart(container, file, dateIso, daysToShow, entries),
+      (container, file, dateIso, daysToShow, trackerType, entries) => this.renderStats(container, file, dateIso, daysToShow, trackerType, entries),
+      () => this.isMobileDevice(),
+      (file) => this.editTracker(file)
+    );
     this.addStyleSheet();
     this.addSettingTab(new TrackerSettingsTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor("tracker", this.processTrackerBlock.bind(this));
@@ -16089,62 +16948,6 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       name: "Create new tracker",
       callback: () => this.createNewTracker()
     });
-    this.registerEvent(
-      this.app.vault.on("create", (file) => {
-        if (file instanceof import_obsidian9.TFile && file.extension === "md" && this.isFileInTrackersFolder(file)) {
-          const fileFolderPath = this.getFolderPathFromFile(file.path);
-          this.folderTreeService.invalidate(fileFolderPath);
-          setTimeout(() => {
-            this.refreshBlocksForFolder(fileFolderPath);
-          }, 300);
-        }
-      })
-    );
-    this.registerEvent(
-      this.app.vault.on("modify", (file) => {
-        if (file instanceof import_obsidian9.TFile) {
-          this.trackerFileService.invalidateCacheForPath(file.path);
-          if (this.isFileInTrackersFolder(file) && !this.internalWritePaths.has(this.normalizePath(file.path))) {
-            void this.refreshTrackersForFile(file);
-          }
-        }
-      })
-    );
-    this.registerEvent(
-      this.app.vault.on("delete", (file) => {
-        if (file instanceof import_obsidian9.TFile) {
-          this.trackerFileService.invalidateCacheForPath(file.path);
-          const folderPath = this.getFolderPathFromFile(file.path);
-          this.folderTreeService.invalidate(folderPath);
-          void this.refreshBlocksForFolder(folderPath);
-        }
-      })
-    );
-    this.registerEvent(
-      this.app.vault.on("rename", (file, oldPath) => {
-        if (!(file instanceof import_obsidian9.TFile)) {
-          return;
-        }
-        this.trackerFileService.invalidateCacheForPath(file.path);
-        const folderPath = this.getFolderPathFromFile(file.path);
-        this.folderTreeService.invalidate(folderPath);
-        if (typeof oldPath === "string") {
-          this.trackerFileService.invalidateCacheForPath(oldPath);
-          const oldFolderPath = this.getFolderPathFromFile(oldPath);
-          this.folderTreeService.invalidate(oldFolderPath);
-          setTimeout(() => {
-            void this.refreshBlocksForFolder(folderPath);
-            if (oldFolderPath !== folderPath) {
-              void this.refreshBlocksForFolder(oldFolderPath);
-            }
-          }, 300);
-        } else {
-          setTimeout(() => {
-            void this.refreshBlocksForFolder(folderPath);
-          }, 300);
-        }
-      })
-    );
   }
   isFileInTrackersFolder(file) {
     const fileFolderPath = this.getFolderPathFromFile(file.path);
@@ -16227,80 +17030,68 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       trackers.forEach((trackerItem) => {
         const parent = trackerItem.parentElement;
         if (!parent) return;
-        const oldBasename = file.basename;
-        const siblings = Array.from(parent.children).filter(
-          (el) => el.classList.contains("tracker-notes__tracker")
-        );
-        const currentIndex = siblings.indexOf(trackerItem);
-        const nextSibling = currentIndex < siblings.length - 1 ? siblings[currentIndex + 1] : null;
         refreshPromises.push(
-          this.renderTracker(parent, file, activeDateIso, view, opts, trackerItem).then(() => {
-            const newBasename = file.basename;
-            const updatedTracker = parent.querySelector(
-              `.tracker-notes__tracker[data-file-path="${file.path}"]`
-            );
-            if (!updatedTracker) return;
-            const currentSiblings = Array.from(parent.children).filter(
-              (el) => el.classList.contains("tracker-notes__tracker")
-            );
-            const currentPosition = currentSiblings.indexOf(updatedTracker);
-            if (oldBasename === newBasename) {
-              if (currentPosition !== currentIndex) {
-                if (nextSibling && nextSibling.parentElement === parent && nextSibling !== updatedTracker) {
-                  parent.insertBefore(updatedTracker, nextSibling);
-                } else if (currentIndex === 0 && currentPosition !== 0) {
-                  const firstTracker = Array.from(parent.children).find(
-                    (el) => el.classList.contains("tracker-notes__tracker") && el !== updatedTracker
-                  );
-                  if (firstTracker) {
-                    parent.insertBefore(updatedTracker, firstTracker);
-                  }
-                } else if (currentIndex > 0 && currentPosition !== currentIndex) {
-                  const prevSibling = currentIndex > 0 ? siblings[currentIndex - 1] : null;
-                  if (prevSibling && prevSibling.parentElement === parent) {
-                    const afterPrev = prevSibling.nextElementSibling;
-                    if (afterPrev && afterPrev !== updatedTracker) {
-                      parent.insertBefore(updatedTracker, afterPrev);
-                    } else if (!afterPrev) {
-                      parent.appendChild(updatedTracker);
-                    }
-                  }
-                }
+          (async () => {
+            const fileOpts = await this.getFileTypeFromFrontmatter(file);
+            const baseName = file.basename;
+            const unit = fileOpts.unit || "";
+            const displayName = unit ? `${baseName} (${unit})` : baseName;
+            const titleLink = trackerItem.querySelector(".tracker-notes__tracker-title");
+            if (titleLink) {
+              titleLink.textContent = displayName;
+              titleLink.setAttribute("href", file.path);
+              titleLink.setAttribute("data-href", file.path);
+            }
+            trackerItem.dataset.filePath = file.path;
+            const entries = await this.readAllEntries(file);
+            const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
+            const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
+            const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
+            if (chartDiv) {
+              await this.updateChart(chartDiv, file, activeDateIso, daysToShow, entries);
+            }
+            const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
+            if (statsDiv) {
+              await this.updateStats(statsDiv, file, activeDateIso, daysToShow, trackerType, entries);
+            }
+            if (trackerType === "good-habit" || trackerType === "bad-habit") {
+              const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
+              if (heatmapDiv) {
+                await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, activeDateIso, daysToShow, trackerType);
               }
-            } else {
+            } else if (view === "control") {
+              const controlsContainer = trackerItem.querySelector(".tracker-notes__controls");
+              if (controlsContainer) {
+                const { mode, ...optsWithoutMode } = opts;
+                const mergedOpts = { ...optsWithoutMode, ...fileOpts };
+                await this.controlsRenderer.renderControlsForDate(controlsContainer, file, activeDateIso, mergedOpts);
+              }
+            }
+            const newBasename = file.basename;
+            if (newBasename !== baseName) {
               const allTrackers = Array.from(parent.children).filter(
                 (el) => el.classList.contains("tracker-notes__tracker")
               );
-              const sortedTrackers = [...allTrackers].sort((a, b) => {
-                const aPath = a.dataset.filePath || "";
-                const bPath = b.dataset.filePath || "";
-                const aFile = this.app.vault.getAbstractFileByPath(aPath);
-                const bFile = this.app.vault.getAbstractFileByPath(bPath);
-                if (aFile instanceof import_obsidian9.TFile && bFile instanceof import_obsidian9.TFile) {
-                  return aFile.basename.localeCompare(bFile.basename, void 0, { sensitivity: "base" });
-                }
-                return 0;
-              });
-              const correctIndex = sortedTrackers.indexOf(updatedTracker);
-              if (correctIndex >= 0 && correctIndex < sortedTrackers.length) {
-                if (currentPosition !== correctIndex) {
-                  const correctNextSibling = correctIndex < sortedTrackers.length - 1 ? sortedTrackers[correctIndex + 1] : null;
-                  if (correctNextSibling && correctNextSibling !== updatedTracker) {
-                    parent.insertBefore(updatedTracker, correctNextSibling);
-                  } else if (correctIndex === 0 && currentPosition !== 0) {
-                    const firstTracker = Array.from(parent.children).find(
-                      (el) => el.classList.contains("tracker-notes__tracker") && el !== updatedTracker
-                    );
-                    if (firstTracker) {
-                      parent.insertBefore(updatedTracker, firstTracker);
-                    }
-                  } else if (correctIndex === sortedTrackers.length - 1 && currentPosition !== correctIndex) {
-                    parent.appendChild(updatedTracker);
+              let correctInsertBefore = null;
+              for (const tracker of allTrackers) {
+                if (tracker === trackerItem) continue;
+                const trackerPath = tracker.dataset.filePath;
+                if (!trackerPath) continue;
+                const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
+                if (trackerFile instanceof import_obsidian10.TFile) {
+                  if (trackerFile.basename.localeCompare(newBasename, void 0, { sensitivity: "base" }) > 0) {
+                    correctInsertBefore = tracker;
+                    break;
                   }
                 }
               }
+              if (correctInsertBefore && correctInsertBefore !== trackerItem) {
+                parent.insertBefore(trackerItem, correctInsertBefore);
+              } else if (!correctInsertBefore) {
+                parent.appendChild(trackerItem);
+              }
             }
-          })
+          })()
         );
       });
     }
@@ -16374,10 +17165,10 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
         restoreScroll();
         setTimeout(() => {
           restoreScroll();
-        }, 50);
+        }, IMMEDIATE_TIMEOUT_MS);
         setTimeout(() => {
           restoreScroll();
-        }, 100);
+        }, SCROLL_RESTORE_DELAY_2_MS);
       });
     });
   }
@@ -16387,7 +17178,8 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   }
   // Вспомогательная функция для получения типа из frontmatter файла
   async getFileTypeFromFrontmatter(file) {
-    return this.trackerFileService.getFileTypeFromFrontmatter(file);
+    const state = await this.ensureTrackerState(file);
+    return state.fileOpts;
   }
   async updateTrackerDate(trackerItem, file, dateIso, opts) {
     const controlsContainerEl = trackerItem.querySelector(".tracker-notes__controls");
@@ -16395,531 +17187,41 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
     const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
+    const entries = await this.readAllEntries(file);
     const existingHeatmap = controlsContainer.querySelector(".tracker-notes__heatmap");
     if (trackerType === "good-habit" || trackerType === "bad-habit") {
       if (existingHeatmap) {
-        await this.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
+        await this.heatmapService.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
       } else {
         controlsContainer.empty();
         const { mode, ...optsWithoutMode } = opts;
         const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-        await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+        await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
       }
     } else {
       controlsContainer.empty();
       const { mode, ...optsWithoutMode } = opts;
       const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-      await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
+      await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
     }
     const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
     if (chartDiv) {
-      await this.updateChart(chartDiv, file, dateIso, daysToShow);
+      await this.updateChart(chartDiv, file, dateIso, daysToShow, entries);
     }
     const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
     if (statsDiv) {
-      await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType);
-    }
-  }
-  async renderTracker(parentEl, file, dateIso, view, opts, existingTracker) {
-    let trackerItem;
-    let isNewTracker = false;
-    if (existingTracker) {
-      trackerItem = existingTracker;
-      const header2 = trackerItem.querySelector(".tracker-notes__tracker-header");
-      const controls = trackerItem.querySelector(".tracker-notes__controls");
-      const chart = trackerItem.querySelector(".tracker-notes__chart");
-      const stats = trackerItem.querySelector(".tracker-notes__stats");
-      header2?.remove();
-      controls?.remove();
-      chart?.remove();
-      stats?.remove();
-    } else {
-      trackerItem = document.createElement("div");
-      isNewTracker = true;
-    }
-    trackerItem.classList.add("tracker-notes__tracker");
-    trackerItem.dataset.filePath = file.path;
-    const header = trackerItem.createDiv({ cls: "tracker-notes__tracker-header" });
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const baseName = file.basename;
-    const unit = fileOpts.unit || "";
-    const displayName = unit ? `${baseName} (${unit})` : baseName;
-    const titleLink = header.createEl("a", {
-      text: displayName,
-      cls: "tracker-notes__tracker-title internal-link",
-      href: file.path
-    });
-    titleLink.setAttribute("data-href", file.path);
-    const settingsButton = header.createEl("button", {
-      text: "\u2699\uFE0F",
-      cls: "tracker-notes__settings-btn"
-    });
-    settingsButton.title = "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0442\u0440\u0435\u043A\u0435\u0440\u0430";
-    settingsButton.onclick = () => {
-      new EditTrackerModal(this.app, this, file).open();
-    };
-    const controlsContainer = trackerItem.createDiv({ cls: "tracker-notes__controls" });
-    if (view === "display") {
-      const value = await this.readValueForDate(file, dateIso);
-      trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "\u2014"}` });
-      const daysToShow2 = parseInt(opts.days) || this.settings.daysToShow;
-      const trackerType2 = (fileOpts.mode ?? "good-habit").toLowerCase();
-      const shouldShowChart2 = (opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault) && !(this.isMobileDevice() && this.settings.hideChartOnMobile);
-      const shouldShowStats2 = (opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault) && !(this.isMobileDevice() && this.settings.hideStatsOnMobile);
-      if (shouldShowChart2) {
-        await this.renderChart(trackerItem, file, dateIso, daysToShow2);
-      }
-      if (shouldShowStats2) {
-        await this.renderStats(trackerItem, file, dateIso, daysToShow2, trackerType2);
-      }
-      return;
-    }
-    const { mode, ...optsWithoutMode } = opts;
-    const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-    await this.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    const shouldShowChart = (opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault) && !(this.isMobileDevice() && this.settings.hideChartOnMobile);
-    const shouldShowStats = (opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault) && !(this.isMobileDevice() && this.settings.hideStatsOnMobile);
-    if (shouldShowChart) {
-      await this.renderChart(trackerItem, file, dateIso, daysToShow);
-    }
-    if (shouldShowStats) {
-      await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
-    }
-    if (isNewTracker) {
-      parentEl.appendChild(trackerItem);
-    }
-  }
-  async renderControlsForDate(container, file, dateIso, opts) {
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const mode = (fileOpts.mode ?? "good-habit").toLowerCase();
-    const currentMode = container.dataset.trackerMode;
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    if (currentMode === mode && (mode === "good-habit" || mode === "bad-habit")) {
-      const heatmapDiv = container.querySelector(".tracker-notes__heatmap");
-      if (heatmapDiv) {
-        await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, mode);
-        return;
-      }
-    }
-    container.empty();
-    container.dataset.trackerMode = mode;
-    const trackerItem = container.closest(".tracker-notes__tracker");
-    const mainContainer = trackerItem?.closest(".tracker-notes");
-    const updateVisualizations = async () => {
-      if (!trackerItem) return;
-      const currentDateIso = mainContainer?.querySelector(".tracker-notes__date-input")?.value || dateIso;
-      const fileOptsForViz = await this.getFileTypeFromFrontmatter(file);
-      const trackerTypeForViz = (fileOptsForViz.mode ?? "good-habit").toLowerCase();
-      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-      const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
-      if (chartDiv) {
-        await this.updateChart(chartDiv, file, currentDateIso, daysToShow);
-      }
-      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-      if (statsDiv) {
-        await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerTypeForViz);
-      }
-    };
-    if (mode === "good-habit" || mode === "bad-habit") {
-      await this.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
-    } else if (mode === "checkbox") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const label = wrap.createEl("label", { text: "\u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E" });
-      const input = wrap.createEl("input", { type: "checkbox" });
-      label.prepend(input);
-      const current = await this.readValueForDate(file, dateIso);
-      input.checked = current === 1 || current === "1" || String(current) === "true";
-      input.onchange = async () => {
-        const val = input.checked ? 1 : 0;
-        await this.writeLogLine(file, dateIso, String(val));
-        new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${val}`, 2e3);
-        input.style.transform = "scale(1.1)";
-        setTimeout(() => input.style.transform = "", 200);
-        await updateVisualizations();
-      };
-    } else if (mode === "number") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const input = wrap.createEl("input", { type: "number", placeholder: "0" });
-      const current = await this.readValueForDate(file, dateIso);
-      if (current != null && !isNaN(Number(current))) input.value = String(current);
-      const updateValue = async () => {
-        const val = Number(input.value);
-        if (input.value === "" || isNaN(val)) return;
-        await this.writeLogLine(file, dateIso, String(val));
-        new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${val}`, 2e3);
-        input.value = String(val);
-        input.style.transform = "scale(0.98)";
-        setTimeout(() => input.style.transform = "", 200);
-        await updateVisualizations();
-      };
-      const setButton = wrap.createEl("button", { text: "Set" });
-      setButton.onclick = updateValue;
-      input.onchange = updateValue;
-      input.onkeypress = async (e) => {
-        if (e.key === "Enter") {
-          await updateValue();
-        }
-      };
-    } else if (mode === "plusminus") {
-      const fileOpts2 = await this.getFileTypeFromFrontmatter(file);
-      const step = parseFloat(fileOpts2.step || "1") || 1;
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const minus = wrap.createEl("button", { text: "\u2212" });
-      const valEl = wrap.createEl("span", { text: "0", cls: "tracker-notes__value" });
-      const plus = wrap.createEl("button", { text: "+" });
-      let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
-      if (!isNaN(current)) valEl.setText(String(current));
-      minus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) - step;
-        valEl.setText(String(current));
-        valEl.addClass("updated");
-        await this.writeLogLine(file, dateIso, String(current));
-        setTimeout(() => valEl.removeClass("updated"), 300);
-        await updateVisualizations();
-      };
-      plus.onclick = async () => {
-        current = (Number.isFinite(current) ? current : 0) + step;
-        valEl.setText(String(current));
-        valEl.addClass("updated");
-        await this.writeLogLine(file, dateIso, String(current));
-        setTimeout(() => valEl.removeClass("updated"), 300);
-        await updateVisualizations();
-      };
-    } else if (mode === "rating") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const ratingDiv = wrap.createDiv({ cls: "tracker-notes__rating" });
-      const maxRating = parseInt(opts.maxRating || "5");
-      const current = await this.readValueForDate(file, dateIso);
-      let currentRating = typeof current === "number" ? current : current ? parseInt(String(current)) : 0;
-      if (isNaN(currentRating)) currentRating = 0;
-      for (let i = 1; i <= maxRating; i++) {
-        const star = ratingDiv.createEl("span", { text: "\u2605", cls: "tracker-notes__rating-star" });
-        if (i <= currentRating) star.addClass("active");
-        star.onclick = async () => {
-          currentRating = i;
-          ratingDiv.querySelectorAll(".tracker-notes__rating-star").forEach((s, idx) => {
-            if (idx + 1 <= i) s.addClass("active");
-            else s.removeClass("active");
-          });
-          await this.writeLogLine(file, dateIso, String(i));
-          new import_obsidian9.Notice(`\u2B50 \u041E\u0446\u0435\u043D\u043A\u0430: ${dateIso}: ${i}/${maxRating}`, 2e3);
-          await updateVisualizations();
-        };
-      }
-    } else if (mode === "text") {
-      const wrap = container.createDiv({ cls: "tracker-notes__row" });
-      const input = wrap.createEl("textarea", {
-        cls: "tracker-notes__text-input",
-        placeholder: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0442\u0435\u043A\u0441\u0442..."
-      });
-      const current = await this.readValueForDate(file, dateIso);
-      if (current != null && typeof current === "string") input.value = current;
-      const btn = wrap.createEl("button", { text: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" });
-      btn.onclick = async () => {
-        const val = input.value.trim();
-        await this.writeLogLine(file, dateIso, val);
-        new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}`, 2e3);
-        btn.style.transform = "scale(0.95)";
-        setTimeout(() => btn.style.transform = "", 200);
-        await updateVisualizations();
-      };
-    } else if (mode === "scale") {
-      const minValue = parseFloat(opts.minValue || "0");
-      const maxValue = parseFloat(opts.maxValue || "10");
-      const step = parseFloat(opts.step || "1");
-      const current = await this.readValueForDate(file, dateIso);
-      let currentValue = minValue;
-      if (current != null && !isNaN(Number(current))) {
-        const numVal = Number(current);
-        currentValue = Math.max(minValue, Math.min(maxValue, numVal));
-      }
-      const wrapper = container.createDiv({ cls: "tracker-notes__progress-bar-wrapper" });
-      wrapper.setAttribute("data-internal-value", String(currentValue));
-      const progressBarInput = wrapper.createDiv({ cls: "tracker-notes__progress-bar-input" });
-      progressBarInput.setAttribute("tabindex", "0");
-      progressBarInput.setAttribute("role", "button");
-      progressBarInput.setAttribute("aria-label", String(currentValue));
-      progressBarInput.setAttribute("aria-valuemin", String(minValue));
-      progressBarInput.setAttribute("aria-valuemax", String(maxValue));
-      progressBarInput.setAttribute("aria-valuenow", String(currentValue));
-      const progressBar = progressBarInput.createDiv({ cls: "tracker-notes__progress-bar-progress" });
-      progressBar.setAttribute("role", "slider");
-      progressBar.setAttribute("tabindex", "0");
-      progressBar.setAttribute("aria-valuemin", String(minValue));
-      progressBar.setAttribute("aria-valuemax", String(maxValue));
-      progressBar.setAttribute("aria-valuenow", String(currentValue));
-      const valueDisplay = progressBarInput.createEl("span", {
-        text: String(currentValue),
-        cls: "tracker-notes__progress-bar-value"
-      });
-      const labelLeft = progressBarInput.createEl("span", {
-        text: String(minValue),
-        cls: "tracker-notes__progress-bar-label-left"
-      });
-      const labelRight = progressBarInput.createEl("span", {
-        text: String(maxValue),
-        cls: "tracker-notes__progress-bar-label-right"
-      });
-      const calculateValueFromPosition = (clientX) => {
-        const rect = progressBarInput.getBoundingClientRect();
-        const clickX = clientX - rect.left;
-        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-        const rawValue = minValue + (maxValue - minValue) * percentage;
-        const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
-        return Math.max(minValue, Math.min(maxValue, steppedValue));
-      };
-      const updateProgressBar = (value) => {
-        const percentage = (value - minValue) / (maxValue - minValue) * 100;
-        progressBar.style.width = `${percentage}%`;
-        valueDisplay.setText(String(value));
-        progressBarInput.setAttribute("aria-valuenow", String(value));
-        progressBarInput.setAttribute("aria-label", String(value));
-        progressBar.setAttribute("aria-valuenow", String(value));
-        wrapper.setAttribute("data-internal-value", String(value));
-      };
-      updateProgressBar(currentValue);
-      let isDragging = false;
-      let hasMoved = false;
-      const handleMouseDown = (e) => {
-        if (e.button !== 0) return;
-        isDragging = true;
-        hasMoved = false;
-        progressBarInput.style.cursor = "col-resize";
-        const newValue = calculateValueFromPosition(e.clientX);
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-        e.preventDefault();
-      };
-      const handleMouseMove = (e) => {
-        if (!isDragging) return;
-        hasMoved = true;
-        const newValue = calculateValueFromPosition(e.clientX);
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-      };
-      const handleMouseUp = async () => {
-        if (isDragging) {
-          isDragging = false;
-          progressBarInput.style.cursor = "";
-          if (hasMoved) {
-            await this.writeLogLine(file, dateIso, String(currentValue));
-            new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
-            await updateVisualizations();
-          }
-        }
-      };
-      const handleClick = async (e) => {
-        if (hasMoved) {
-          hasMoved = false;
-          return;
-        }
-        if (e.target === progressBar || e.target === valueDisplay || e.target === labelLeft || e.target === labelRight) {
-          return;
-        }
-        const newValue = calculateValueFromPosition(e.clientX);
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-        await this.writeLogLine(file, dateIso, String(currentValue));
-        new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
-        await updateVisualizations();
-      };
-      const handleKeyDown = (e) => {
-        let newValue = currentValue;
-        if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-          e.preventDefault();
-          newValue = Math.max(minValue, currentValue - step);
-        } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-          e.preventDefault();
-          newValue = Math.min(maxValue, currentValue + step);
-        } else if (e.key === "Home") {
-          e.preventDefault();
-          newValue = minValue;
-        } else if (e.key === "End") {
-          e.preventDefault();
-          newValue = maxValue;
-        } else {
-          return;
-        }
-        currentValue = newValue;
-        updateProgressBar(currentValue);
-      };
-      const handleKeyUp = async (e) => {
-        if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
-          await this.writeLogLine(file, dateIso, String(currentValue));
-          new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateIso}: ${currentValue}`, 2e3);
-          await updateVisualizations();
-        }
-      };
-      progressBarInput.addEventListener("click", handleClick);
-      progressBarInput.addEventListener("mousedown", handleMouseDown);
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      progressBarInput.addEventListener("keydown", handleKeyDown);
-      progressBarInput.addEventListener("keyup", handleKeyUp);
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.removedNodes.forEach((node) => {
-            if (node === wrapper || node instanceof Node && wrapper.contains(node)) {
-              document.removeEventListener("mousemove", handleMouseMove);
-              document.removeEventListener("mouseup", handleMouseUp);
-              observer.disconnect();
-            }
-          });
-        });
-      });
-      if (wrapper.parentNode) {
-        observer.observe(wrapper.parentNode, { childList: true, subtree: true });
-      }
-    } else {
-      container.createEl("div", { text: `\u041D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0439 mode: ${mode}. \u0414\u043E\u0441\u0442\u0443\u043F\u043D\u044B: good-habit, bad-habit, number, plusminus, rating, text, scale` });
+      await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries);
     }
   }
   // ---- Визуализация ---------------------------------------------------------
-  async updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType) {
-    const m = window.moment;
-    const endDate = m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat);
-    const startDate = m ? m(endDate).subtract(daysToShow - 1, "days") : addDays(endDate, -(daysToShow - 1));
-    const entries = await this.readAllEntries(file);
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-    const trackerItem = heatmapDiv.closest(".tracker-notes__tracker");
-    const mainContainer = trackerItem?.closest(".tracker-notes");
-    const updateHeatmapDay = (dateStr, dayDiv) => {
-      const value = entries.get(dateStr);
-      const hasValue = value === 1 || value === "1" || String(value) === "true";
-      if (hasValue) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
-    };
-    const updateAllStartDays = () => {
-      const currentStartDateStr = this.getStartTrackingDate(entries, file);
-      const allDayElements = Array.from(heatmapDiv.children);
-      for (const dayDiv of allDayElements) {
-        const dayDateStr = dayDiv.dataset?.dateStr;
-        if (dayDateStr) {
-          if (dayDateStr === currentStartDateStr) {
-            dayDiv.addClass("start-day");
-          } else {
-            dayDiv.removeClass("start-day");
-          }
-        }
-      }
-    };
-    const updateVisualizations = async (updatedDateStr, updatedDayDiv) => {
-      if (!trackerItem) return;
-      if (updatedDateStr && updatedDayDiv) {
-        updateHeatmapDay(updatedDateStr, updatedDayDiv);
-        updateAllStartDays();
-      }
-      const currentDateIso = mainContainer?.querySelector(".tracker-notes__date-input")?.value || dateIso;
-      const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-      if (chartDiv) {
-        const days = parseInt(trackerItem.daysToShow) || daysToShow;
-        await this.updateChart(chartDiv, file, currentDateIso, days);
-      }
-      const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-      if (statsDiv) {
-        const days = parseInt(trackerItem.daysToShow) || daysToShow;
-        await this.updateStats(statsDiv, file, currentDateIso, days, trackerType);
-      }
-    };
-    const dayElements = Array.from(heatmapDiv.children);
-    const fragment = document.createDocumentFragment();
-    for (let i = 0; i < daysToShow; i++) {
-      const date = m ? m(startDate).add(i, "days") : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      const dayNum = m ? date.date() : date.getDate();
-      let dayDiv;
-      if (i < dayElements.length) {
-        dayDiv = dayElements[i];
-        dayDiv.setText(dayNum.toString());
-        dayDiv.removeClass("good-habit");
-        dayDiv.removeClass("bad-habit");
-        dayDiv.addClass(trackerType);
-      } else {
-        dayDiv = document.createElement("div");
-        dayDiv.addClass("tracker-notes__heatmap-day");
-        dayDiv.setText(dayNum.toString());
-        dayDiv.addClass(trackerType);
-        fragment.appendChild(dayDiv);
-      }
-      dayDiv.dataset.dateStr = dateStr;
-      updateHeatmapDay(dateStr, dayDiv);
-      if (dateStr === startTrackingDateStr) {
-        dayDiv.addClass("start-day");
-      } else {
-        dayDiv.removeClass("start-day");
-      }
-    }
-    if (fragment.childNodes.length > 0) {
-      heatmapDiv.appendChild(fragment);
-    }
-    while (dayElements.length > daysToShow) {
-      dayElements[dayElements.length - 1].remove();
-      dayElements.pop();
-    }
-  }
-  async renderTrackerHeatmap(container, file, dateIso, daysToShow, trackerType) {
-    let heatmapDiv = container.querySelector(".tracker-notes__heatmap");
-    if (!heatmapDiv) {
-      heatmapDiv = container.createDiv({ cls: "tracker-notes__heatmap" });
-      heatmapDiv.addEventListener("click", async (e) => {
-        const dayDiv = e.target.closest(".tracker-notes__heatmap-day");
-        if (!dayDiv) return;
-        const dateStr = dayDiv.dataset.dateStr;
-        if (!dateStr) return;
-        const entries = await this.readAllEntries(file);
-        const currentValue = entries.get(dateStr);
-        const isChecked = currentValue === 1 || currentValue === "1" || String(currentValue) === "true";
-        const newValue = isChecked ? 0 : 1;
-        await this.writeLogLine(file, dateStr, String(newValue));
-        entries.set(dateStr, newValue);
-        new import_obsidian9.Notice(`\u2713 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E: ${dateStr}: ${newValue}`, 2e3);
-        if (newValue === 1) {
-          dayDiv.addClass("has-value");
-        } else {
-          dayDiv.removeClass("has-value");
-        }
-        const startTrackingDateStr = this.getStartTrackingDate(entries, file);
-        const allDayElements = Array.from(heatmapDiv.children);
-        for (const dayEl of allDayElements) {
-          const dayDateStr = dayEl.dataset.dateStr;
-          if (dayDateStr) {
-            if (dayDateStr === startTrackingDateStr) {
-              dayEl.addClass("start-day");
-            } else {
-              dayEl.removeClass("start-day");
-            }
-          }
-        }
-        const trackerItem = heatmapDiv.closest(".tracker-notes__tracker");
-        const mainContainer = trackerItem?.closest(".tracker-notes");
-        if (trackerItem) {
-          const currentDateIso = mainContainer?.querySelector(".tracker-notes__date-input")?.value || dateIso;
-          const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-          if (chartDiv) {
-            await this.updateChart(chartDiv, file, currentDateIso, daysToShow);
-          }
-          const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-          if (statsDiv) {
-            await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType);
-          }
-        }
-      });
-    }
-    await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
-  }
-  async renderChart(container, file, dateIso, daysToShow) {
+  async renderChart(container, file, dateIso, daysToShow, entries) {
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const metricType = (fileOpts.mode ?? "good-habit").toLowerCase();
     const unit = fileOpts.unit || "";
     if (metricType === "good-habit" || metricType === "bad-habit") {
       const endDate2 = dateIso || resolveDateIso("today", this.settings.dateFormat);
       const days2 = daysToShow || this.settings.daysToShow;
-      await this.renderTrackerHeatmap(container, file, endDate2, days2, metricType);
+      await this.heatmapService.renderTrackerHeatmap(container, file, endDate2, days2, metricType);
       return;
     }
     const existingChart = container.querySelector(".tracker-notes__chart");
@@ -16932,66 +17234,22 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     }
     const chartDiv = container.createDiv({ cls: "tracker-notes__chart" });
     const canvas = chartDiv.createEl("canvas");
-    const root = document.body || document.documentElement;
-    const getCSSVar = (varName, fallback = "#000000") => {
-      const value = getComputedStyle(root).getPropertyValue(varName).trim();
-      return value || fallback;
-    };
-    const tempEl = document.createElement("div");
-    tempEl.style.position = "absolute";
-    tempEl.style.visibility = "hidden";
-    document.body.appendChild(tempEl);
-    let accentColor = getComputedStyle(tempEl).getPropertyValue("--interactive-accent").trim();
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue("--color-accent").trim();
-    }
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue("--accent-color").trim();
-    }
-    if (!accentColor) {
-      accentColor = getComputedStyle(root).getPropertyValue("--interactive-accent").trim();
-    }
-    if (!accentColor) {
-      accentColor = "#7f6df2";
-    }
-    document.body.removeChild(tempEl);
-    const textMuted = getCSSVar("--text-muted", "#999999");
-    const textFaint = getCSSVar("--text-faint", "#666666");
-    const borderColor = getCSSVar("--background-modifier-border", "#e0e0e0");
-    const bgPrimary = getCSSVar("--background-primary", "#ffffff");
-    const colorToRgba = (color2, alpha2) => {
-      if (color2.startsWith("#")) {
-        const r = parseInt(color2.slice(1, 3), 16);
-        const g = parseInt(color2.slice(3, 5), 16);
-        const b = parseInt(color2.slice(5, 7), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha2})`;
-      } else if (color2.startsWith("rgb")) {
-        return color2.replace("rgb", "rgba").replace(")", `, ${alpha2})`);
-      }
-      return color2;
-    };
-    const m = window.moment;
-    const today = m ? m() : /* @__PURE__ */ new Date();
-    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
-    let activeDate;
-    if (dateIso) {
-      activeDate = m ? m(dateIso, "YYYY-MM-DD") : parseDate(dateIso, "YYYY-MM-DD");
-    } else {
-      activeDate = today;
-    }
-    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
-    const endDate = m ? m(activeDate).clone().add(5, "days") : addDays(new Date(activeDate.getTime()), 5);
+    const colors2 = getThemeColors();
+    const today = DateService.now();
+    const todayStr = DateService.format(today, this.settings.dateFormat);
+    const activeDate = dateIso ? DateService.parse(dateIso, "YYYY-MM-DD") : today;
+    const activeDateStr = DateService.format(activeDate, this.settings.dateFormat);
+    const endDate = activeDate.clone().add(5, "days");
     const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, "days") : addDays(endDate, -(days - 1));
-    const entries = await this.readAllEntries(file);
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
+    const startDate = endDate.clone().subtract(days - 1, "days");
+    const entriesMap = entries ?? await this.readAllEntries(file);
+    const startTrackingDateStr = this.trackerFileService.getStartTrackingDate(entriesMap, this.settings, fileOpts);
     let startTrackingIndex = null;
     let activeDateIndex = null;
     const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
     const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
     const scaleMinValue = metricType === "scale" && fileOpts.minValue ? parseFloat(fileOpts.minValue) : null;
     const scaleMaxValue = metricType === "scale" && fileOpts.maxValue ? parseFloat(fileOpts.maxValue) : null;
-    const errorColor = getCSSVar("--text-error", "#c00000");
     const labels = [];
     const values = [];
     const pointBackgroundColors = [];
@@ -16999,8 +17257,8 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     const dateStrings = [];
     let maxValue = 0;
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).clone().add(i, "days") : addDays(new Date(startDate.getTime()), i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
+      const date = startDate.clone().add(i, "days");
+      const dateStr = DateService.format(date, this.settings.dateFormat);
       if (dateStr === startTrackingDateStr) {
         startTrackingIndex = i;
       }
@@ -17008,16 +17266,17 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
         activeDateIndex = i;
       }
       let label = "";
+      const m = window.moment;
       if (m) {
-        label = m(date).format("D MMM");
+        label = m(date.toDate()).format("D MMM");
       } else {
         const day = date.getDate();
-        const month = date.toLocaleDateString("ru", { month: "short" });
+        const month = date.toDate().toLocaleDateString("ru", { month: "short" });
         label = `${day} ${month}`;
       }
       labels.push(label);
       dateStrings.push(dateStr);
-      const val = entries.get(dateStr);
+      const val = entriesMap.get(dateStr);
       let numVal = 0;
       if (val != null) {
         if (metricType === "text") {
@@ -17032,19 +17291,18 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       }
       values.push(numVal);
       maxValue = Math.max(maxValue, numVal);
-      let pointColor = accentColor;
-      let pointBorder = accentColor;
+      let pointColor = colors2.accentColor;
+      let pointBorder = colors2.accentColor;
       const isAfterToday = dateStr > todayStr;
       const hasLimits = minLimit !== null || maxLimit !== null;
       if (!isAfterToday && startTrackingIndex !== null && i >= startTrackingIndex && hasLimits) {
         const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
         if (isInRange) {
-          const successColor = getCSSVar("--text-success", "#00c000");
-          pointColor = successColor;
-          pointBorder = successColor;
+          pointColor = colors2.successColor;
+          pointBorder = colors2.successColor;
         } else {
-          pointColor = errorColor;
-          pointBorder = errorColor;
+          pointColor = colors2.errorColor;
+          pointBorder = colors2.errorColor;
         }
       }
       pointBackgroundColors.push(pointColor);
@@ -17055,10 +17313,6 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     for (let i = 0; i < days; i++) {
       pointRadii.push(3);
       pointBorderWidths.push(2);
-    }
-    if (maxValue === 0) {
-      chartDiv.setText("\u041D\u0435\u0442 \u0434\u0430\u043D\u043D\u044B\u0445");
-      return;
     }
     let yAxisMin = 0;
     let yAxisMax = maxValue;
@@ -17071,17 +17325,26 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     }
     const allMaxValues = [maxValue];
     if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (minLimit !== null) allMaxValues.push(minLimit);
     if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    if (scaleMinValue !== null) allMaxValues.push(scaleMinValue);
     if (allMaxValues.length > 0) {
       const maxFromAll = Math.max(...allMaxValues);
       yAxisMax = Math.max(yAxisMax, maxFromAll);
+    }
+    if (yAxisMax === 0 && minLimit === null && maxLimit === null && scaleMinValue === null && scaleMaxValue === null) {
+      yAxisMax = 1;
+    }
+    if (yAxisMax <= yAxisMin) {
+      const padding = Math.max(1, Math.abs(yAxisMin) * 0.1 || 1);
+      yAxisMax = yAxisMin + padding;
     }
     const ctx = canvas.getContext("2d");
     let gradient = null;
     if (ctx) {
       gradient = ctx.createLinearGradient(0, 0, 0, 180);
-      gradient.addColorStop(0, colorToRgba(accentColor, 0.25));
-      gradient.addColorStop(1, colorToRgba(accentColor, 0));
+      gradient.addColorStop(0, colorToRgba(colors2.accentColor, 0.25));
+      gradient.addColorStop(1, colorToRgba(colors2.accentColor, 0));
     }
     let chartLabel;
     if (unit) {
@@ -17089,7 +17352,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     } else {
       chartLabel = metricType === "text" ? "\u041A\u043E\u043B-\u0432\u043E \u0441\u043B\u043E\u0432" : "\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435";
     }
-    const startLineColor = getCSSVar("--text-accent", accentColor);
+    const startLineColor = colors2.startLineColor;
     const drawStartLine = (chart, index2, color2) => {
       const ctx2 = chart.ctx;
       const chartArea = chart.chartArea;
@@ -17124,6 +17387,20 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       ctx2.stroke();
       ctx2.restore();
     };
+    const hasInvalidValues = values.some((v) => !isFinite(v) || isNaN(v));
+    if (hasInvalidValues) {
+      console.error("Tracker: Invalid values in chart data", { values, labels, dateStrings });
+      const validValues = values.map((v) => isFinite(v) && !isNaN(v) ? v : 0);
+      values.length = 0;
+      values.push(...validValues);
+    }
+    if (labels.length !== values.length || values.length !== dateStrings.length) {
+      console.error("Tracker: Mismatched array lengths", {
+        labels: labels.length,
+        values: values.length,
+        dateStrings: dateStrings.length
+      });
+    }
     const chartConfig = {
       type: "line",
       data: {
@@ -17131,8 +17408,8 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
         datasets: [{
           label: chartLabel,
           data: values,
-          borderColor: accentColor,
-          backgroundColor: gradient || colorToRgba(accentColor, 0.1),
+          borderColor: colors2.accentColor,
+          backgroundColor: gradient || colorToRgba(colors2.accentColor, 0.1),
           borderWidth: 2.5,
           fill: false,
           tension: 0.4,
@@ -17145,11 +17422,11 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
           // Явно отключаем изменение цветов при наведении - используем функции, которые возвращают те же цвета
           pointHoverBackgroundColor: (ctx2) => {
             const index2 = ctx2.dataIndex;
-            return pointBackgroundColors[index2] || pointBackgroundColors[0] || accentColor;
+            return pointBackgroundColors[index2] || pointBackgroundColors[0] || colors2.accentColor;
           },
           pointHoverBorderColor: (ctx2) => {
             const index2 = ctx2.dataIndex;
-            return pointBorderColors[index2] || pointBorderColors[0] || accentColor;
+            return pointBorderColors[index2] || pointBorderColors[0] || colors2.accentColor;
           },
           pointHoverBorderWidth: (ctx2) => {
             const index2 = ctx2.dataIndex;
@@ -17166,10 +17443,10 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
           },
           tooltip: {
             enabled: true,
-            backgroundColor: bgPrimary,
-            titleColor: textMuted,
-            bodyColor: textMuted,
-            borderColor,
+            backgroundColor: colors2.bgPrimary,
+            titleColor: colors2.textMuted,
+            bodyColor: colors2.textMuted,
+            borderColor: colors2.borderColor,
             borderWidth: 1,
             padding: 8,
             displayColors: false,
@@ -17189,12 +17466,12 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
           x: {
             grid: {
               display: true,
-              color: colorToRgba(borderColor, 0.3),
+              color: colorToRgba(colors2.borderColor, 0.3),
               lineWidth: 1,
               drawBorder: false
             },
             ticks: {
-              color: textFaint,
+              color: colors2.textFaint,
               font: {
                 family: "var(--font-text)",
                 size: 11
@@ -17207,12 +17484,12 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
           y: {
             grid: {
               display: true,
-              color: colorToRgba(borderColor, 0.3),
+              color: colorToRgba(colors2.borderColor, 0.3),
               lineWidth: 1,
               drawBorder: false
             },
             ticks: {
-              color: textFaint,
+              color: colors2.textFaint,
               font: {
                 family: "var(--font-text)",
                 size: 11
@@ -17251,19 +17528,13 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
               const blockContainer = mainContainer?.parentElement;
               const dateInput = blockContainer?.querySelector(".tracker-notes__date-input");
               if (dateInput) {
-                const m2 = window.moment;
                 let dateIsoValue;
                 try {
-                  if (m2) {
-                    const dateObj = m2(clickedDateStr, this.settings.dateFormat);
-                    if (dateObj.isValid()) {
-                      dateIsoValue = dateObj.format("YYYY-MM-DD");
-                    } else {
-                      return;
-                    }
+                  const dateObj = DateService.parse(clickedDateStr, this.settings.dateFormat);
+                  if (dateObj.isValid()) {
+                    dateIsoValue = DateService.format(dateObj, "YYYY-MM-DD");
                   } else {
-                    const dateObj = parseDate(clickedDateStr, this.settings.dateFormat);
-                    dateIsoValue = formatDate(dateObj, "YYYY-MM-DD");
+                    return;
                   }
                   if (dateIsoValue) {
                     dateInput.value = dateIsoValue;
@@ -17278,7 +17549,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
         },
         onResize: (chart) => {
           const startIndex = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
-          const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : startLineColor;
+          const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : colors2.startLineColor;
           const activeIdx = chart.activeDateIndex !== void 0 ? chart.activeDateIndex : activeDateIndex;
           if (startIndex !== null && startIndex !== void 0 && startIndex !== activeIdx) {
             drawStartLine(chart, startIndex, lineColor);
@@ -17300,7 +17571,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
         id: "startLinePlugin",
         beforeDraw: (chart) => {
           const startIdx = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
-          const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : startLineColor;
+          const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : colors2.startLineColor;
           const activeIdx = chart.activeDateIndex !== void 0 ? chart.activeDateIndex : activeDateIndex;
           if (startIdx !== null && startIdx !== void 0 && startIdx !== activeIdx) {
             drawStartLine(chart, startIdx, lineColor);
@@ -17340,7 +17611,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       const chartInstance = new Chart(canvas, chartConfig);
       chartDiv.chartInstance = chartInstance;
       chartInstance.startTrackingIndex = startTrackingIndex;
-      chartInstance.startLineColor = startLineColor;
+      chartInstance.startLineColor = colors2.startLineColor;
       chartInstance.dateStrings = dateStrings;
       chartInstance.minLimit = minLimit;
       chartInstance.maxLimit = maxLimit;
@@ -17349,10 +17620,10 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       chartDiv.setText("\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u0433\u0440\u0430\u0444\u0438\u043A\u0430");
     }
   }
-  async updateChart(chartDiv, file, dateIso, daysToShow) {
+  async updateChart(chartDiv, file, dateIso, daysToShow, entries) {
     const chartInstance = chartDiv.chartInstance;
     if (!chartInstance) {
-      await this.renderChart(chartDiv.parentElement, file, dateIso, daysToShow);
+      await this.renderChart(chartDiv.parentElement, file, dateIso, daysToShow, entries);
       return;
     }
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
@@ -17360,53 +17631,22 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     if (metricType === "good-habit" || metricType === "bad-habit") {
       return;
     }
-    const m = window.moment;
-    const today = m ? m() : /* @__PURE__ */ new Date();
-    const todayStr = m ? today.format(this.settings.dateFormat) : formatDate(today, this.settings.dateFormat);
-    let activeDate;
-    if (dateIso) {
-      activeDate = m ? m(dateIso, "YYYY-MM-DD") : parseDate(dateIso, "YYYY-MM-DD");
-    } else {
-      activeDate = today;
-    }
-    const activeDateStr = m ? activeDate.format(this.settings.dateFormat) : formatDate(activeDate, this.settings.dateFormat);
-    const endDate = m ? m(activeDate).clone().add(5, "days") : addDays(new Date(activeDate.getTime()), 5);
+    const today = DateService.now();
+    const todayStr = DateService.format(today, this.settings.dateFormat);
+    const activeDate = dateIso ? DateService.parse(dateIso, "YYYY-MM-DD") : today;
+    const activeDateStr = DateService.format(activeDate, this.settings.dateFormat);
+    const endDate = activeDate.clone().add(5, "days");
     const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, "days") : addDays(endDate, -(days - 1));
-    const entries = await this.readAllEntries(file);
-    const startTrackingDateStr = this.getStartTrackingDate(entries, file);
+    const startDate = endDate.clone().subtract(days - 1, "days");
+    const entriesToUse = entries ?? await this.readAllEntries(file);
+    const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
     let startTrackingIndex = null;
     let activeDateIndex = null;
     const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
     const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
     const scaleMinValue = metricType === "scale" && fileOpts.minValue ? parseFloat(fileOpts.minValue) : null;
     const scaleMaxValue = metricType === "scale" && fileOpts.maxValue ? parseFloat(fileOpts.maxValue) : null;
-    const root = document.body || document.documentElement;
-    const getCSSVar = (varName, fallback = "#000000") => {
-      const value = getComputedStyle(root).getPropertyValue(varName).trim();
-      return value || fallback;
-    };
-    const tempEl = document.createElement("div");
-    tempEl.style.position = "absolute";
-    tempEl.style.visibility = "hidden";
-    document.body.appendChild(tempEl);
-    let accentColor = getComputedStyle(tempEl).getPropertyValue("--interactive-accent").trim();
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue("--color-accent").trim();
-    }
-    if (!accentColor) {
-      accentColor = getComputedStyle(tempEl).getPropertyValue("--accent-color").trim();
-    }
-    if (!accentColor) {
-      accentColor = getComputedStyle(root).getPropertyValue("--interactive-accent").trim();
-    }
-    if (!accentColor) {
-      accentColor = "#7f6df2";
-    }
-    document.body.removeChild(tempEl);
-    const startLineColor = getCSSVar("--text-accent", accentColor);
-    const errorColor = getCSSVar("--text-error", "#c00000");
-    const bgPrimary = getCSSVar("--background-primary", "#ffffff");
+    const colors2 = getThemeColors();
     const labels = [];
     const values = [];
     const pointBackgroundColors = [];
@@ -17414,8 +17654,8 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     const dateStrings = [];
     let maxValue = 0;
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).clone().add(i, "days") : addDays(new Date(startDate.getTime()), i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
+      const date = startDate.clone().add(i, "days");
+      const dateStr = DateService.format(date, this.settings.dateFormat);
       if (dateStr === startTrackingDateStr) {
         startTrackingIndex = i;
       }
@@ -17423,16 +17663,17 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
         activeDateIndex = i;
       }
       let label = "";
+      const m = window.moment;
       if (m) {
-        label = m(date).format("D MMM");
+        label = m(date.toDate()).format("D MMM");
       } else {
         const day = date.getDate();
-        const month = date.toLocaleDateString("ru", { month: "short" });
+        const month = date.toDate().toLocaleDateString("ru", { month: "short" });
         label = `${day} ${month}`;
       }
       labels.push(label);
       dateStrings.push(dateStr);
-      const val = entries.get(dateStr);
+      const val = entriesToUse.get(dateStr);
       let numVal = 0;
       if (val != null) {
         if (metricType === "text") {
@@ -17447,19 +17688,18 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       }
       values.push(numVal);
       maxValue = Math.max(maxValue, numVal);
-      let pointColor = accentColor;
-      let pointBorder = accentColor;
+      let pointColor = colors2.accentColor;
+      let pointBorder = colors2.accentColor;
       const isAfterToday = dateStr > todayStr;
       const hasLimits = minLimit !== null || maxLimit !== null;
       if (!isAfterToday && startTrackingIndex !== null && i >= startTrackingIndex && hasLimits) {
         const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
         if (isInRange) {
-          const successColor = getCSSVar("--text-success", "#00c000");
-          pointColor = successColor;
-          pointBorder = successColor;
+          pointColor = colors2.successColor;
+          pointBorder = colors2.successColor;
         } else {
-          pointColor = errorColor;
-          pointBorder = errorColor;
+          pointColor = colors2.errorColor;
+          pointBorder = colors2.errorColor;
         }
       }
       pointBackgroundColors.push(pointColor);
@@ -17482,13 +17722,22 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     }
     const allMaxValues = [maxValue];
     if (maxLimit !== null) allMaxValues.push(maxLimit);
+    if (minLimit !== null) allMaxValues.push(minLimit);
     if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
+    if (scaleMinValue !== null) allMaxValues.push(scaleMinValue);
     if (allMaxValues.length > 0) {
       const maxFromAll = Math.max(...allMaxValues);
       yAxisMax = Math.max(yAxisMax, maxFromAll);
     }
+    if (yAxisMax === 0 && minLimit === null && maxLimit === null && scaleMinValue === null && scaleMaxValue === null) {
+      yAxisMax = 1;
+    }
+    if (yAxisMax <= yAxisMin) {
+      const padding = Math.max(1, Math.abs(yAxisMin) * 0.1 || 1);
+      yAxisMax = yAxisMin + padding;
+    }
     chartInstance.startTrackingIndex = startTrackingIndex;
-    chartInstance.startLineColor = startLineColor;
+    chartInstance.startLineColor = colors2.startLineColor;
     chartInstance.dateStrings = dateStrings;
     chartInstance.minLimit = minLimit;
     chartInstance.maxLimit = maxLimit;
@@ -17506,19 +17755,18 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     }
     chartInstance.update("none");
   }
-  async updateStats(statsDiv, file, dateIso, daysToShow, trackerType) {
-    const entries = await this.readAllEntries(file);
+  async updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries) {
+    const entriesToUse = entries ?? await this.readAllEntries(file);
     const fileOpts = await this.getFileTypeFromFrontmatter(file);
     const metricType = trackerType || (fileOpts.mode ?? "good-habit").toLowerCase();
-    const m = window.moment;
-    const endDate = dateIso ? m ? m(dateIso, this.settings.dateFormat) : parseDate(dateIso, this.settings.dateFormat) : m ? m() : /* @__PURE__ */ new Date();
+    const endDate = dateIso ? DateService.parse(dateIso, this.settings.dateFormat) : DateService.now();
     const days = daysToShow || this.settings.daysToShow;
-    const startDate = m ? m(endDate).subtract(days - 1, "days") : addDays(endDate, -(days - 1));
+    const startDate = endDate.clone().subtract(days - 1, "days");
     const periodDays = [];
     for (let i = 0; i < days; i++) {
-      const date = m ? m(startDate).add(i, "days") : addDays(startDate, i);
-      const dateStr = m ? date.format(this.settings.dateFormat) : formatDate(date, this.settings.dateFormat);
-      const val = entries.get(dateStr);
+      const date = startDate.clone().add(i, "days");
+      const dateStr = DateService.format(date, this.settings.dateFormat);
+      const val = entriesToUse.get(dateStr);
       let numVal = 0;
       if (val != null) {
         if (metricType === "text") {
@@ -17538,8 +17786,8 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     }
     const sum = periodDays.reduce((a, b) => a + b, 0);
     const avg = sum / days;
-    const total = entries.size;
-    const currentStreak = this.calculateStreak(entries, m, endDate, metricType, file);
+    const total = entriesToUse.size;
+    const currentStreak = this.calculateStreak(entriesToUse, endDate, metricType, file);
     const children = Array.from(statsDiv.children);
     if (children.length >= 1) {
       children[0].textContent = `\u0412\u0441\u0435\u0433\u043E \u0437\u0430\u043F\u0438\u0441\u0435\u0439: ${total}`;
@@ -17566,26 +17814,135 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       children[2].remove();
     }
   }
-  async renderStats(container, file, dateIso, daysToShow, trackerType) {
+  async renderStats(container, file, dateIso, daysToShow, trackerType, entries) {
     const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
-    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType);
+    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries);
   }
-  getStartTrackingDate(entries, file) {
-    return this.trackerFileService.getStartTrackingDate(entries, this.settings, file);
+  async ensureTrackerState(file, forceReload = false) {
+    if (!forceReload) {
+      const existing = this.trackerState.get(file.path);
+      if (existing) {
+        return existing;
+      }
+    } else {
+      this.trackerState.delete(file.path);
+    }
+    const [entries, fileOpts] = await Promise.all([
+      this.trackerFileService.readAllEntries(file),
+      this.trackerFileService.getFileTypeFromFrontmatter(file)
+    ]);
+    const state = { entries, fileOpts };
+    this.trackerState.set(file.path, state);
+    return state;
   }
-  calculateStreak(entries, m, endDate, trackerType, file) {
+  async reloadTrackerState(file) {
+    await this.ensureTrackerState(file, true);
+  }
+  clearTrackerState(path) {
+    this.trackerState.delete(path);
+  }
+  moveTrackerState(oldPath, newPath) {
+    if (oldPath === newPath) return;
+    const state = this.trackerState.get(oldPath);
+    if (state) {
+      this.trackerState.delete(oldPath);
+      this.trackerState.set(newPath, state);
+    } else {
+      this.trackerState.delete(newPath);
+    }
+  }
+  handleTrackerRenamed(oldPath, file) {
+    this.moveTrackerState(oldPath, file.path);
+  }
+  async getStartTrackingDate(entries, file) {
+    if (!file) {
+      return DateService.format(DateService.now(), this.settings.dateFormat);
+    }
+    const fileOpts = await this.getFileTypeFromFrontmatter(file);
+    return this.trackerFileService.getStartTrackingDate(entries, this.settings, fileOpts);
+  }
+  invalidateCacheForFile(file) {
+    this.clearTrackerState(file.path);
+  }
+  calculateStreak(entries, endDate, trackerType, file) {
     return this.trackerFileService.calculateStreak(entries, this.settings, endDate, trackerType, file);
   }
   async readAllEntries(file) {
-    return this.trackerFileService.readAllEntries(file);
+    const state = await this.ensureTrackerState(file);
+    return state.entries;
   }
   // ---- Создание привычки ----------------------------------------------------
   async createNewTracker() {
     new CreateTrackerModal(this.app, this).open();
   }
-  async onTrackerCreated(folderPath) {
+  async onTrackerCreated(folderPath, file) {
     this.folderTreeService.invalidate(folderPath);
-    await this.refreshBlocksForFolder(folderPath);
+    await this.reloadTrackerState(file);
+    const normalizedFolderPath = this.normalizePath(folderPath);
+    for (const block of Array.from(this.activeBlocks)) {
+      const blockFolderPath = block.getFolderPath();
+      const normalizedBlockPath = this.normalizePath(blockFolderPath);
+      if (!this.isFolderRelevant(normalizedFolderPath, normalizedBlockPath)) continue;
+      const opts = block.getOptions();
+      const view = (opts.view ?? "control").toLowerCase();
+      const dateInput = block.containerEl.querySelector(".tracker-notes__date-input");
+      const activeDateIso = dateInput?.value || resolveDateIso(opts.date, this.settings.dateFormat);
+      const trackersContainers = Array.from(
+        block.containerEl.querySelectorAll(
+          `.tracker-notes__trackers[data-folder-path="${normalizedFolderPath}"]`
+        )
+      );
+      if (trackersContainers.length === 0) {
+        await block.render();
+        continue;
+      }
+      for (const trackersContainer of trackersContainers) {
+        const existingTrackers = Array.from(trackersContainer.children).filter(
+          (el) => el.classList.contains("tracker-notes__tracker")
+        );
+        let insertBefore = null;
+        for (const tracker of existingTrackers) {
+          const trackerPath = tracker.dataset.filePath;
+          if (!trackerPath) continue;
+          const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
+          if (trackerFile instanceof import_obsidian10.TFile) {
+            if (trackerFile.basename.localeCompare(file.basename, void 0, { sensitivity: "base" }) > 0) {
+              insertBefore = tracker;
+              break;
+            }
+          }
+        }
+        await this.trackerRenderer.renderTracker(trackersContainer, file, activeDateIso, view, opts);
+        const newTracker = trackersContainer.querySelector(
+          `.tracker-notes__tracker[data-file-path="${file.path}"]`
+        );
+        if (newTracker && insertBefore && newTracker.parentElement === trackersContainer) {
+          trackersContainer.insertBefore(newTracker, insertBefore);
+        }
+      }
+    }
+  }
+  async onTrackerDeleted(filePath) {
+    this.clearTrackerState(filePath);
+    for (const block of Array.from(this.activeBlocks)) {
+      const trackersContainers = Array.from(
+        block.containerEl.querySelectorAll(".tracker-notes__trackers")
+      );
+      if (trackersContainers.length === 0) continue;
+      for (const trackersContainer of trackersContainers) {
+        const trackersToDelete = Array.from(trackersContainer.querySelectorAll(
+          `.tracker-notes__tracker[data-file-path="${filePath}"]`
+        ));
+        if (trackersToDelete.length === 0) continue;
+        for (const tracker of trackersToDelete) {
+          tracker.style.transition = "opacity 0.2s ease";
+          tracker.style.opacity = "0";
+          setTimeout(() => {
+            tracker.remove();
+          }, 200);
+        }
+      }
+    }
   }
   // ---- Чтение/запись --------------------------------------------------------
   async ensureFileWithHeading(filePath, type = "good-habit") {
@@ -17600,14 +17957,18 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     return this.trackerFileService.formatDataToYaml(data);
   }
   async readValueForDate(file, dateIso) {
-    return this.trackerFileService.readValueForDate(file, dateIso);
+    const entries = await this.readAllEntries(file);
+    return entries.get(dateIso) ?? null;
   }
   async writeLogLine(file, dateIso, value) {
     try {
+      const entries = await this.readAllEntries(file);
+      const normalizedValue = parseMaybeNumber(value);
+      entries.set(dateIso, normalizedValue);
       await this.trackerFileService.writeLogLine(file, dateIso, value);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      new import_obsidian9.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438: ${errorMsg}`);
+      new import_obsidian10.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438: ${errorMsg}`);
       console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", error);
       throw error;
     }
@@ -17616,7 +17977,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async pickTrackerFile() {
     const files = this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(this.settings.trackersFolder + "/"));
     if (files.length === 0) {
-      new import_obsidian9.Notice("\u041D\u0435\u0442 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432");
+      new import_obsidian10.Notice("\u041D\u0435\u0442 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432");
       return null;
     }
     if (files.length === 1) return files[0];
@@ -17627,14 +17988,10 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+  editTracker(file) {
+    new EditTrackerModal(this.app, this, file).open();
+  }
   // Методы для безопасной модификации файлов (игнорирование внутренних изменений)
-  markFileAsInternallyModified(path) {
-    this.internalWritePaths.add(this.normalizePath(path));
-  }
-  unmarkFileAsInternallyModified(path) {
-    const normalized = this.normalizePath(path);
-    window.setTimeout(() => this.internalWritePaths.delete(normalized), 0);
-  }
 };
 
 // src/main.ts

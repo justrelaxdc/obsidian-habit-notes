@@ -11,6 +11,7 @@ import { CHART_CONFIG, DATE_FORMATS, TrackerType } from "../constants";
 import { getThemeColors, colorToRgba } from "../utils/theme";
 import { formatDate, parseDate, addDays } from "../utils/date";
 import { countWords } from "../utils/misc";
+import { DateService } from "./date-service";
 
 /**
  * Service for managing Chart.js visualizations
@@ -27,26 +28,18 @@ export class ChartService {
     startTrackingDateStr: string | null,
     todayStr: string
   ): PreparedChartData {
-    const m = (window as any).moment;
     const { dateIso, daysToShow, metricType, minLimit, maxLimit, scaleMinValue, scaleMaxValue } = options;
     
     // Parse dates
-    let activeDate: any;
-    if (dateIso) {
-      activeDate = m ? m(dateIso, DATE_FORMATS.ISO) : parseDate(dateIso, DATE_FORMATS.ISO);
-    } else {
-      activeDate = m ? m() : new Date();
-    }
+    const activeDate = dateIso 
+      ? DateService.parse(dateIso, DATE_FORMATS.ISO)
+      : DateService.now();
     
     // Calculate date range (show some days ahead)
-    const endDate = m 
-      ? m(activeDate).clone().add(CHART_CONFIG.FUTURE_DAYS_OFFSET, 'days') 
-      : addDays(new Date(activeDate.getTime()), CHART_CONFIG.FUTURE_DAYS_OFFSET);
-    const startDate = m 
-      ? m(endDate).subtract(daysToShow - 1, 'days') 
-      : addDays(endDate, -(daysToShow - 1));
+    const endDate = activeDate.clone().add(CHART_CONFIG.FUTURE_DAYS_OFFSET, 'days');
+    const startDate = endDate.clone().subtract(daysToShow - 1, 'days');
     
-    const activeDateStr = m ? activeDate.format(settings.dateFormat) : formatDate(activeDate, settings.dateFormat);
+    const activeDateStr = DateService.format(activeDate, settings.dateFormat);
     
     // Get theme colors
     const colors = getThemeColors();
@@ -64,10 +57,8 @@ export class ChartService {
     let activeDateIndex: number | null = null;
     
     for (let i = 0; i < daysToShow; i++) {
-      const date = m 
-        ? m(startDate).clone().add(i, 'days') 
-        : addDays(new Date(startDate.getTime()), i);
-      const dateStr = m ? date.format(settings.dateFormat) : formatDate(date, settings.dateFormat);
+      const date = startDate.clone().add(i, 'days');
+      const dateStr = DateService.format(date, settings.dateFormat);
       
       // Track special indices
       if (dateStr === startTrackingDateStr) {
@@ -79,11 +70,12 @@ export class ChartService {
       
       // Format label
       let label = '';
+      const m = (window as any).moment;
       if (m) {
-        label = m(date).format(DATE_FORMATS.DISPLAY_SHORT);
+        label = m(date.toDate()).format(DATE_FORMATS.DISPLAY_SHORT);
       } else {
         const day = date.getDate();
-        const month = date.toLocaleDateString("ru", { month: "short" });
+        const month = date.toDate().toLocaleDateString("ru", { month: "short" });
         label = `${day} ${month}`;
       }
       labels.push(label);
