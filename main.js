@@ -26,7 +26,7 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 
 // src/core/tracker-plugin.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // node_modules/@kurkle/color/dist/color.esm.js
 function round(v) {
@@ -15026,7 +15026,13 @@ var STATS_LABELS = {
   DAYS_SINGULAR: "\u0434\u0435\u043D\u044C",
   DAYS_PLURAL_2_4: "\u0434\u043D\u044F",
   DAYS_PLURAL_5_PLUS: "\u0434\u043D\u0435\u0439",
-  AVERAGE: "\u0441\u0440\u0435\u0434\u043D\u0435\u0435"
+  AVERAGE: "\u0441\u0440\u0435\u0434\u043D\u0435\u0435",
+  MIN: "\u041C\u0438\u043D",
+  MAX: "\u041C\u0430\u043A\u0441",
+  MEDIAN: "\u041C\u0435\u0434\u0438\u0430\u043D\u0430",
+  COMPLETION_RATE: "\u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E",
+  ACTIVE_DAYS: "\u0410\u043A\u0442\u0438\u0432\u043D\u044B\u0445 \u0434\u043D\u0435\u0439",
+  BEST_STREAK: "\u041B\u0443\u0447\u0448\u0438\u0439 \u0441\u0442\u0440\u0438\u043A"
 };
 
 // src/ui/tracker-block-render-child.ts
@@ -15223,7 +15229,17 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
       const folderHeader = nodeContainer.createDiv({
         cls: `tracker-notes__folder-header level-${node.level}`
       });
-      const folderNameEl = folderHeader.createSpan({ text: removePrefix(node.name) });
+      console.log("[TrackerBlock] Rendering folder:", node.name, "path:", node.path);
+      const folderNameEl = folderHeader.createSpan();
+      const folderIcon = this.plugin.getIconForPath(node.path, false);
+      console.log("[TrackerBlock] Folder icon result:", folderIcon);
+      if (folderIcon) {
+        console.log("[TrackerBlock] Rendering folder icon");
+        this.plugin.renderIcon(folderIcon, folderNameEl);
+      } else {
+        console.log("[TrackerBlock] No folder icon found");
+      }
+      folderNameEl.createSpan({ text: removePrefix(node.name) });
       const orderBtnsContainer = folderHeader.createDiv({ cls: CSS_CLASSES.ORDER_BTN_CONTAINER });
       const upButton = orderBtnsContainer.createEl("button", {
         text: "\u2191",
@@ -15632,6 +15648,50 @@ ${newFrontmatter}---${body}`;
       daysChecked++;
     }
     return streak;
+  }
+  calculateBestStreak(entries, settings, trackerType, file) {
+    const metricType = (trackerType || "good-habit").toLowerCase();
+    const isBadHabit = metricType === "bad-habit";
+    if (entries.size === 0) return 0;
+    let startTrackingDate = null;
+    if (file?.stat?.ctime) {
+      startTrackingDate = DateService.startOfDay(DateService.fromDate(new Date(file.stat.ctime)));
+    }
+    const sortedDates = Array.from(entries.keys()).sort();
+    const firstDateStr = sortedDates[0];
+    const firstDate = DateService.parse(firstDateStr, settings.dateFormat);
+    if (!startTrackingDate || DateService.isBefore(firstDate, startTrackingDate)) {
+      startTrackingDate = firstDate;
+    }
+    const today = DateService.now();
+    let currentDate = DateService.startOfDay(today);
+    let bestStreak = 0;
+    let currentStreak = 0;
+    let daysChecked = 0;
+    while (!DateService.isBefore(currentDate, startTrackingDate) && daysChecked < MAX_DAYS_BACK) {
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
+      const val = entries.get(dateStr);
+      let isSuccess = false;
+      if (isBadHabit) {
+        if (val == null) {
+          isSuccess = true;
+        } else {
+          const hasValue = isTrackerValueTrue(val);
+          isSuccess = !hasValue;
+        }
+      } else if (val != null) {
+        isSuccess = isTrackerValueTrue(val);
+      }
+      if (isSuccess) {
+        currentStreak++;
+        bestStreak = Math.max(bestStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+      currentDate = currentDate.subtract(1, "day");
+      daysChecked++;
+    }
+    return bestStreak;
   }
 };
 
@@ -16422,7 +16482,7 @@ var FilePickerModal = class extends import_obsidian8.Modal {
 };
 
 // src/styles/tracker.css
-var tracker_default = '.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,\r\n.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }\r\n.tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }\r\n      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }\r\n      .tracker-notes__header-icon { font-size: 1.3em; }\r\n      .tracker-notes__header-label { }\r\n      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }\r\n      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }\r\n      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }\r\n      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__order-btns { display: flex; gap: 0.25em; align-items: center; flex-shrink: 0; }\r\n      .tracker-notes__order-btn-up, .tracker-notes__order-btn-down { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__order-btn-up:hover, .tracker-notes__order-btn-down:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__order-btn-up:active, .tracker-notes__order-btn-down:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__order-btn-up:disabled, .tracker-notes__order-btn-down:disabled { opacity: 0.3; cursor: not-allowed; }\r\n      .tracker-notes__order-btn-up:disabled:hover, .tracker-notes__order-btn-down:disabled:hover { background: var(--interactive-normal); border-color: var(--background-modifier-border); transform: none; box-shadow: none; }\r\n      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }\r\n      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes__value.updated { animation: pulse 0.3s ease; }\r\n      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }\r\n      .tracker-notes input { outline: none !important; }\r\n      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }\r\n      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }\r\n      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }\r\n      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; position: absolute; left: 0; top: 0; z-index: 3; }\r\n      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 4; white-space: nowrap; }\r\n      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }\r\n      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes button:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }\r\n      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__stats > div { margin: 0.3em 0; }\r\n      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }\r\n      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }\r\n      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }\r\n      .tracker-notes__calendar-day:hover { transform: scale(1.1); }\r\n      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }\r\n      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }\r\n      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }\r\n      .tracker-notes__loading { display: none; align-items: center; gap: 0.4em; font-size: 0.85em; color: var(--text-muted); margin-top: 0.3em; }\r\n      .tracker-notes__loading.is-active { display: flex; }\r\n      .tracker-notes__loading-dot { width: 0.8em; height: 0.8em; border-radius: 50%; border: 2px solid var(--interactive-accent); border-top-color: transparent; animation: tracker-loading-spin 0.8s linear infinite; }\r\n      @keyframes tracker-loading-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }\r\n      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }\r\n      .tracker-notes__date-input.is-updating { opacity: 0.65; cursor: progress; }\r\n      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }\r\n      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }\r\n      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }\r\n      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__heatmap { display: flex; flex-direction: row-reverse; gap: 0.3em; overflow-x: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; touch-action: pan-x pan-y; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }\r\n      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }\r\n      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }\r\n      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit.before-start { background: var(--background-modifier-border); color: var(--text-muted); }\r\n      .tracker-notes__heatmap-day.start-day { \r\n        flex-direction: column;\r\n        justify-content: center;\r\n        align-items: center;\r\n        line-height: 1;\r\n      }\r\n      .tracker-notes__heatmap-day.start-day::after {\r\n        content: "START";\r\n        font-size: 0.5em;\r\n        line-height: 1;\r\n        margin-top: 0.1em;\r\n        opacity: 0.7;\r\n        font-weight: 600;\r\n      }\r\n      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }\r\n      .tracker-notes__stats > div { transition: opacity 0.2s ease; }\r\n      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }\r\n      .tracker-notes__heatmap { transition: opacity 0.15s ease; }\r\n      .tracker-notes__chart { transition: opacity 0.15s ease; }\r\n      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }\r\n      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }\r\n      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }\r\n      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }\r\n      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }\r\n      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }\r\n      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      \r\n      /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */\r\n      @media (max-width: 768px) {\r\n        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }\r\n        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }\r\n        .tracker-notes__header-title { font-size: 1em; }\r\n        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }\r\n        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker-container { padding: 0; }\r\n        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }\r\n        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; flex-shrink: 0; }\r\n        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; min-width: 140px; max-width: 100%; flex-shrink: 0; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }\r\n        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }\r\n        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }\r\n        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }\r\n        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }\r\n        .tracker-notes__calendar-day { font-size: 0.65em; }\r\n        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }\r\n        .tracker-notes__chart canvas { height: 140px !important; }\r\n        .tracker-notes__hierarchy { gap: 1em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }\r\n        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }\r\n      }\r\n      \r\n      @media (max-width: 480px) {\r\n        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }\r\n        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }\r\n        .tracker-notes__header-title { font-size: 0.95em; }\r\n        .tracker-notes__trackers { gap: 0.4em; }\r\n        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker { gap: 0.25em; }\r\n        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; flex-shrink: 0; }\r\n        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; min-width: 120px; max-width: 100%; flex-shrink: 0; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }\r\n        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }\r\n        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }\r\n        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }\r\n        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }\r\n        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }\r\n        .tracker-notes__calendar-day { font-size: 0.6em; }\r\n        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }\r\n        .tracker-notes__chart canvas { height: 120px !important; }\r\n        .tracker-notes__hierarchy { gap: 0.75em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }\r\n      }\r\n      \r\n      /* Modal buttons (Delete and Save) */\r\n      .tracker-modal-buttons {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        margin-top: 1.5em;\r\n      }\r\n      \r\n      .tracker-modal-buttons button {\r\n        padding: 0.5em 1em;\r\n        border-radius: 5px;\r\n        cursor: pointer;\r\n        border: 1px solid var(--background-modifier-border);\r\n        transition: all 0.2s ease;\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning {\r\n        background: var(--interactive-normal);\r\n        color: var(--text-normal);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning:hover {\r\n        background: var(--text-error);\r\n        border-color: var(--text-error);\r\n        color: var(--text-on-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta {\r\n        background: var(--interactive-accent);\r\n        color: var(--text-on-accent);\r\n        border-color: var(--interactive-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta:hover {\r\n        background: var(--interactive-accent-hover);\r\n        border-color: var(--interactive-accent-hover);\r\n      }\r\n      \r\n      /* \u0421\u043A\u0440\u044B\u0442\u0438\u0435 \u043A\u043D\u043E\u043F\u043E\u043A \u0432 \u0440\u0435\u0436\u0438\u043C\u0435 \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430 */\r\n      .markdown-preview-view .tracker-notes__settings-btn,\r\n      .markdown-preview-view .tracker-notes__order-btns {\r\n        display: none !important;\r\n      }\r\n      \r\n      /* \u042F\u0432\u043D\u043E\u0435 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0432 \u0440\u0435\u0436\u0438\u043C\u0435 \u0440\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F */\r\n      .markdown-source-view .tracker-notes__settings-btn,\r\n      .markdown-source-view .tracker-notes__order-btns {\r\n        display: flex;\r\n      }\r\n      \r\n      /* Limit indicators - only error state */\r\n      .tracker-notes__limit-error {\r\n        border-color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Progress bar with limits */\r\n      .tracker-notes__progress-bar-progress.tracker-notes__limit-error {\r\n        background: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Number input with limits */\r\n      .tracker-notes input[type="number"].tracker-notes__limit-error {\r\n        border-color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Text input with limits */\r\n      .tracker-notes__text-input.tracker-notes__limit-error {\r\n        border-color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Value display with limits (for PLUSMINUS) */\r\n      .tracker-notes__value.tracker-notes__limit-error {\r\n        color: var(--text-error, #c00000) !important;\r\n      }';
+var tracker_default = '.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-habit:hover,\r\n.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-tracker:hover { box-shadow: none; cursor: default; }\r\n.tracker-notes { margin: 1em 0; padding: 1em; border-radius: 10px; background: var(--background-secondary); border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__header { display: flex; flex-direction: column; gap: 0.75em; margin: 1em 0; margin-bottom: 0.5em; box-sizing: border-box; align-items: center; }\r\n      .tracker-notes__header-title { display: flex; align-items: center; gap: 0.5em; font-weight: 700; font-size: 1.15em; color: var(--text-normal); }\r\n      .tracker-notes__header-icon { font-size: 1.3em; }\r\n      .tracker-notes__header-label { }\r\n      .tracker-notes__date-picker-container { width: 100%; display: flex; justify-content: center; }\r\n      .tracker-notes__trackers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1em; }\r\n      .tracker-notes__tracker { padding: 1em; border-radius: 8px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; box-sizing: border-box; max-width: 100%; overflow-x: hidden; }\r\n      .tracker-notes__tracker-header { margin-bottom: 0.75em; padding-bottom: 0.5em; border-bottom: 1px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__tracker-title { font-weight: 600; font-size: 1em; color: var(--text-normal); margin: 0; word-wrap: break-word; overflow-wrap: break-word; text-decoration: none !important; flex: 1; }\r\n      .tracker-notes__settings-btn { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; flex-grow: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__settings-btn:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__settings-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__order-btns { display: flex; gap: 0.25em; align-items: center; flex-shrink: 0; }\r\n      .tracker-notes__order-btn-up, .tracker-notes__order-btn-down { padding: 0em 0.4em 0.1em 0.4em !important; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; width: auto; min-width: 2em; max-width: 2.5em; height: 2em; display: flex; align-items: center; justify-content: center; opacity: 0.7; }\r\n      .tracker-notes__order-btn-up:hover, .tracker-notes__order-btn-down:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); opacity: 1; }\r\n      .tracker-notes__order-btn-up:active, .tracker-notes__order-btn-down:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__order-btn-up:disabled, .tracker-notes__order-btn-down:disabled { opacity: 0.3; cursor: not-allowed; }\r\n      .tracker-notes__order-btn-up:disabled:hover, .tracker-notes__order-btn-down:disabled:hover { background: var(--interactive-normal); border-color: var(--background-modifier-border); transform: none; box-shadow: none; }\r\n      .tracker-notes__row { display: flex; align-items: center; gap: 0.6em; padding: 0.4em 0; flex-wrap: wrap; }\r\n      .tracker-notes__value { min-width: 2.5em; text-align: center; font-weight: 600; font-size: 1em; color: var(--text-normal); transition: transform 0.2s ease; flex-shrink: 0; }\r\n      .tracker-notes__value.updated { animation: pulse 0.3s ease; }\r\n      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }\r\n      .tracker-notes input { outline: none !important; }\r\n      .tracker-notes input[type="number"] { width: 4.5em; min-width: 4.5em; max-width: 100%; padding: 0.4em 0.6em; border: 1px solid var(--background-modifier-border); border-radius: 5px; color: var(--text-normal); font-size: 0.9em; transition: border-color 0.2s ease; box-sizing: border-box; }\r\n      .tracker-notes input[type="number"]:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes input[type="range"], .tracker-notes__slider { flex: 1 1 auto; min-width: 0; height: 6px; border-radius: 3px; background: var(--background-modifier-border); outline: none; -webkit-appearance: none; cursor: pointer; }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb, .tracker-notes__slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-webkit-slider-thumb:hover, .tracker-notes__slider::-webkit-slider-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb, .tracker-notes__slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--interactive-accent); cursor: pointer; border: none; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\r\n      .tracker-notes input[type="range"]::-moz-range-thumb:hover, .tracker-notes__slider::-moz-range-thumb:hover { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\r\n      .tracker-notes__progress-bar-wrapper { display: inline; white-space: normal; width: 100%; }\r\n      .tracker-notes__progress-bar-input { height: var(--input-height, 2.5em); width: 100%; border-radius: var(--input-radius, 4px); border: var(--border-width, 1px) solid var(--background-modifier-border); position: relative; cursor: col-resize; background: var(--background-modifier-form-field, var(--background-secondary-alt)); user-select: none; box-sizing: border-box; outline: none; overflow: hidden; }\r\n      .tracker-notes__progress-bar-input:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-input:focus-visible { box-shadow: 0 0 0 3px var(--background-modifier-border-focus, var(--interactive-accent)); }\r\n      .tracker-notes__progress-bar-progress { height: 100%; background: var(--color-accent, var(--interactive-accent)); border-radius: var(--input-radius, 4px); pointer-events: none; position: absolute; left: 0; top: 0; z-index: 3; }\r\n      .tracker-notes__progress-bar-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--font-ui-small, 0.9em); font-weight: 600; color: var(--text-normal); pointer-events: none; z-index: 4; white-space: nowrap; }\r\n      .tracker-notes__progress-bar-label-left { position: absolute; top: 50%; transform: translate(0, -50%); left: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes__progress-bar-label-right { position: absolute; top: 50%; transform: translate(0, -50%); right: var(--size-4-2, 0.5em); font-size: var(--font-ui-small, 0.85em); color: var(--color-accent, var(--interactive-accent)); font-weight: 600; pointer-events: none; z-index: 1; }\r\n      .tracker-notes button { padding: 0.4em 0.8em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 0.9em; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }\r\n      .tracker-notes button:hover { background: var(--interactive-hover); border-color: var(--interactive-accent); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes button:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }\r\n      .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }\r\n      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__stats > div { margin: 0.3em 0; }\r\n      .tracker-notes__stats-section { margin: 0.5em 0; padding: 0.4em 0; border-bottom: 1px solid var(--background-modifier-border); }\r\n      .tracker-notes__stats-section:last-child { border-bottom: none; }\r\n      .tracker-notes__stats-item { margin: 0.25em 0; padding: 0.2em 0; }\r\n      .tracker-notes__stats-streak { font-size: 1em; }\r\n      .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }\r\n      .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }\r\n      .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }\r\n      .tracker-notes__calendar-day:hover { transform: scale(1.1); }\r\n      .tracker-notes__chart { margin-top: 0.75em; margin-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); padding-top: 0.75em; width: 100%; max-width: 100%; position: relative; height: 200px; box-sizing: border-box; overflow: hidden; }\r\n      .tracker-notes__chart canvas { max-width: 100% !important; height: 180px !important; }\r\n      .tracker-notes__date-picker { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; justify-content: center; }\r\n      .tracker-notes__loading { display: none; align-items: center; gap: 0.4em; font-size: 0.85em; color: var(--text-muted); margin-top: 0.3em; }\r\n      .tracker-notes__loading.is-active { display: flex; }\r\n      .tracker-notes__loading-dot { width: 0.8em; height: 0.8em; border-radius: 50%; border: 2px solid var(--interactive-accent); border-top-color: transparent; animation: tracker-loading-spin 0.8s linear infinite; }\r\n      @keyframes tracker-loading-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n      .tracker-notes__date-nav-btn { padding: 0.5em 0.75em; font-size: 1em; min-width: 2.5em; height: 2.5em; border: none; border-radius: var(--input-radius, 5px); background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; transition: all 0.2s ease; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }\r\n      .tracker-notes__date-nav-btn:hover { background: var(--interactive-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__date-nav-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__date-input { padding: 0.5em 0.75em; border: none !important; border-radius: var(--input-radius, 5px); background: var(--background-primary); color: var(--text-normal); font-size: 1em !important; transition: all 0.2s ease; height: 2.5em; width: 160px; box-sizing: border-box; font-weight: 600; text-align: center; flex-shrink: 0; }\r\n      .tracker-notes__date-input.is-updating { opacity: 0.65; cursor: progress; }\r\n      .tracker-notes__date-input:focus { outline: none !important; box-shadow: none !important; }\r\n      .tracker-notes__date-btn { padding: 0.5em 1em; font-size: 0.9em; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--interactive-accent); border-radius: var(--input-radius, 5px); background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); cursor: pointer; transition: all 0.2s ease; font-weight: 600; height: 2.5em; }\r\n      .tracker-notes__date-btn:hover { background: var(--interactive-accent-hover, var(--interactive-accent)); border-color: var(--interactive-accent-hover, var(--interactive-accent)); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }\r\n      .tracker-notes__date-btn:active { transform: scale(0.95) translateY(0); }\r\n      .tracker-notes__error { color: var(--text-on-accent, #ffffff); padding: 0.75em 1em; background: var(--text-error, #d32f2f); border: 1px solid var(--text-error, #d32f2f); border-radius: 5px; margin: 0.5em 0; font-size: 0.9em; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\r\n      .tracker-notes__success { color: var(--text-success, var(--text-normal)); padding: 0.4em 0.6em; background: var(--background-modifier-success, var(--background-modifier-border)); border-radius: 5px; margin: 0.4em 0; font-size: 0.85em; word-wrap: break-word; overflow-wrap: break-word; }\r\n      .tracker-notes__heatmap { display: flex; flex-direction: row-reverse; gap: 0.3em; overflow-x: auto; padding: 0.5em 0; margin-top: 0.5em; min-height: 2.5em; max-width: 100%; box-sizing: border-box; touch-action: pan-x pan-y; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar { height: 6px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-track { background: var(--background-modifier-border); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }\r\n      .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal); }\r\n      .tracker-notes__heatmap-day { aspect-ratio: 1; min-width: 2.5em; max-width: 3em; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.85em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: pointer; font-weight: 500; flex-shrink: 0; }\r\n      .tracker-notes__heatmap-day:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); filter: brightness(0.90); }\r\n      .tracker-notes__heatmap-day.has-value.good-habit { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.has-value.bad-habit { background: var(--text-error, var(--background-modifier-error)); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit:not(.has-value) { background: var(--interactive-accent); color: var(--text-on-accent, var(--text-normal)); }\r\n      .tracker-notes__heatmap-day.bad-habit.before-start { background: var(--background-modifier-border); color: var(--text-muted); }\r\n      .tracker-notes__heatmap-day.start-day { \r\n        flex-direction: column;\r\n        justify-content: center;\r\n        align-items: center;\r\n        line-height: 1;\r\n      }\r\n      .tracker-notes__heatmap-day.start-day::after {\r\n        content: "START";\r\n        font-size: 0.5em;\r\n        line-height: 1;\r\n        margin-top: 0.1em;\r\n        opacity: 0.7;\r\n        font-weight: 600;\r\n      }\r\n      .tracker-notes__calendar-day.start-day { position: relative; box-shadow: 0 0 0 2px var(--text-accent, var(--interactive-accent)) !important; opacity: 0.9; }\r\n      .tracker-notes__stats > div { transition: opacity 0.2s ease; }\r\n      .tracker-notes__calendar-day { transition: background-color 0.2s ease, color 0.2s ease; }\r\n      .tracker-notes__heatmap { transition: opacity 0.15s ease; }\r\n      .tracker-notes__chart { transition: opacity 0.15s ease; }\r\n      .tracker-notes__hierarchy { display: flex; flex-direction: column; gap: 1.5em; }\r\n      .tracker-notes__folder-node { display: flex; flex-direction: column; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-0 { padding-left: 0; margin-bottom: 1.5em; }\r\n      .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 1em; margin-bottom: 1.25em; }\r\n      .tracker-notes__folder-node.level-2 { padding-left: 1em; margin-top: 0.75em; margin-bottom: 1em; }\r\n      .tracker-notes__folder-node.level-3 { padding-left: 0.5em; margin-top: 0.5em; margin-bottom: 0.75em; }\r\n      .tracker-notes__folder-header { font-weight: 700; color: var(--text-normal); margin-bottom: 0.75em; margin-top: 0.5em; padding-bottom: 0.5em; border-bottom: 2px solid var(--background-modifier-border); display: flex; align-items: center; justify-content: space-between; gap: 0.5em; }\r\n      .tracker-notes__folder-header.level-0 { font-size: 1.4em; margin-top: 0; }\r\n      .tracker-notes__folder-header.level-1 { font-size: 1.35em; margin-top: 0.25em; }\r\n      .tracker-notes__folder-header.level-2 { font-size: 1.15em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      .tracker-notes__folder-header.level-3 { font-size: 1em; margin-top: 0.25em; border-bottom: 1px solid var(--background-modifier-border); }\r\n      \r\n      /* \u041C\u0435\u0434\u0438\u0430-\u0437\u0430\u043F\u0440\u043E\u0441\u044B \u0434\u043B\u044F \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432 */\r\n      @media (max-width: 768px) {\r\n        .tracker-notes { padding: 0.5em; margin: 0.5em 0; border-radius: 8px; }\r\n        .tracker-notes__header { margin: 0.5em 0; margin-bottom: 0.25em; gap: 0.5em; }\r\n        .tracker-notes__header-title { font-size: 1em; }\r\n        .tracker-notes__trackers { grid-template-columns: 1fr !important; gap: 0.5em; }\r\n        .tracker-notes__tracker { padding: 0.5em; border-radius: 6px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.5em; padding-bottom: 0.4em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.9em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker-container { padding: 0; }\r\n        .tracker-notes__date-picker { gap: 0.3em; flex-wrap: wrap; }\r\n        .tracker-notes__date-nav-btn { padding: 0.4em 0.6em; font-size: 0.9em; min-width: 2em; height: 2.2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; flex-shrink: 0; }\r\n        .tracker-notes__date-input { padding: 0.4em 0.6em; font-size: 0.9em !important; height: 2.2em; min-width: 140px; max-width: 100%; flex-shrink: 0; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.4em; padding: 0.3em 0; }\r\n        .tracker-notes__value { font-size: 0.9em; min-width: 2em; }\r\n        .tracker-notes input[type="number"] { width: 100%; padding: 0.3em 0.5em; font-size: 0.85em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }\r\n        .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.5em; max-width: 2.8em; font-size: 0.8em; }\r\n        .tracker-notes__calendar { gap: 0.15em; margin-top: 0.5em; }\r\n        .tracker-notes__calendar-day { font-size: 0.65em; }\r\n        .tracker-notes__chart { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; height: 160px; }\r\n        .tracker-notes__chart canvas { height: 140px !important; }\r\n        .tracker-notes__hierarchy { gap: 1em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 1em; }\r\n        .tracker-notes__folder-node.level-1 { padding-left: 0; margin-top: 0.75em; margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-2 { padding-left: 0; margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-3 { padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.5em; margin-top: 0.25em; padding-bottom: 0.4em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.15em; margin-top: 0; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1.1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.95em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.9em; }\r\n      }\r\n      \r\n      @media (max-width: 480px) {\r\n        .tracker-notes { padding: 0.4em; margin: 0.4em 0; border-radius: 6px; }\r\n        .tracker-notes__header { margin: 0.4em 0; margin-bottom: 0.2em; gap: 0.4em; }\r\n        .tracker-notes__header-title { font-size: 0.95em; }\r\n        .tracker-notes__trackers { gap: 0.4em; }\r\n        .tracker-notes__tracker { padding: 0.4em; border-radius: 5px; }\r\n        .tracker-notes__tracker-header { margin-bottom: 0.4em; padding-bottom: 0.3em; overflow: hidden; }\r\n        .tracker-notes__tracker-title { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\r\n        .tracker-notes__settings-btn { flex-shrink: 0; flex-grow: 0; width: 2em; min-width: 2em; max-width: 2em; height: 2em; padding: 0 !important; display: flex; align-items: center; justify-content: center; }\r\n        .tracker-notes__date-picker { gap: 0.25em; }\r\n        .tracker-notes__date-nav-btn { padding: 0.35em 0.5em; font-size: 0.85em; min-width: 1.8em; height: 2em; background: var(--interactive-normal) !important; border: none !important; color: var(--text-normal) !important; flex-shrink: 0; }\r\n        .tracker-notes__date-input { padding: 0.35em 0.5em; font-size: 0.85em !important; height: 2em; min-width: 120px; max-width: 100%; flex-shrink: 0; background: var(--background-primary) !important; border: none !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__row { gap: 0.3em; padding: 0.25em 0; }\r\n        .tracker-notes__value { font-size: 0.85em; min-width: 1.8em; }\r\n        .tracker-notes input[type="number"] { padding: 0.25em 0.4em; font-size: 0.8em; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r\n        .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }\r\n        .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb { background: var(--text-muted) !important; border-radius: 2px !important; opacity: 0.5 !important; }\r\n        .tracker-notes__heatmap::-webkit-scrollbar-thumb:hover { background: var(--text-normal) !important; opacity: 0.8 !important; }\r\n        .tracker-notes__heatmap-day { min-width: 2.8em; max-width: 3em; font-size: 0.85em; }\r\n        .tracker-notes__heatmap-day.start-day::after { font-size: 0.4em; }\r\n        .tracker-notes__calendar { gap: 0.1em; margin-top: 0.4em; }\r\n        .tracker-notes__calendar-day { font-size: 0.6em; }\r\n        .tracker-notes__chart { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; height: 140px; }\r\n        .tracker-notes__chart canvas { height: 120px !important; }\r\n        .tracker-notes__hierarchy { gap: 0.75em; }\r\n        .tracker-notes__folder-node { margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-0 { margin-bottom: 0.75em; }\r\n        .tracker-notes__folder-node.level-1 { margin-top: 0.5em; margin-bottom: 0.5em; }\r\n        .tracker-notes__folder-node.level-2 { margin-top: 0.4em; margin-bottom: 0.4em; }\r\n        .tracker-notes__folder-node.level-3 { margin-top: 0.3em; margin-bottom: 0.3em; }\r\n        .tracker-notes__folder-header { margin-bottom: 0.4em; margin-top: 0.2em; padding-bottom: 0.3em; }\r\n        .tracker-notes__folder-header.level-0 { font-size: 1.05em; }\r\n        .tracker-notes__folder-header.level-1 { font-size: 1em; }\r\n        .tracker-notes__folder-header.level-2 { font-size: 0.9em; }\r\n        .tracker-notes__folder-header.level-3 { font-size: 0.85em; }\r\n      }\r\n      \r\n      /* Modal buttons (Delete and Save) */\r\n      .tracker-modal-buttons {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        margin-top: 1.5em;\r\n      }\r\n      \r\n      .tracker-modal-buttons button {\r\n        padding: 0.5em 1em;\r\n        border-radius: 5px;\r\n        cursor: pointer;\r\n        border: 1px solid var(--background-modifier-border);\r\n        transition: all 0.2s ease;\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning {\r\n        background: var(--interactive-normal);\r\n        color: var(--text-normal);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-warning:hover {\r\n        background: var(--text-error);\r\n        border-color: var(--text-error);\r\n        color: var(--text-on-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta {\r\n        background: var(--interactive-accent);\r\n        color: var(--text-on-accent);\r\n        border-color: var(--interactive-accent);\r\n      }\r\n      \r\n      .tracker-modal-buttons button.mod-cta:hover {\r\n        background: var(--interactive-accent-hover);\r\n        border-color: var(--interactive-accent-hover);\r\n      }\r\n      \r\n      /* \u0421\u043A\u0440\u044B\u0442\u0438\u0435 \u043A\u043D\u043E\u043F\u043E\u043A \u0432 \u0440\u0435\u0436\u0438\u043C\u0435 \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430 */\r\n      .markdown-preview-view .tracker-notes__settings-btn,\r\n      .markdown-preview-view .tracker-notes__order-btns {\r\n        display: none !important;\r\n      }\r\n      \r\n      /* \u042F\u0432\u043D\u043E\u0435 \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0432 \u0440\u0435\u0436\u0438\u043C\u0435 \u0440\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F */\r\n      .markdown-source-view .tracker-notes__settings-btn,\r\n      .markdown-source-view .tracker-notes__order-btns {\r\n        display: flex;\r\n      }\r\n      \r\n      /* Limit indicators - only error state */\r\n      .tracker-notes__limit-error {\r\n        border-color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Progress bar with limits */\r\n      .tracker-notes__progress-bar-progress.tracker-notes__limit-error {\r\n        background: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Number input with limits */\r\n      .tracker-notes input[type="number"].tracker-notes__limit-error {\r\n        border-color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Text input with limits */\r\n      .tracker-notes__text-input.tracker-notes__limit-error {\r\n        border-color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Value display with limits (for PLUSMINUS) */\r\n      .tracker-notes__value.tracker-notes__limit-error {\r\n        color: var(--text-error, #c00000) !important;\r\n      }\r\n      \r\n      /* Iconize integration styles */\r\n      .tracker-notes__folder-header .iconize-icon,\r\n      .tracker-notes__tracker-title .iconize-icon {\r\n        display: inline-block;\r\n        vertical-align: middle;\r\n        line-height: 1;\r\n      }\r\n      \r\n      .tracker-notes__folder-header .lucide-icon,\r\n      .tracker-notes__tracker-title .lucide-icon {\r\n        /* Iconize will handle Lucide icon rendering via its own CSS */\r\n        /* This is a fallback for when Iconize CSS is not loaded */\r\n        font-size: 0.9em;\r\n        opacity: 0.8;\r\n      }';
 
 // src/services/heatmap-service.ts
 var HeatmapService = class {
@@ -16996,7 +17056,7 @@ var ControlsRenderer = class {
 
 // src/services/tracker-renderer.ts
 var TrackerRenderer = class {
-  constructor(settings, getFileTypeFromFrontmatter, readValueForDate, controlsRenderer, renderChart, renderStats, isMobileDevice, onEditTracker, onMoveTrackerUp, onMoveTrackerDown) {
+  constructor(settings, getFileTypeFromFrontmatter, readValueForDate, controlsRenderer, renderChart, renderStats, isMobileDevice, onEditTracker, onMoveTrackerUp, onMoveTrackerDown, getIconForPath, renderIcon) {
     this.settings = settings;
     this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
     this.readValueForDate = readValueForDate;
@@ -17007,6 +17067,8 @@ var TrackerRenderer = class {
     this.onEditTracker = onEditTracker;
     this.onMoveTrackerUp = onMoveTrackerUp;
     this.onMoveTrackerDown = onMoveTrackerDown;
+    this.getIconForPath = getIconForPath;
+    this.renderIcon = renderIcon;
   }
   /**
    * Renders a tracker item
@@ -17035,9 +17097,19 @@ var TrackerRenderer = class {
     const baseName = removePrefix(file.basename);
     const unit = fileOpts.unit || "";
     const displayName = unit ? `${baseName} (${unit})` : baseName;
-    const titleLink = header.createEl("a", {
+    console.log("[TrackerRenderer] Rendering tracker:", file.basename, "path:", file.path);
+    const titleContainer = header.createDiv({ cls: CSS_CLASSES.TRACKER_TITLE });
+    const trackerIcon = this.getIconForPath?.(file.path, true);
+    console.log("[TrackerRenderer] Tracker icon result:", trackerIcon, "has renderIcon:", !!this.renderIcon);
+    if (trackerIcon && this.renderIcon) {
+      console.log("[TrackerRenderer] Rendering tracker icon");
+      this.renderIcon(trackerIcon, titleContainer);
+    } else {
+      console.log("[TrackerRenderer] No tracker icon found or renderIcon not available");
+    }
+    const titleLink = titleContainer.createEl("a", {
       text: displayName,
-      cls: `${CSS_CLASSES.TRACKER_TITLE} internal-link`,
+      cls: "internal-link",
       href: file.path
     });
     titleLink.setAttribute("data-href", file.path);
@@ -17116,14 +17188,28 @@ var VisualizationService = class {
   /**
    * Calculates statistics for a tracker
    */
-  calculateStats(entries, settings, dateIso, daysToShow, trackerType) {
+  calculateStats(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
     const endDate = DateService.parse(dateIso, settings.dateFormat);
     const startDate = endDate.clone().subtract(daysToShow - 1, "days");
+    let actualStartDate = startDate;
+    if (startTrackingDateStr) {
+      const trackingStartDate = DateService.parseMultiple(startTrackingDateStr, [
+        settings.dateFormat,
+        "YYYY-MM-DD",
+        "YYYY/MM/DD",
+        "DD.MM.YYYY"
+      ]);
+      if (trackingStartDate.isValid() && DateService.isAfter(trackingStartDate, startDate)) {
+        actualStartDate = trackingStartDate;
+      }
+    }
     const periodDays = [];
     const metricType = trackerType.toLowerCase();
-    for (let i = 0; i < daysToShow; i++) {
-      const date = startDate.clone().add(i, "days");
-      const dateStr = DateService.format(date, settings.dateFormat);
+    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
+    let actualDaysCount = 0;
+    let currentDate = actualStartDate.clone();
+    while (!DateService.isAfter(currentDate, endDate)) {
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
       const val = entries.get(dateStr);
       let numVal = 0;
       if (val != null) {
@@ -17141,42 +17227,117 @@ var VisualizationService = class {
         numVal = numVal === 1 ? 0 : 1;
       }
       periodDays.push(numVal);
+      actualDaysCount++;
+      currentDate = currentDate.add(1, "days");
     }
     const sum = periodDays.reduce((a, b) => a + b, 0);
-    const avg = sum / daysToShow;
+    const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
     const total = entries.size;
-    return { total, sum, avg, periodDays };
+    let min = null;
+    let max = null;
+    let median = null;
+    let completionRate = null;
+    let activeDays = 0;
+    if (isHabit) {
+      activeDays = periodDays.filter((v) => v > 0).length;
+      completionRate = actualDaysCount > 0 ? activeDays / actualDaysCount * 100 : 0;
+    } else {
+      const nonZeroValues = periodDays.filter((v) => v > 0);
+      if (periodDays.length > 0) {
+        const sortedValues = [...periodDays].sort((a, b) => a - b);
+        min = sortedValues[0];
+        max = sortedValues[sortedValues.length - 1];
+        const mid = Math.floor(sortedValues.length / 2);
+        if (sortedValues.length % 2 === 0) {
+          median = (sortedValues[mid - 1] + sortedValues[mid]) / 2;
+        } else {
+          median = sortedValues[mid];
+        }
+      }
+      activeDays = nonZeroValues.length;
+    }
+    return { total, sum, avg, periodDays, min, max, median, completionRate, activeDays, actualDaysCount };
   }
   /**
    * Updates statistics DOM element
    */
-  updateStatsDisplay(statsDiv, stats, currentStreak, daysToShow) {
-    const children = Array.from(statsDiv.children);
-    if (children.length >= 1) {
-      children[0].textContent = `${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}`;
+  updateStatsDisplay(statsDiv, stats, currentStreak, daysToShow, trackerType, fileOpts, bestStreak) {
+    statsDiv.empty();
+    const metricType = trackerType.toLowerCase();
+    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
+    const unit = fileOpts?.unit || "";
+    const unitSuffix = unit ? ` ${unit}` : "";
+    const formatValue = (value, decimals = 1) => {
+      return `${value.toFixed(decimals)}${unitSuffix}`;
+    };
+    const getCompletionColor = (rate) => {
+      if (rate >= 80) return "var(--text-success, var(--text-normal))";
+      if (rate >= 50) return "var(--text-warning, var(--text-normal))";
+      return "var(--text-error, var(--text-normal))";
+    };
+    const generalSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
+    generalSection.createEl("div", {
+      text: `\u{1F4CA} ${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}`,
+      cls: "tracker-notes__stats-item"
+    });
+    const periodSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
+    if (isHabit) {
+      if (stats.completionRate !== null) {
+        const completionEl = periodSection.createEl("div", {
+          cls: "tracker-notes__stats-item"
+        });
+        const rate = Math.round(stats.completionRate);
+        completionEl.createSpan({ text: `\u2705 ${STATS_LABELS.COMPLETION_RATE}: ` });
+        const rateSpan = completionEl.createSpan({ text: `${rate}%` });
+        rateSpan.style.color = getCompletionColor(rate);
+        rateSpan.style.fontWeight = "600";
+        completionEl.createSpan({ text: ` (${stats.activeDays}/${stats.actualDaysCount})` });
+      }
+      periodSection.createEl("div", {
+        text: `\u{1F4C5} ${STATS_LABELS.ACTIVE_DAYS}: ${stats.activeDays}/${stats.actualDaysCount}`,
+        cls: "tracker-notes__stats-item"
+      });
     } else {
-      statsDiv.createEl("div", { text: `${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}` });
+      const daysLabel = stats.actualDaysCount === 1 ? STATS_LABELS.DAYS_SINGULAR : stats.actualDaysCount < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
+      periodSection.createEl("div", {
+        text: `\u{1F4C8} ${STATS_LABELS.LAST_DAYS} ${stats.actualDaysCount} ${daysLabel}: ${formatValue(stats.sum)}`,
+        cls: "tracker-notes__stats-item"
+      });
+      periodSection.createEl("div", {
+        text: `\u{1F4CA} ${STATS_LABELS.AVERAGE}: ${formatValue(stats.avg)}`,
+        cls: "tracker-notes__stats-item"
+      });
+      if (stats.min !== null && stats.max !== null) {
+        periodSection.createEl("div", {
+          text: `\u{1F4C9} ${STATS_LABELS.MIN}: ${formatValue(stats.min)} | ${STATS_LABELS.MAX}: ${formatValue(stats.max)}`,
+          cls: "tracker-notes__stats-item"
+        });
+      }
+      if (stats.median !== null) {
+        periodSection.createEl("div", {
+          text: `\u{1F4CA} ${STATS_LABELS.MEDIAN}: ${formatValue(stats.median)}`,
+          cls: "tracker-notes__stats-item"
+        });
+      }
     }
-    if (children.length >= 2) {
-      children[1].textContent = `${STATS_LABELS.LAST_DAYS} ${daysToShow} ${STATS_LABELS.DAYS_PLURAL_5_PLUS}: ${stats.sum.toFixed(1)} (${STATS_LABELS.AVERAGE}: ${stats.avg.toFixed(1)})`;
-    } else {
-      statsDiv.createEl("div", { text: `${STATS_LABELS.LAST_DAYS} ${daysToShow} ${STATS_LABELS.DAYS_PLURAL_5_PLUS}: ${stats.sum.toFixed(1)} (${STATS_LABELS.AVERAGE}: ${stats.avg.toFixed(1)})` });
-    }
-    if (currentStreak > 0) {
-      const daysLabel = currentStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : currentStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
-      const streakText = `\u{1F525} ${STATS_LABELS.CURRENT_STREAK}: ${currentStreak} ${daysLabel}`;
-      if (children.length >= 3) {
-        const streakEl = children[2];
-        streakEl.textContent = streakText;
-        streakEl.style.color = "var(--interactive-accent)";
-        streakEl.style.fontWeight = UI_CONSTANTS.FONT_WEIGHT_BOLD;
-      } else {
-        const streakEl = statsDiv.createEl("div", { text: streakText });
+    if (currentStreak > 0 || bestStreak) {
+      const recordsSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
+      if (currentStreak > 0) {
+        const daysLabel = currentStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : currentStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
+        const streakEl = recordsSection.createEl("div", {
+          text: `\u{1F525} ${STATS_LABELS.CURRENT_STREAK}: ${currentStreak} ${daysLabel}`,
+          cls: "tracker-notes__stats-item tracker-notes__stats-streak"
+        });
         streakEl.style.color = "var(--interactive-accent)";
         streakEl.style.fontWeight = UI_CONSTANTS.FONT_WEIGHT_BOLD;
       }
-    } else if (children.length >= 3) {
-      children[2].remove();
+      if (bestStreak && bestStreak > currentStreak) {
+        const bestDaysLabel = bestStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : bestStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
+        recordsSection.createEl("div", {
+          text: `\u2B50 ${STATS_LABELS.BEST_STREAK}: ${bestStreak} ${bestDaysLabel}`,
+          cls: "tracker-notes__stats-item"
+        });
+      }
     }
   }
   /**
@@ -17244,6 +17405,132 @@ var TrackerOrderService = class {
   }
 };
 
+// src/services/iconize-service.ts
+var import_obsidian9 = require("obsidian");
+var IconizeService = class {
+  constructor(app) {
+    this.app = app;
+    this.iconData = null;
+    this.dataLoaded = false;
+  }
+  /**
+   * Loads icon data from Iconize plugin data file
+   */
+  async loadIconizeData() {
+    if (this.dataLoaded) {
+      console.log("[Iconize] Data already loaded");
+      return;
+    }
+    const configDir = this.app.vault.configDir || ".obsidian";
+    console.log("[Iconize] Config dir:", configDir);
+    try {
+      const relativePath = (0, import_obsidian9.normalizePath)(`${configDir}/plugins/obsidian-icon-folder/data.json`);
+      console.log("[Iconize] Relative path from vault root:", relativePath);
+      try {
+        console.log("[Iconize] Attempting to read file at relative path:", relativePath);
+        const content = await this.app.vault.adapter.read(relativePath);
+        this.iconData = JSON.parse(content);
+        this.dataLoaded = true;
+        const iconCount = Object.keys(this.iconData).filter((k) => k !== "settings").length;
+        console.log("[Iconize] Data loaded successfully, icons count:", iconCount);
+        console.log("[Iconize] Sample paths:", Object.keys(this.iconData).slice(0, 5));
+      } catch (readError) {
+        console.log("[Iconize] File not found or can't be read:", readError);
+        console.log("[Iconize] Tried path:", relativePath);
+        this.iconData = null;
+        this.dataLoaded = true;
+      }
+    } catch (error) {
+      console.error("[Iconize] Error loading data:", error);
+      this.iconData = null;
+      this.dataLoaded = true;
+    }
+  }
+  /**
+   * Gets icon for a given path (file or folder)
+   * Only returns icon if it's explicitly set for this path - no inheritance from parent folders
+   * @param path - Path to file or folder
+   * @param isFile - Whether the path is a file (true) or folder (false) - not used anymore but kept for compatibility
+   * @returns Icon string (emoji or Lucide icon name) or null if not found
+   */
+  getIcon(path, isFile = false) {
+    console.log("[Iconize] getIcon called for path:", path, "isFile:", isFile);
+    if (!this.iconData) {
+      console.log("[Iconize] No icon data available");
+      return null;
+    }
+    const normalizedPath = this.normalizePath(path);
+    console.log("[Iconize] Normalized path:", normalizedPath);
+    if (this.iconData[normalizedPath]) {
+      console.log("[Iconize] Found exact match:", this.iconData[normalizedPath]);
+      return this.iconData[normalizedPath];
+    }
+    const pathWithSlash = `/${normalizedPath}`;
+    if (this.iconData[pathWithSlash]) {
+      console.log("[Iconize] Found match with leading slash:", this.iconData[pathWithSlash]);
+      return this.iconData[pathWithSlash];
+    }
+    if (normalizedPath.endsWith(".md")) {
+      const pathWithoutExt = normalizedPath.slice(0, -3);
+      console.log("[Iconize] Trying without extension:", pathWithoutExt);
+      if (this.iconData[pathWithoutExt]) {
+        console.log("[Iconize] Found match without extension:", this.iconData[pathWithoutExt]);
+        return this.iconData[pathWithoutExt];
+      }
+      if (this.iconData[`/${pathWithoutExt}`]) {
+        console.log("[Iconize] Found match without extension (with slash):", this.iconData[`/${pathWithoutExt}`]);
+        return this.iconData[`/${pathWithoutExt}`];
+      }
+    }
+    console.log("[Iconize] No icon found for path:", path);
+    return null;
+  }
+  /**
+   * Normalizes path for Iconize format
+   */
+  normalizePath(path) {
+    if (!path) return "";
+    return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
+  }
+  /**
+   * Renders icon in a container element
+   * @param icon - Icon string (emoji or Lucide icon name)
+   * @param container - Container element to render icon in
+   */
+  renderIcon(icon, container) {
+    console.log("[Iconize] renderIcon called with icon:", icon, "container:", container);
+    if (!icon) {
+      console.log("[Iconize] No icon provided, skipping render");
+      return;
+    }
+    if (icon.startsWith("Li")) {
+      console.log("[Iconize] Rendering Lucide icon:", icon);
+      const iconSpan = container.createSpan({
+        cls: "iconize-icon lucide-icon",
+        attr: {
+          "data-icon": icon,
+          "aria-label": icon
+        }
+      });
+      iconSpan.style.marginRight = "0.3em";
+      iconSpan.style.display = "inline-block";
+      console.log("[Iconize] Lucide icon span created:", iconSpan);
+    } else {
+      console.log("[Iconize] Rendering emoji icon:", icon);
+      const emojiSpan = container.createSpan({ text: icon });
+      emojiSpan.style.marginRight = "0.3em";
+      console.log("[Iconize] Emoji span created:", emojiSpan);
+    }
+  }
+  /**
+   * Invalidates cached data (useful if Iconize data changes)
+   */
+  invalidateCache() {
+    this.dataLoaded = false;
+    this.iconData = null;
+  }
+};
+
 // src/utils/theme.ts
 function getCSSVar(varName, fallback = "#000000") {
   const root = document.body || document.documentElement;
@@ -17299,7 +17586,7 @@ function colorToRgba(color2, alpha2) {
 
 // src/core/tracker-plugin.ts
 Chart.register(...registerables);
-var TrackerPlugin = class extends import_obsidian9.Plugin {
+var TrackerPlugin = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
     this.activeBlocks = /* @__PURE__ */ new Set();
@@ -17314,6 +17601,10 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     this.trackerFileService = new TrackerFileService(this.app);
     this.visualizationService = new VisualizationService();
     this.trackerOrderService = new TrackerOrderService(this.app);
+    this.iconizeService = new IconizeService(this.app);
+    this.iconizeService.loadIconizeData().catch((err) => {
+      console.debug("Tracker: Failed to load Iconize data", err);
+    });
     this.heatmapService = new HeatmapService(
       this.settings,
       (file) => this.readAllEntries(file),
@@ -17345,7 +17636,9 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       () => this.isMobileDevice(),
       (file) => this.editTracker(file),
       (file) => this.moveTrackerUp(file),
-      (file) => this.moveTrackerDown(file)
+      (file) => this.moveTrackerDown(file),
+      (path, isFile) => this.getIconForPath(path, isFile),
+      (icon, container) => this.renderIcon(icon, container)
     );
     this.addStyleSheet();
     this.addSettingTab(new TrackerSettingsTab(this.app, this));
@@ -17486,7 +17779,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
                 const trackerPath = tracker.dataset.filePath;
                 if (!trackerPath) continue;
                 const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
-                if (trackerFile instanceof import_obsidian9.TFile) {
+                if (trackerFile instanceof import_obsidian10.TFile) {
                   if (trackerFile.basename.localeCompare(newBasename, void 0, { sensitivity: "base" }) > 0) {
                     correctInsertBefore = tracker;
                     break;
@@ -18170,15 +18463,18 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     const endDate = dateIso ? DateService.parse(dateIso, "YYYY-MM-DD") : DateService.now();
     const days = daysToShow || this.settings.daysToShow;
     const dateIsoFormatted = DateService.format(endDate, this.settings.dateFormat);
+    const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
     const stats = this.visualizationService.calculateStats(
       entriesToUse,
       this.settings,
       dateIsoFormatted,
       days,
-      metricType
+      metricType,
+      startTrackingDateStr
     );
     const currentStreak = this.calculateStreak(entriesToUse, endDate, metricType, file);
-    this.visualizationService.updateStatsDisplay(statsDiv, stats, currentStreak, days);
+    const bestStreak = this.calculateBestStreak(entriesToUse, metricType, file);
+    this.visualizationService.updateStatsDisplay(statsDiv, stats, currentStreak, days, metricType, fileOpts, bestStreak);
   }
   async renderStats(container, file, dateIso, daysToShow, trackerType, entries) {
     const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
@@ -18210,15 +18506,15 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   invalidateCacheForFolder(folderPath) {
     const normalizedPath = this.normalizePath(folderPath);
     const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (folder instanceof import_obsidian9.TFolder) {
+    if (folder instanceof import_obsidian10.TFolder) {
       this.clearCacheForFolder(folder);
     }
   }
   clearCacheForFolder(folder) {
     for (const child of folder.children) {
-      if (child instanceof import_obsidian9.TFile && child.extension === "md") {
+      if (child instanceof import_obsidian10.TFile && child.extension === "md") {
         this.clearTrackerState(child.path);
-      } else if (child instanceof import_obsidian9.TFolder) {
+      } else if (child instanceof import_obsidian10.TFolder) {
         this.clearCacheForFolder(child);
       }
     }
@@ -18248,6 +18544,9 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   }
   calculateStreak(entries, endDate, trackerType, file) {
     return this.trackerFileService.calculateStreak(entries, this.settings, endDate, trackerType, file);
+  }
+  calculateBestStreak(entries, trackerType, file) {
+    return this.trackerFileService.calculateBestStreak(entries, this.settings, trackerType, file);
   }
   async readAllEntries(file) {
     const state = await this.ensureTrackerState(file);
@@ -18287,7 +18586,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
           const trackerPath = tracker.dataset.filePath;
           if (!trackerPath) continue;
           const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
-          if (trackerFile instanceof import_obsidian9.TFile) {
+          if (trackerFile instanceof import_obsidian10.TFile) {
             if (trackerFile.basename.localeCompare(file.basename, void 0, { sensitivity: "base" }) > 0) {
               insertBefore = tracker;
               break;
@@ -18350,7 +18649,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
       await this.trackerFileService.writeLogLine(file, dateIso, value);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      new import_obsidian9.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438: ${errorMsg}`);
+      new import_obsidian10.Notice(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438: ${errorMsg}`);
       console.error("Tracker: \u043E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0438\u0441\u0438", error);
       throw error;
     }
@@ -18359,7 +18658,7 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async pickTrackerFile() {
     const files = this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(this.settings.trackersFolder + "/"));
     if (files.length === 0) {
-      new import_obsidian9.Notice("\u041D\u0435\u0442 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432");
+      new import_obsidian10.Notice("\u041D\u0435\u0442 \u0442\u0440\u0435\u043A\u0435\u0440\u043E\u0432");
       return null;
     }
     if (files.length === 1) return files[0];
@@ -18376,9 +18675,9 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async moveTrackerUp(file) {
     const folderPath = this.getFolderPathFromFile(file.path);
     const folder = this.app.vault.getAbstractFileByPath(folderPath);
-    if (!folder || !(folder instanceof import_obsidian9.TFolder)) return;
+    if (!folder || !(folder instanceof import_obsidian10.TFolder)) return;
     const trackers = folder.children.filter(
-      (f) => f instanceof import_obsidian9.TFile && f.extension === "md"
+      (f) => f instanceof import_obsidian10.TFile && f.extension === "md"
     );
     trackers.sort((a, b) => {
       const aParsed = parseFilename(a.basename);
@@ -18400,9 +18699,9 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async moveTrackerDown(file) {
     const folderPath = this.getFolderPathFromFile(file.path);
     const folder = this.app.vault.getAbstractFileByPath(folderPath);
-    if (!folder || !(folder instanceof import_obsidian9.TFolder)) return;
+    if (!folder || !(folder instanceof import_obsidian10.TFolder)) return;
     const trackers = folder.children.filter(
-      (f) => f instanceof import_obsidian9.TFile && f.extension === "md"
+      (f) => f instanceof import_obsidian10.TFile && f.extension === "md"
     );
     trackers.sort((a, b) => {
       const aParsed = parseFilename(a.basename);
@@ -18424,9 +18723,9 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async moveFolderUp(folderPath) {
     const parentFolderPath = this.getFolderPathFromFile(folderPath);
     const parentFolder = this.app.vault.getAbstractFileByPath(parentFolderPath);
-    if (!parentFolder || !(parentFolder instanceof import_obsidian9.TFolder)) return;
+    if (!parentFolder || !(parentFolder instanceof import_obsidian10.TFolder)) return;
     const folders = parentFolder.children.filter(
-      (f) => f instanceof import_obsidian9.TFolder
+      (f) => f instanceof import_obsidian10.TFolder
     );
     folders.sort((a, b) => {
       const aParsed = parseFilename(a.name);
@@ -18448,9 +18747,9 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
   async moveFolderDown(folderPath) {
     const parentFolderPath = this.getFolderPathFromFile(folderPath);
     const parentFolder = this.app.vault.getAbstractFileByPath(parentFolderPath);
-    if (!parentFolder || !(parentFolder instanceof import_obsidian9.TFolder)) return;
+    if (!parentFolder || !(parentFolder instanceof import_obsidian10.TFolder)) return;
     const folders = parentFolder.children.filter(
-      (f) => f instanceof import_obsidian9.TFolder
+      (f) => f instanceof import_obsidian10.TFolder
     );
     folders.sort((a, b) => {
       const aParsed = parseFilename(a.name);
@@ -18470,6 +18769,24 @@ var TrackerPlugin = class extends import_obsidian9.Plugin {
     await this.refreshBlocksForFolder(parentFolderPath);
   }
   // Методы для безопасной модификации файлов (игнорирование внутренних изменений)
+  /**
+   * Gets icon for a path from Iconize plugin
+   * @param path - Path to file or folder
+   * @param isFile - Whether the path is a file (true) or folder (false)
+   */
+  getIconForPath(path, isFile = false) {
+    console.log("[TrackerPlugin] getIconForPath called for:", path, "isFile:", isFile);
+    const icon = this.iconizeService.getIcon(path, isFile);
+    console.log("[TrackerPlugin] getIconForPath result:", icon);
+    return icon;
+  }
+  /**
+   * Renders icon in a container element
+   */
+  renderIcon(icon, container) {
+    console.log("[TrackerPlugin] renderIcon called with icon:", icon);
+    this.iconizeService.renderIcon(icon, container);
+  }
 };
 
 // src/main.ts

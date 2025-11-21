@@ -20,6 +20,7 @@ import { ControlsRenderer } from "../services/controls-renderer";
 import { TrackerRenderer } from "../services/tracker-renderer";
 import { VisualizationService } from "../services/visualization-service";
 import { TrackerOrderService } from "../services/tracker-order-service";
+import { IconizeService } from "../services/iconize-service";
 import { FILE_UPDATE_DELAY_MS, ANIMATION_DURATION_MS, ANIMATION_DURATION_SHORT_MS, SCROLL_RESTORE_DELAY_2_MS, IMMEDIATE_TIMEOUT_MS, MOBILE_BREAKPOINT, CHART_CONFIG, NOTICE_TIMEOUT_MS, UI_CONSTANTS } from "../constants";
 import { getThemeColors, colorToRgba } from "../utils/theme";
 import { showNoticeIfNotMobile } from "../utils/notifications";
@@ -37,6 +38,7 @@ export default class TrackerPlugin extends Plugin {
   private trackerRenderer: TrackerRenderer;
   private visualizationService: VisualizationService;
   private trackerOrderService: TrackerOrderService;
+  private iconizeService: IconizeService;
 
   private isMobileDevice(): boolean {
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -48,6 +50,12 @@ export default class TrackerPlugin extends Plugin {
     this.trackerFileService = new TrackerFileService(this.app);
     this.visualizationService = new VisualizationService();
     this.trackerOrderService = new TrackerOrderService(this.app);
+    this.iconizeService = new IconizeService(this.app);
+    
+    // Load Iconize data asynchronously
+    this.iconizeService.loadIconizeData().catch(err => {
+      console.debug("Tracker: Failed to load Iconize data", err);
+    });
     
     // Инициализируем сервисы рендеринга
     this.heatmapService = new HeatmapService(
@@ -89,7 +97,9 @@ export default class TrackerPlugin extends Plugin {
       () => this.isMobileDevice(),
       (file: TFile) => this.editTracker(file),
       (file: TFile) => this.moveTrackerUp(file),
-      (file: TFile) => this.moveTrackerDown(file)
+      (file: TFile) => this.moveTrackerDown(file),
+      (path: string, isFile: boolean) => this.getIconForPath(path, isFile),
+      (icon: string | null, container: HTMLElement) => this.renderIcon(icon, container)
     );
     
     this.addStyleSheet();
@@ -1218,20 +1228,27 @@ export default class TrackerPlugin extends Plugin {
     const days = daysToShow || this.settings.daysToShow;
     const dateIsoFormatted = DateService.format(endDate, this.settings.dateFormat);
     
+    // Получаем дату начала отслеживания
+    const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
+    
     // Используем VisualizationService для расчета статистики
     const stats = this.visualizationService.calculateStats(
       entriesToUse,
       this.settings,
       dateIsoFormatted,
       days,
-      metricType
+      metricType,
+      startTrackingDateStr
     );
     
     // Вычисляем текущий стрик (последовательные дни с записью)
     const currentStreak = this.calculateStreak(entriesToUse, endDate, metricType, file);
     
+    // Вычисляем лучший стрик
+    const bestStreak = this.calculateBestStreak(entriesToUse, metricType, file);
+    
     // Используем VisualizationService для обновления DOM
-    this.visualizationService.updateStatsDisplay(statsDiv, stats, currentStreak, days);
+    this.visualizationService.updateStatsDisplay(statsDiv, stats, currentStreak, days, metricType, fileOpts, bestStreak);
   }
 
   async renderStats(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string, entries?: Map<string, string | number>) {
@@ -1313,6 +1330,10 @@ export default class TrackerPlugin extends Plugin {
 
   calculateStreak(entries: Map<string, string | number>, endDate: Date | any, trackerType?: string, file?: TFile): number {
     return this.trackerFileService.calculateStreak(entries, this.settings, endDate, trackerType, file);
+  }
+
+  calculateBestStreak(entries: Map<string, string | number>, trackerType?: string, file?: TFile): number {
+    return this.trackerFileService.calculateBestStreak(entries, this.settings, trackerType, file);
   }
 
   async readAllEntries(file: TFile): Promise<Map<string, string | number>> {
@@ -1597,6 +1618,26 @@ export default class TrackerPlugin extends Plugin {
   }
 
   // Методы для безопасной модификации файлов (игнорирование внутренних изменений)
+
+  /**
+   * Gets icon for a path from Iconize plugin
+   * @param path - Path to file or folder
+   * @param isFile - Whether the path is a file (true) or folder (false)
+   */
+  getIconForPath(path: string, isFile: boolean = false): string | null {
+    console.log("[TrackerPlugin] getIconForPath called for:", path, "isFile:", isFile);
+    const icon = this.iconizeService.getIcon(path, isFile);
+    console.log("[TrackerPlugin] getIconForPath result:", icon);
+    return icon;
+  }
+
+  /**
+   * Renders icon in a container element
+   */
+  renderIcon(icon: string | null, container: HTMLElement): void {
+    console.log("[TrackerPlugin] renderIcon called with icon:", icon);
+    this.iconizeService.renderIcon(icon, container);
+  }
 }
 
 

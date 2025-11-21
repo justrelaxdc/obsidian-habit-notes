@@ -46,6 +46,10 @@
       .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }
       .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }
       .tracker-notes__stats > div { margin: 0.3em 0; }
+      .tracker-notes__stats-section { margin: 0.5em 0; padding: 0.4em 0; border-bottom: 1px solid var(--background-modifier-border); }
+      .tracker-notes__stats-section:last-child { border-bottom: none; }
+      .tracker-notes__stats-item { margin: 0.25em 0; padding: 0.2em 0; }
+      .tracker-notes__stats-streak { font-size: 1em; }
       .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }
       .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }
       .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -267,4 +271,20 @@
       /* Value display with limits (for PLUSMINUS) */
       .tracker-notes__value.tracker-notes__limit-error {
         color: var(--text-error, #c00000) !important;
+      }
+      
+      /* Iconize integration styles */
+      .tracker-notes__folder-header .iconize-icon,
+      .tracker-notes__tracker-title .iconize-icon {
+        display: inline-block;
+        vertical-align: middle;
+        line-height: 1;
+      }
+      
+      .tracker-notes__folder-header .lucide-icon,
+      .tracker-notes__tracker-title .lucide-icon {
+        /* Iconize will handle Lucide icon rendering via its own CSS */
+        /* This is a fallback for when Iconize CSS is not loaded */
+        font-size: 0.9em;
+        opacity: 0.8;
       }

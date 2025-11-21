@@ -1,5 +1,5 @@
 import type { TFile } from "obsidian";
-import type { TrackerSettings } from "../domain/types";
+import type { TrackerSettings, TrackerFileOptions } from "../domain/types";
 import { CSS_CLASSES, TrackerType, UI_CONSTANTS, STATS_LABELS } from "../constants";
 import { DateService } from "./date-service";
 import { countWords } from "../utils/misc";
@@ -16,22 +16,48 @@ export class VisualizationService {
     settings: TrackerSettings,
     dateIso: string,
     daysToShow: number,
-    trackerType: string
+    trackerType: string,
+    startTrackingDateStr?: string | null
   ): {
     total: number;
     sum: number;
     avg: number;
     periodDays: number[];
+    min: number | null;
+    max: number | null;
+    median: number | null;
+    completionRate: number | null;
+    activeDays: number;
+    actualDaysCount: number;
   } {
     const endDate = DateService.parse(dateIso, settings.dateFormat);
     const startDate = endDate.clone().subtract(daysToShow - 1, 'days');
     
+    // Определяем реальную начальную дату с учетом даты начала отслеживания
+    let actualStartDate = startDate;
+    if (startTrackingDateStr) {
+      // Парсим дату начала отслеживания с поддержкой разных форматов
+      const trackingStartDate = DateService.parseMultiple(startTrackingDateStr, [
+        settings.dateFormat,
+        'YYYY-MM-DD',
+        'YYYY/MM/DD',
+        'DD.MM.YYYY'
+      ]);
+      // Используем более позднюю дату из двух
+      if (trackingStartDate.isValid() && DateService.isAfter(trackingStartDate, startDate)) {
+        actualStartDate = trackingStartDate;
+      }
+    }
+    
     const periodDays: number[] = [];
     const metricType = trackerType.toLowerCase();
+    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
+    let actualDaysCount = 0;
     
-    for (let i = 0; i < daysToShow; i++) {
-      const date = startDate.clone().add(i, 'days');
-      const dateStr = DateService.format(date, settings.dateFormat);
+    // Проходим по всем дням от actualStartDate до endDate
+    let currentDate = actualStartDate.clone();
+    while (!DateService.isAfter(currentDate, endDate)) {
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
       const val = entries.get(dateStr);
       let numVal = 0;
       
@@ -53,13 +79,45 @@ export class VisualizationService {
       }
       
       periodDays.push(numVal);
+      actualDaysCount++;
+      currentDate = currentDate.add(1, 'days');
     }
     
     const sum = periodDays.reduce((a, b) => a + b, 0);
-    const avg = sum / daysToShow;
+    const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
     const total = entries.size;
     
-    return { total, sum, avg, periodDays };
+    // Calculate additional metrics
+    let min: number | null = null;
+    let max: number | null = null;
+    let median: number | null = null;
+    let completionRate: number | null = null;
+    let activeDays = 0;
+    
+    // For habits: calculate completion rate and active days
+    if (isHabit) {
+      activeDays = periodDays.filter(v => v > 0).length;
+      completionRate = actualDaysCount > 0 ? (activeDays / actualDaysCount) * 100 : 0;
+    } else {
+      // For metrics: calculate min, max, median
+      const nonZeroValues = periodDays.filter(v => v > 0);
+      if (periodDays.length > 0) {
+        const sortedValues = [...periodDays].sort((a, b) => a - b);
+        min = sortedValues[0];
+        max = sortedValues[sortedValues.length - 1];
+        
+        // Calculate median for all values (including zeros)
+        const mid = Math.floor(sortedValues.length / 2);
+        if (sortedValues.length % 2 === 0) {
+          median = (sortedValues[mid - 1] + sortedValues[mid]) / 2;
+        } else {
+          median = sortedValues[mid];
+        }
+      }
+      activeDays = nonZeroValues.length;
+    }
+    
+    return { total, sum, avg, periodDays, min, max, median, completionRate, activeDays, actualDaysCount };
   }
   
   /**
@@ -67,41 +125,120 @@ export class VisualizationService {
    */
   updateStatsDisplay(
     statsDiv: HTMLElement,
-    stats: { total: number; sum: number; avg: number },
+    stats: { 
+      total: number; 
+      sum: number; 
+      avg: number; 
+      min: number | null; 
+      max: number | null; 
+      median: number | null; 
+      completionRate: number | null; 
+      activeDays: number;
+      actualDaysCount: number;
+    },
     currentStreak: number,
-    daysToShow: number
+    daysToShow: number,
+    trackerType: string,
+    fileOpts?: TrackerFileOptions,
+    bestStreak?: number
   ): void {
-    const children = Array.from(statsDiv.children);
+    // Clear existing content
+    statsDiv.empty();
     
-    if (children.length >= 1) {
-      children[0].textContent = `${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}`;
+    const metricType = trackerType.toLowerCase();
+    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
+    const unit = fileOpts?.unit || "";
+    const unitSuffix = unit ? ` ${unit}` : "";
+    
+    // Helper function to format value with unit
+    const formatValue = (value: number, decimals: number = 1): string => {
+      return `${value.toFixed(decimals)}${unitSuffix}`;
+    };
+    
+    // Helper function to get completion rate color
+    const getCompletionColor = (rate: number): string => {
+      if (rate >= 80) return "var(--text-success, var(--text-normal))";
+      if (rate >= 50) return "var(--text-warning, var(--text-normal))";
+      return "var(--text-error, var(--text-normal))";
+    };
+    
+    // Общее
+    const generalSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
+    generalSection.createEl("div", { 
+      text: `📊 ${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}`,
+      cls: "tracker-notes__stats-item"
+    });
+    
+    // Период
+    const periodSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
+    
+    if (isHabit) {
+      // Для привычек: процент выполнения и активных дней
+      if (stats.completionRate !== null) {
+        const completionEl = periodSection.createEl("div", { 
+          cls: "tracker-notes__stats-item"
+        });
+        const rate = Math.round(stats.completionRate);
+        completionEl.createSpan({ text: `✅ ${STATS_LABELS.COMPLETION_RATE}: ` });
+        const rateSpan = completionEl.createSpan({ text: `${rate}%` });
+        rateSpan.style.color = getCompletionColor(rate);
+        rateSpan.style.fontWeight = "600";
+        completionEl.createSpan({ text: ` (${stats.activeDays}/${stats.actualDaysCount})` });
+      }
+      
+      periodSection.createEl("div", { 
+        text: `📅 ${STATS_LABELS.ACTIVE_DAYS}: ${stats.activeDays}/${stats.actualDaysCount}`,
+        cls: "tracker-notes__stats-item"
+      });
     } else {
-      statsDiv.createEl("div", { text: `${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}` });
+      // Для метрик: сумма, среднее, минимум, максимум, медиана
+      const daysLabel = stats.actualDaysCount === 1 ? STATS_LABELS.DAYS_SINGULAR : stats.actualDaysCount < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
+      periodSection.createEl("div", { 
+        text: `📈 ${STATS_LABELS.LAST_DAYS} ${stats.actualDaysCount} ${daysLabel}: ${formatValue(stats.sum)}`,
+        cls: "tracker-notes__stats-item"
+      });
+      
+      periodSection.createEl("div", { 
+        text: `📊 ${STATS_LABELS.AVERAGE}: ${formatValue(stats.avg)}`,
+        cls: "tracker-notes__stats-item"
+      });
+      
+      if (stats.min !== null && stats.max !== null) {
+        periodSection.createEl("div", { 
+          text: `📉 ${STATS_LABELS.MIN}: ${formatValue(stats.min)} | ${STATS_LABELS.MAX}: ${formatValue(stats.max)}`,
+          cls: "tracker-notes__stats-item"
+        });
+      }
+      
+      if (stats.median !== null) {
+        periodSection.createEl("div", { 
+          text: `📊 ${STATS_LABELS.MEDIAN}: ${formatValue(stats.median)}`,
+          cls: "tracker-notes__stats-item"
+        });
+      }
     }
     
-    if (children.length >= 2) {
-      children[1].textContent = `${STATS_LABELS.LAST_DAYS} ${daysToShow} ${STATS_LABELS.DAYS_PLURAL_5_PLUS}: ${stats.sum.toFixed(1)} (${STATS_LABELS.AVERAGE}: ${stats.avg.toFixed(1)})`;
-    } else {
-      statsDiv.createEl("div", { text: `${STATS_LABELS.LAST_DAYS} ${daysToShow} ${STATS_LABELS.DAYS_PLURAL_5_PLUS}: ${stats.sum.toFixed(1)} (${STATS_LABELS.AVERAGE}: ${stats.avg.toFixed(1)})` });
-    }
-    
-    // Update or create streak
-    if (currentStreak > 0) {
-      const daysLabel = currentStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : currentStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
-      const streakText = `🔥 ${STATS_LABELS.CURRENT_STREAK}: ${currentStreak} ${daysLabel}`;
-      if (children.length >= 3) {
-        const streakEl = children[2] as HTMLElement;
-        streakEl.textContent = streakText;
-        streakEl.style.color = "var(--interactive-accent)";
-        streakEl.style.fontWeight = UI_CONSTANTS.FONT_WEIGHT_BOLD;
-      } else {
-        const streakEl = statsDiv.createEl("div", { text: streakText });
+    // Рекорды
+    if (currentStreak > 0 || bestStreak) {
+      const recordsSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
+      
+      if (currentStreak > 0) {
+        const daysLabel = currentStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : currentStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
+        const streakEl = recordsSection.createEl("div", { 
+          text: `🔥 ${STATS_LABELS.CURRENT_STREAK}: ${currentStreak} ${daysLabel}`,
+          cls: "tracker-notes__stats-item tracker-notes__stats-streak"
+        });
         streakEl.style.color = "var(--interactive-accent)";
         streakEl.style.fontWeight = UI_CONSTANTS.FONT_WEIGHT_BOLD;
       }
-    } else if (children.length >= 3) {
-      // Remove streak if it's 0
-      children[2].remove();
+      
+      if (bestStreak && bestStreak > currentStreak) {
+        const bestDaysLabel = bestStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : bestStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
+        recordsSection.createEl("div", { 
+          text: `⭐ ${STATS_LABELS.BEST_STREAK}: ${bestStreak} ${bestDaysLabel}`,
+          cls: "tracker-notes__stats-item"
+        });
+      }
     }
   }
   

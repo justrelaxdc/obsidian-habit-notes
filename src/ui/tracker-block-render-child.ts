@@ -256,8 +256,19 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
         cls: `tracker-notes__folder-header level-${node.level}`,
       });
       
-      // Folder name
-      const folderNameEl = folderHeader.createSpan({ text: removePrefix(node.name) });
+      // Folder name with icon
+      console.log("[TrackerBlock] Rendering folder:", node.name, "path:", node.path);
+      const folderNameEl = folderHeader.createSpan();
+      // node.path is a folder path, so isFile = false
+      const folderIcon = this.plugin.getIconForPath(node.path, false);
+      console.log("[TrackerBlock] Folder icon result:", folderIcon);
+      if (folderIcon) {
+        console.log("[TrackerBlock] Rendering folder icon");
+        this.plugin.renderIcon(folderIcon, folderNameEl);
+      } else {
+        console.log("[TrackerBlock] No folder icon found");
+      }
+      folderNameEl.createSpan({ text: removePrefix(node.name) });
       
       // Order buttons (on the right side)
       const orderBtnsContainer = folderHeader.createDiv({ cls: CSS_CLASSES.ORDER_BTN_CONTAINER });

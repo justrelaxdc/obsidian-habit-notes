@@ -270,5 +270,11 @@ export const STATS_LABELS = {
   DAYS_PLURAL_2_4: "дня",
   DAYS_PLURAL_5_PLUS: "дней",
   AVERAGE: "среднее",
+  MIN: "Мин",
+  MAX: "Макс",
+  MEDIAN: "Медиана",
+  COMPLETION_RATE: "Выполнено",
+  ACTIVE_DAYS: "Активных дней",
+  BEST_STREAK: "Лучший стрик",
 } as const;
 

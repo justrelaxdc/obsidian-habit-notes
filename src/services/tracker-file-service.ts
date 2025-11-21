@@ -270,5 +270,65 @@ export class TrackerFileService {
     return streak;
   }
 
+  calculateBestStreak(
+    entries: Map<string, string | number>,
+    settings: TrackerSettings,
+    trackerType?: string,
+    file?: TFile
+  ): number {
+    const metricType = (trackerType || "good-habit").toLowerCase();
+    const isBadHabit = metricType === "bad-habit";
+    
+    if (entries.size === 0) return 0;
+    
+    let startTrackingDate = null;
+    if (file?.stat?.ctime) {
+      startTrackingDate = DateService.startOfDay(DateService.fromDate(new Date(file.stat.ctime)));
+    }
+    
+    const sortedDates = Array.from(entries.keys()).sort();
+    const firstDateStr = sortedDates[0];
+    const firstDate = DateService.parse(firstDateStr, settings.dateFormat);
+    if (!startTrackingDate || DateService.isBefore(firstDate, startTrackingDate)) {
+      startTrackingDate = firstDate;
+    }
+    
+    const today = DateService.now();
+    let currentDate = DateService.startOfDay(today);
+    let bestStreak = 0;
+    let currentStreak = 0;
+    let daysChecked = 0;
+    
+    // Проходим по всем дням от начала отслеживания до сегодня
+    while (!DateService.isBefore(currentDate, startTrackingDate) && daysChecked < MAX_DAYS_BACK) {
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
+      const val = entries.get(dateStr);
+      let isSuccess = false;
+      
+      if (isBadHabit) {
+        if (val == null) {
+          isSuccess = true;
+        } else {
+          const hasValue = isTrackerValueTrue(val);
+          isSuccess = !hasValue;
+        }
+      } else if (val != null) {
+        isSuccess = isTrackerValueTrue(val);
+      }
+      
+      if (isSuccess) {
+        currentStreak++;
+        bestStreak = Math.max(bestStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+      
+      currentDate = currentDate.subtract(1, "day");
+      daysChecked++;
+    }
+    
+    return bestStreak;
+  }
+
 }
 

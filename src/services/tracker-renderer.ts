@@ -19,7 +19,9 @@ export class TrackerRenderer {
     private readonly isMobileDevice?: () => boolean,
     private readonly onEditTracker?: (file: TFile) => void,
     private readonly onMoveTrackerUp?: (file: TFile) => Promise<void>,
-    private readonly onMoveTrackerDown?: (file: TFile) => Promise<void>
+    private readonly onMoveTrackerDown?: (file: TFile) => Promise<void>,
+    private readonly getIconForPath?: (path: string, isFile: boolean) => string | null,
+    private readonly renderIcon?: (icon: string | null, container: HTMLElement) => void
   ) {}
 
   /**
@@ -65,9 +67,22 @@ export class TrackerRenderer {
     const baseName = removePrefix(file.basename);
     const unit = fileOpts.unit || "";
     const displayName = unit ? `${baseName} (${unit})` : baseName;
-    const titleLink = header.createEl("a", { 
+    
+    // Title container with icon
+    console.log("[TrackerRenderer] Rendering tracker:", file.basename, "path:", file.path);
+    const titleContainer = header.createDiv({ cls: CSS_CLASSES.TRACKER_TITLE });
+    // file.path is a file path, so isFile = true
+    const trackerIcon = this.getIconForPath?.(file.path, true);
+    console.log("[TrackerRenderer] Tracker icon result:", trackerIcon, "has renderIcon:", !!this.renderIcon);
+    if (trackerIcon && this.renderIcon) {
+      console.log("[TrackerRenderer] Rendering tracker icon");
+      this.renderIcon(trackerIcon, titleContainer);
+    } else {
+      console.log("[TrackerRenderer] No tracker icon found or renderIcon not available");
+    }
+    const titleLink = titleContainer.createEl("a", { 
       text: displayName, 
-      cls: `${CSS_CLASSES.TRACKER_TITLE} internal-link`,
+      cls: "internal-link",
       href: file.path
     });
     titleLink.setAttribute("data-href", file.path);
