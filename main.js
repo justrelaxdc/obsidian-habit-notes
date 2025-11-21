@@ -15063,7 +15063,6 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
     this.ctx = ctx;
   }
   async render() {
-    this.plugin.invalidateCacheForFolder(this.folderPath);
     const tempContainer = document.createElement("div");
     tempContainer.className = this.containerEl.className;
     try {
@@ -17574,6 +17573,7 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     super(...arguments);
     this.activeBlocks = /* @__PURE__ */ new Set();
     this.trackerState = /* @__PURE__ */ new Map();
+    this.currentNotePath = null;
   }
   isMobileDevice() {
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -17672,6 +17672,11 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   }
   // ---- Code blocks ------------------------------------------------------------
   async processTrackerBlock(source, el, ctx) {
+    const notePath = ctx.sourcePath || null;
+    if (notePath !== this.currentNotePath) {
+      this.clearAllCaches();
+      this.currentNotePath = notePath;
+    }
     const block = new TrackerBlockRenderChild(this, source, el, ctx);
     ctx.addChild(block);
     this.activeBlocks.add(block);
@@ -18484,6 +18489,14 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   }
   clearTrackerState(path) {
     this.trackerState.delete(path);
+  }
+  /**
+   * Clears all caches (trackerState and FolderTreeService cache)
+   * Called when switching to a new note to ensure fresh data
+   */
+  clearAllCaches() {
+    this.trackerState.clear();
+    this.folderTreeService.invalidate();
   }
   invalidateCacheForFolder(folderPath) {
     const normalizedPath = this.normalizePath(folderPath);

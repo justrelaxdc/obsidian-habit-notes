@@ -33,6 +33,7 @@ export default class TrackerPlugin extends Plugin {
   private trackerFileService: TrackerFileService;
   private styleEl?: HTMLStyleElement;
   private trackerState: Map<string, { entries: Map<string, string | number>; fileOpts: TrackerFileOptions }> = new Map();
+  private currentNotePath: string | null = null;
   private heatmapService: HeatmapService;
   private controlsRenderer: ControlsRenderer;
   private trackerRenderer: TrackerRenderer;
@@ -161,6 +162,14 @@ export default class TrackerPlugin extends Plugin {
   // ---- Code blocks ------------------------------------------------------------
 
   async processTrackerBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+    // Check if note changed (new note opened)
+    const notePath = ctx.sourcePath || null;
+    if (notePath !== this.currentNotePath) {
+      // New note opened - clear all caches to show fresh data
+      this.clearAllCaches();
+      this.currentNotePath = notePath;
+    }
+    
     const block = new TrackerBlockRenderChild(this, source, el, ctx);
     ctx.addChild(block);
     this.activeBlocks.add(block);
@@ -1281,6 +1290,17 @@ export default class TrackerPlugin extends Plugin {
   
   private clearTrackerState(path: string): void {
     this.trackerState.delete(path);
+  }
+  
+  /**
+   * Clears all caches (trackerState and FolderTreeService cache)
+   * Called when switching to a new note to ensure fresh data
+   */
+  private clearAllCaches(): void {
+    // Clear all tracker states
+    this.trackerState.clear();
+    // Clear all folder tree cache
+    this.folderTreeService.invalidate();
   }
   
   invalidateCacheForFolder(folderPath: string): void {

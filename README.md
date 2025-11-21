@@ -39,14 +39,14 @@ Obsidian plugin that allows you to track daily habits and metrics (trackers), st
 ### Manual installation
 
 1. Download the latest version of the plugin
-2. Extract the archive to `.obsidian/plugins/obsidian-habit-notes/` folder of your vault
+2. Extract the archive to `.obsidian/plugins/tracker-habits-metrics/` folder of your vault
 3. Restart Obsidian
 4. Enable the plugin in settings (Settings → Community plugins)
 
 ### Via BRAT (recommended for development)
 
 1. Install the [BRAT](https://obsidian.md/plugins?id=obsidian42-brat) plugin
-2. Add repository: `VladRoss/obsidian-habit-notes`
+2. Add repository: `VladRoss/tracker-habits-metrics`
 3. Enable the plugin in settings
 
 ## 🚀 Usage

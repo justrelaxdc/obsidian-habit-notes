@@ -34,8 +34,8 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
   }
 
   async render() {
-    // Invalidate cache on tracker initialization
-    this.plugin.invalidateCacheForFolder(this.folderPath);
+    // Cache invalidation is handled at plugin level when note changes
+    // No need to invalidate on every render
     
     // Create temporary container for off-screen rendering
     const tempContainer = document.createElement('div');

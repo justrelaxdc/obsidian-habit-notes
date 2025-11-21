@@ -1,10 +1,10 @@
 {
-  "id": "obsidian-habit-notes",
+  "id": "tracker-habits-metrics",
   "name": "Tracker: habits and metrics",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "minAppVersion": "1.5.0",
   "description": "Habits and metrics as separate notes with the ability to manage them from any page.",
-  "author": "Vladislav",
+  "author": "Vlad Ross",
   "authorUrl": "",
   "isDesktopOnly": false
 }
