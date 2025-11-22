@@ -15240,6 +15240,7 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
     const nodeContainer = document.createElement("div");
     nodeContainer.addClass("tracker-notes__folder-node");
     nodeContainer.addClass(`level-${node.level}`);
+    nodeContainer.dataset.folderPath = normalizePath(node.path);
     const shouldShowHeader = node.files.length > 0 || node.level > 0 && node.children.length > 0;
     if (shouldShowHeader) {
       const folderHeader = nodeContainer.createDiv({
@@ -15259,7 +15260,11 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
       upButton.title = MODAL_LABELS.MOVE_UP;
       upButton.onclick = async (e) => {
         e.stopPropagation();
-        await this.plugin.moveFolderUp(node.path);
+        const button = e.currentTarget;
+        const folderNode = button.closest(".tracker-notes__folder-node");
+        if (!folderNode) return;
+        const folderPath = normalizePath(folderNode.dataset.folderPath || node.path);
+        await this.plugin.moveFolderUp(folderPath);
       };
       const downButton = orderBtnsContainer.createEl("button", {
         text: "\u2193",
@@ -15268,7 +15273,11 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
       downButton.title = MODAL_LABELS.MOVE_DOWN;
       downButton.onclick = async (e) => {
         e.stopPropagation();
-        await this.plugin.moveFolderDown(node.path);
+        const button = e.currentTarget;
+        const folderNode = button.closest(".tracker-notes__folder-node");
+        if (!folderNode) return;
+        const folderPath = normalizePath(folderNode.dataset.folderPath || node.path);
+        await this.plugin.moveFolderDown(folderPath);
       };
     }
     if (node.files.length > 0) {
@@ -16648,14 +16657,14 @@ var HeatmapService = class {
         const currentValue = entries.get(dateStr);
         const isChecked = isTrackerValueTrue(currentValue);
         const newValue = isChecked ? 0 : 1;
-        entries.set(dateStr, newValue);
-        this.writeLogLine(file, dateStr, String(newValue)).catch((err) => console.error("Tracker: write error", err));
+        await this.writeLogLine(file, dateStr, String(newValue)).catch((err) => console.error("Tracker: write error", err));
+        const updatedEntries = await this.readAllEntries(file);
         if (newValue === 1) {
           dayDiv.addClass("has-value");
         } else {
           dayDiv.removeClass("has-value");
         }
-        const startTrackingDateStr = this.getStartTrackingDate(entries, fileOptsForClick);
+        const startTrackingDateStr = this.getStartTrackingDate(updatedEntries, fileOptsForClick);
         const allDayElements = Array.from(heatmapDiv.children);
         for (const dayEl of allDayElements) {
           const dayDateStr = dayEl.dataset.dateStr;
@@ -16674,13 +16683,13 @@ var HeatmapService = class {
           if (this.updateChart) {
             const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
             if (chartDiv) {
-              await this.updateChart(chartDiv, file, currentDateIso, daysToShow, entries);
+              await this.updateChart(chartDiv, file, currentDateIso, daysToShow, updatedEntries);
             }
           }
           if (this.updateStats) {
             const statsDiv = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
             if (statsDiv) {
-              await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType, entries);
+              await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType, updatedEntries);
             }
           }
         }
@@ -16733,13 +16742,10 @@ var ControlsRenderer = class {
     container.dataset.trackerMode = mode;
     const trackerItem = container.closest(`.${CSS_CLASSES.TRACKER}`);
     const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
-    let entries = await this.readAllEntries(file);
     const trackerType = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
-    const updateVisualizations = async (updatedEntries) => {
+    const updateVisualizations = async () => {
       if (!trackerItem) return;
-      if (updatedEntries) {
-        entries = updatedEntries;
-      }
+      const entries = await this.readAllEntries(file);
       const currentDateIso = mainContainer?.querySelector(`.${CSS_CLASSES.DATE_INPUT}`)?.value || dateIso;
       const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
       if (chartDiv && this.updateChart) {
@@ -16757,20 +16763,20 @@ var ControlsRenderer = class {
         await this.heatmapService.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
       }
     } else if (mode === TrackerType.NUMBER) {
-      await this.renderNumber(container, file, dateIso, fileOpts, entries, updateVisualizations);
+      await this.renderNumber(container, file, dateIso, fileOpts, updateVisualizations);
     } else if (mode === TrackerType.PLUSMINUS) {
-      await this.renderPlusMinus(container, file, dateIso, fileOpts, entries, updateVisualizations);
+      await this.renderPlusMinus(container, file, dateIso, fileOpts, updateVisualizations);
     } else if (mode === TrackerType.TEXT) {
-      await this.renderText(container, file, dateIso, fileOpts, entries, updateVisualizations);
+      await this.renderText(container, file, dateIso, fileOpts, updateVisualizations);
     } else if (mode === TrackerType.SCALE) {
-      await this.renderScale(container, file, dateIso, opts, fileOpts, entries, updateVisualizations);
+      await this.renderScale(container, file, dateIso, opts, fileOpts, updateVisualizations);
     } else {
       container.createEl("div", {
         text: `Unknown mode: ${mode}. Available: ${TrackerType.GOOD_HABIT}, ${TrackerType.BAD_HABIT}, ${TrackerType.NUMBER}, ${TrackerType.PLUSMINUS}, ${TrackerType.TEXT}, ${TrackerType.SCALE}`
       });
     }
   }
-  async renderNumber(container, file, dateIso, fileOpts, entries, updateVisualizations) {
+  async renderNumber(container, file, dateIso, fileOpts, updateVisualizations) {
     const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
     const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
     const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
@@ -16788,7 +16794,6 @@ var ControlsRenderer = class {
     }
     let debounceTimer = null;
     const updateVisualState = async (val) => {
-      entries.set(dateIso, val);
       input.value = String(val);
       if (minLimit !== null || maxLimit !== null) {
         const limitCheck = checkLimits(val, minLimit, maxLimit);
@@ -16799,7 +16804,6 @@ var ControlsRenderer = class {
       }
       input.style.transform = "scale(0.98)";
       setTimeout(() => input.style.transform = "", ANIMATION_DURATION_MS);
-      await updateVisualizations(entries);
     };
     const writeToFile = async (val, immediate = false) => {
       if (immediate) {
@@ -16808,12 +16812,14 @@ var ControlsRenderer = class {
           debounceTimer = null;
         }
         await this.writeLogLine(file, dateIso, String(val)).catch((err) => console.error("Tracker: write error", err));
+        await updateVisualizations();
       } else {
         if (debounceTimer) {
           clearTimeout(debounceTimer);
         }
         debounceTimer = setTimeout(async () => {
           await this.writeLogLine(file, dateIso, String(val)).catch((err) => console.error("Tracker: write error", err));
+          await updateVisualizations();
           debounceTimer = null;
         }, DEBOUNCE_DELAY_MS);
       }
@@ -16841,7 +16847,7 @@ var ControlsRenderer = class {
       }
     };
   }
-  async renderPlusMinus(container, file, dateIso, fileOpts, entries, updateVisualizations) {
+  async renderPlusMinus(container, file, dateIso, fileOpts, updateVisualizations) {
     const step = parseFloat(fileOpts.step || "1") || 1;
     const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
     const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
@@ -16874,21 +16880,19 @@ var ControlsRenderer = class {
     minus.onclick = async () => {
       current = (Number.isFinite(current) ? current : 0) - step;
       updateValueAndLimits(current);
-      entries.set(dateIso, current);
-      this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: write error", err));
+      await this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: write error", err));
       setTimeout(() => valEl.classList.remove(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
-      await updateVisualizations(entries);
+      await updateVisualizations();
     };
     plus.onclick = async () => {
       current = (Number.isFinite(current) ? current : 0) + step;
       updateValueAndLimits(current);
-      entries.set(dateIso, current);
-      this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: write error", err));
+      await this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: write error", err));
       setTimeout(() => valEl.classList.remove(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
-      await updateVisualizations(entries);
+      await updateVisualizations();
     };
   }
-  async renderText(container, file, dateIso, fileOpts, entries, updateVisualizations) {
+  async renderText(container, file, dateIso, fileOpts, updateVisualizations) {
     const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
     const input = wrap.createEl("textarea", {
       cls: CSS_CLASSES.TEXT_INPUT,
@@ -16899,14 +16903,13 @@ var ControlsRenderer = class {
     const btn = wrap.createEl("button", { text: MODAL_LABELS.SAVE });
     btn.onclick = async () => {
       const val = input.value.trim();
-      entries.set(dateIso, val);
-      this.writeLogLine(file, dateIso, val).catch((err) => console.error("Tracker: write error", err));
+      await this.writeLogLine(file, dateIso, val).catch((err) => console.error("Tracker: write error", err));
       btn.style.transform = "scale(0.95)";
       setTimeout(() => btn.style.transform = "", ANIMATION_DURATION_MS);
-      await updateVisualizations(entries);
+      await updateVisualizations();
     };
   }
-  async renderScale(container, file, dateIso, opts, fileOpts, entries, updateVisualizations) {
+  async renderScale(container, file, dateIso, opts, fileOpts, updateVisualizations) {
     const minValue = parseFloat(opts.minValue || fileOpts.minValue || "0");
     const maxValue = parseFloat(opts.maxValue || fileOpts.maxValue || "10");
     const step = parseFloat(opts.step || fileOpts.step || "1");
@@ -16994,9 +16997,8 @@ var ControlsRenderer = class {
         isDragging = false;
         progressBarInput.style.cursor = "";
         if (hasMoved) {
-          entries.set(dateIso, currentValue);
-          this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
-          await updateVisualizations(entries);
+          await this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
+          await updateVisualizations();
         }
       }
     };
@@ -17011,9 +17013,8 @@ var ControlsRenderer = class {
       const newValue = calculateValueFromPosition(e.clientX);
       currentValue = newValue;
       updateProgressBar(currentValue);
-      entries.set(dateIso, currentValue);
-      this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
-      await updateVisualizations(entries);
+      await this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
+      await updateVisualizations();
     };
     const handleKeyDown = (e) => {
       let newValue = currentValue;
@@ -17037,9 +17038,8 @@ var ControlsRenderer = class {
     };
     const handleKeyUp = async (e) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
-        entries.set(dateIso, currentValue);
-        this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
-        await updateVisualizations(entries);
+        await this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
+        await updateVisualizations();
       }
     };
     progressBarInput.addEventListener("click", handleClick);
@@ -17705,29 +17705,15 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     }
   }
   /**
-   * Reorders tracker DOM elements in place after file renaming without full re-rendering
+   * Reorders tracker DOM elements in place without full re-rendering
    * This preserves icons and other DOM content
+   * Works independently of file system - uses only passed data
    * @param folderPath Path to the folder containing trackers
-   * @param oldPathsMap Map of old paths before renaming (oldPath -> oldPath)
+   * @param trackersInNewOrder Array of files in the desired order (before renaming)
    * @param newPathsMap Map of old paths to new paths (oldPath -> newPath)
    */
-  async swapTrackerElementsInDOM(folderPath, oldPathsMap, newPathsMap) {
+  async swapTrackerElementsInDOM(folderPath, trackersInNewOrder, newPathsMap) {
     const normalizedFolderPath = this.normalizePath(folderPath);
-    const folder = this.app.vault.getAbstractFileByPath(folderPath);
-    if (!folder || !(folder instanceof import_obsidian10.TFolder)) return;
-    const trackers = folder.children.filter(
-      (f) => f instanceof import_obsidian10.TFile && f.extension === "md"
-    );
-    trackers.sort((a, b) => {
-      const aParsed = parseFilename(a.basename);
-      const bParsed = parseFilename(b.basename);
-      if (aParsed.prefix !== null && bParsed.prefix !== null) {
-        return aParsed.prefix - bParsed.prefix;
-      }
-      if (aParsed.prefix !== null) return -1;
-      if (bParsed.prefix !== null) return 1;
-      return a.basename.localeCompare(b.basename, void 0, { sensitivity: "base" });
-    });
     const relevantBlocks = Array.from(this.activeBlocks).filter((block) => {
       const blockPath = this.normalizePath(block.getFolderPath());
       return this.isFolderRelevant(normalizedFolderPath, blockPath);
@@ -17738,45 +17724,164 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
       );
       for (const trackersContainer of Array.from(trackersContainers)) {
         const trackerElementsMap = /* @__PURE__ */ new Map();
-        if (oldPathsMap && newPathsMap) {
-          for (const [oldPath, newPath] of newPathsMap.entries()) {
-            let trackerElement = trackersContainer.querySelector(
-              `.tracker-notes__tracker[data-file-path="${oldPath}"]`
+        for (const [oldPath, newPath] of newPathsMap.entries()) {
+          let trackerElement = trackersContainer.querySelector(
+            `.tracker-notes__tracker[data-file-path="${oldPath}"]`
+          );
+          if (!trackerElement) {
+            trackerElement = trackersContainer.querySelector(
+              `.tracker-notes__tracker[data-file-path="${newPath}"]`
             );
-            if (!trackerElement) {
-              trackerElement = trackersContainer.querySelector(
-                `.tracker-notes__tracker[data-file-path="${newPath}"]`
-              );
-            }
-            if (trackerElement) {
-              trackerElementsMap.set(newPath, trackerElement);
-              trackerElement.dataset.filePath = newPath;
-            }
           }
-        } else {
-          for (const file of trackers) {
-            const trackerElement = trackersContainer.querySelector(
-              `.tracker-notes__tracker[data-file-path="${file.path}"]`
-            );
-            if (trackerElement) {
-              trackerElementsMap.set(file.path, trackerElement);
-            }
+          if (trackerElement) {
+            trackerElementsMap.set(oldPath, trackerElement);
           }
         }
         const sortedTrackerElements = [];
-        for (const file of trackers) {
+        for (const file of trackersInNewOrder) {
           const element = trackerElementsMap.get(file.path);
           if (element) {
-            sortedTrackerElements.push(element);
+            const newPath = newPathsMap.get(file.path) || file.path;
+            sortedTrackerElements.push({ element, newPath });
           }
         }
-        for (const trackerEl of sortedTrackerElements) {
-          if (trackerEl.parentElement) {
-            trackerEl.remove();
+        for (const { element } of sortedTrackerElements) {
+          if (element.parentElement) {
+            element.remove();
           }
         }
-        for (const trackerEl of sortedTrackerElements) {
-          trackersContainer.appendChild(trackerEl);
+        for (const { element, newPath } of sortedTrackerElements) {
+          trackersContainer.appendChild(element);
+          element.dataset.filePath = newPath;
+        }
+      }
+    }
+  }
+  /**
+   * Reorders folder DOM elements in place without full re-rendering
+   * This preserves icons and all DOM content
+   * Works independently of file system - uses only passed data
+   * @param parentFolderPath Path to the parent folder containing folders
+   * @param foldersInNewOrder Array of folders in the desired order (before renaming)
+   * @param newPathsMap Map of old paths to new paths (oldPath -> newPath)
+   */
+  async reorderFolderElementsInDOM(parentFolderPath, foldersInNewOrder, newPathsMap) {
+    const normalizedParentPath = this.normalizePath(parentFolderPath);
+    const relevantBlocks = Array.from(this.activeBlocks).filter((block) => {
+      const blockPath = this.normalizePath(block.getFolderPath());
+      return this.isFolderRelevant(normalizedParentPath, blockPath);
+    });
+    for (const block of relevantBlocks) {
+      const hierarchyContainer = block.containerEl.querySelector(
+        `.tracker-notes__hierarchy`
+      );
+      if (!hierarchyContainer) continue;
+      let parentContainer = null;
+      if (!parentFolderPath || parentFolderPath === "" || parentFolderPath === "/") {
+        parentContainer = hierarchyContainer;
+      } else {
+        const allFolderNodes = hierarchyContainer.querySelectorAll(`.tracker-notes__folder-node`);
+        for (const folderNode of Array.from(allFolderNodes)) {
+          const nodeFolderPath = this.normalizePath(folderNode.dataset.folderPath || "");
+          if (nodeFolderPath === normalizedParentPath) {
+            parentContainer = folderNode;
+            break;
+          }
+          if (!parentContainer) {
+            const trackersContainer = folderNode.querySelector(`.tracker-notes__trackers`);
+            if (trackersContainer) {
+              const trackersPath = this.normalizePath(trackersContainer.dataset.folderPath || "");
+              if (trackersPath === normalizedParentPath) {
+                parentContainer = folderNode;
+                break;
+              }
+            }
+          }
+        }
+        if (!parentContainer) {
+          parentContainer = hierarchyContainer;
+        }
+      }
+      if (!parentContainer) {
+        console.warn(`Tracker: Could not find parent container for ${parentFolderPath}`);
+        continue;
+      }
+      const siblings = Array.from(parentContainer.children);
+      const folderSiblings = siblings.filter(
+        (el) => el.classList.contains("tracker-notes__folder-node")
+      );
+      console.log(`Tracker: Found ${folderSiblings.length} folder siblings for parent ${parentFolderPath}`);
+      const folderElementsMap = /* @__PURE__ */ new Map();
+      for (const folderNode of folderSiblings) {
+        let nodeFolderPath = this.normalizePath(folderNode.dataset.folderPath || "");
+        if (!nodeFolderPath) {
+          const trackersContainer = folderNode.querySelector(`.tracker-notes__trackers`);
+          if (trackersContainer) {
+            nodeFolderPath = this.normalizePath(trackersContainer.dataset.folderPath || "");
+          }
+        }
+        if (!nodeFolderPath) continue;
+        for (const [oldPath] of newPathsMap.entries()) {
+          const normalizedOldPath = this.normalizePath(oldPath);
+          if (normalizedOldPath === nodeFolderPath) {
+            folderElementsMap.set(oldPath, folderNode);
+            break;
+          }
+        }
+      }
+      const sortedFolderElements = [];
+      for (const folder of foldersInNewOrder) {
+        const element = folderElementsMap.get(folder.path);
+        if (element) {
+          const newPath = newPathsMap.get(folder.path) || folder.path;
+          sortedFolderElements.push({ element, newPath });
+        }
+      }
+      if (sortedFolderElements.length === 0) {
+        console.warn(`Tracker: No folder elements found in DOM. Parent: ${parentFolderPath}`);
+        continue;
+      }
+      if (sortedFolderElements.length < foldersInNewOrder.length) {
+        console.warn(`Tracker: Some folders not found in DOM. Expected ${foldersInNewOrder.length}, found ${sortedFolderElements.length}. Parent: ${parentFolderPath}`);
+        const foundPaths = sortedFolderElements.map(({ element }) => {
+          const tc = element.querySelector(`.tracker-notes__trackers`);
+          return tc?.dataset.folderPath || "no-trackers-container";
+        });
+        const missingPaths = foldersInNewOrder.map((f) => f.path).filter((path) => !folderElementsMap.has(path));
+        console.warn(`Tracker: Missing folders:`, missingPaths);
+        console.warn(`Tracker: Found folders:`, foundPaths);
+      }
+      for (const { element } of sortedFolderElements) {
+        if (element.parentElement) {
+          element.remove();
+        }
+      }
+      let insertBefore = null;
+      const remainingSiblings = Array.from(parentContainer.children);
+      for (let i = remainingSiblings.length - 1; i >= 0; i--) {
+        const sibling = remainingSiblings[i];
+        if (!sibling.classList.contains("tracker-notes__folder-node")) {
+          insertBefore = sibling.nextSibling;
+          break;
+        }
+      }
+      if (insertBefore) {
+        for (const { element, newPath } of sortedFolderElements) {
+          parentContainer.insertBefore(element, insertBefore);
+          element.dataset.folderPath = newPath;
+          const trackersContainer = element.querySelector(`.tracker-notes__trackers`);
+          if (trackersContainer) {
+            trackersContainer.dataset.folderPath = newPath;
+          }
+        }
+      } else {
+        for (const { element, newPath } of sortedFolderElements) {
+          parentContainer.appendChild(element);
+          element.dataset.folderPath = newPath;
+          const trackersContainer = element.querySelector(`.tracker-notes__trackers`);
+          if (trackersContainer) {
+            trackersContainer.dataset.folderPath = newPath;
+          }
         }
       }
     }
@@ -18554,14 +18659,10 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
     await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries);
   }
-  async ensureTrackerState(file, forceReload = false) {
-    if (!forceReload) {
-      const existing = this.trackerState.get(file.path);
-      if (existing) {
-        return existing;
-      }
-    } else {
-      this.trackerState.delete(file.path);
+  async ensureTrackerState(file) {
+    const existing = this.trackerState.get(file.path);
+    if (existing) {
+      return existing;
     }
     const [entries, fileOpts] = await Promise.all([
       this.trackerFileService.readAllEntries(file),
@@ -18571,14 +18672,11 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.trackerState.set(file.path, state);
     return state;
   }
-  async reloadTrackerState(file) {
-    await this.ensureTrackerState(file, true);
-  }
   clearTrackerState(path) {
     this.trackerState.delete(path);
   }
   /**
-   * Clears all caches (trackerState, FolderTreeService cache, and Iconize cache)
+   * Clears all backend state (trackerState, FolderTreeService cache, and Iconize cache)
    * Called when switching to a new note to ensure fresh data
    */
   async clearAllCaches() {
@@ -18613,8 +18711,96 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
       this.trackerState.delete(newPath);
     }
   }
+  /**
+   * Updates trackerState after renaming multiple files/folders
+   * @param newPathsMap Map of old paths to new paths (oldPath -> newPath)
+   */
+  updateTrackerStateAfterRename(newPathsMap) {
+    for (const [oldPath, newPath] of newPathsMap.entries()) {
+      this.moveTrackerState(oldPath, newPath);
+    }
+  }
+  /**
+   * Updates trackerState for all trackers inside renamed folders
+   * @param folderPathsMap Map of old folder paths to new folder paths (oldPath -> newPath)
+   */
+  updateTrackerStateForRenamedFolders(folderPathsMap) {
+    const filePathsMap = /* @__PURE__ */ new Map();
+    for (const [oldFolderPath, newFolderPath] of folderPathsMap.entries()) {
+      const oldFolder = this.app.vault.getAbstractFileByPath(oldFolderPath);
+      if (!(oldFolder instanceof import_obsidian10.TFolder)) continue;
+      const getAllFiles = (folder) => {
+        const files2 = [];
+        for (const child of folder.children) {
+          if (child instanceof import_obsidian10.TFile && child.extension === "md") {
+            files2.push(child);
+          } else if (child instanceof import_obsidian10.TFolder) {
+            files2.push(...getAllFiles(child));
+          }
+        }
+        return files2;
+      };
+      const files = getAllFiles(oldFolder);
+      const normalizedOldPath = this.normalizePath(oldFolderPath);
+      const normalizedNewPath = this.normalizePath(newFolderPath);
+      for (const file of files) {
+        const normalizedFilePath = this.normalizePath(file.path);
+        if (normalizedFilePath.startsWith(normalizedOldPath + "/")) {
+          const relativePath = normalizedFilePath.substring(normalizedOldPath.length);
+          const newFilePath = normalizedNewPath + relativePath;
+          filePathsMap.set(file.path, newFilePath);
+        }
+      }
+    }
+    this.updateTrackerStateAfterRename(filePathsMap);
+  }
+  /**
+   * Sorts items (files or folders) by prefix
+   * Items with prefixes come first, sorted by prefix number
+   * Items without prefixes come after, sorted alphabetically
+   */
+  sortByPrefix(items) {
+    const sorted = [...items];
+    sorted.sort((a, b) => {
+      const aName = a instanceof import_obsidian10.TFile ? a.basename : a.name;
+      const bName = b instanceof import_obsidian10.TFile ? b.basename : b.name;
+      const aParsed = parseFilename(aName);
+      const bParsed = parseFilename(bName);
+      if (aParsed.prefix !== null && bParsed.prefix !== null) {
+        return aParsed.prefix - bParsed.prefix;
+      }
+      if (aParsed.prefix !== null) return -1;
+      if (bParsed.prefix !== null) return 1;
+      return aName.localeCompare(bName, void 0, { sensitivity: "base" });
+    });
+    return sorted;
+  }
   handleTrackerRenamed(oldPath, file) {
     this.moveTrackerState(oldPath, file.path);
+  }
+  /**
+   * Updates onclick handlers for folder buttons to use new path after renaming
+   * @param folderElement The folder-node element
+   * @param newPath The new path of the folder
+   */
+  updateFolderButtonHandlers(folderElement, newPath) {
+    const orderBtnsContainer = folderElement.querySelector(`.${CSS_CLASSES.ORDER_BTN_CONTAINER}`);
+    if (orderBtnsContainer) {
+      const upButton = orderBtnsContainer.querySelector(`.${CSS_CLASSES.ORDER_BTN_UP}`);
+      if (upButton) {
+        upButton.onclick = async (e) => {
+          e.stopPropagation();
+          await this.moveFolderUp(newPath);
+        };
+      }
+      const downButton = orderBtnsContainer.querySelector(`.${CSS_CLASSES.ORDER_BTN_DOWN}`);
+      if (downButton) {
+        downButton.onclick = async (e) => {
+          e.stopPropagation();
+          await this.moveFolderDown(newPath);
+        };
+      }
+    }
   }
   async getStartTrackingDate(entries, file) {
     if (!file) {
@@ -18642,7 +18828,7 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   }
   async onTrackerCreated(folderPath, file) {
     this.folderTreeService.invalidate(folderPath);
-    await this.reloadTrackerState(file);
+    await this.ensureTrackerState(file);
     const normalizedFolderPath = this.normalizePath(folderPath);
     for (const block of Array.from(this.activeBlocks)) {
       const blockFolderPath = block.getFolderPath();
@@ -18727,9 +18913,9 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   }
   async writeLogLine(file, dateIso, value) {
     try {
-      const entries = await this.readAllEntries(file);
+      const state = await this.ensureTrackerState(file);
       const normalizedValue = parseMaybeNumber(value);
-      entries.set(dateIso, normalizedValue);
+      state.entries.set(dateIso, normalizedValue);
       await this.trackerFileService.writeLogLine(file, dateIso, value);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -18763,34 +18949,22 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     const trackers = folder.children.filter(
       (f) => f instanceof import_obsidian10.TFile && f.extension === "md"
     );
-    trackers.sort((a, b) => {
-      const aParsed = parseFilename(a.basename);
-      const bParsed = parseFilename(b.basename);
-      if (aParsed.prefix !== null && bParsed.prefix !== null) {
-        return aParsed.prefix - bParsed.prefix;
-      }
-      if (aParsed.prefix !== null) return -1;
-      if (bParsed.prefix !== null) return 1;
-      return a.basename.localeCompare(b.basename, void 0, { sensitivity: "base" });
-    });
-    const currentIndex = trackers.findIndex((t) => t.path === file.path);
+    const sortedTrackers = this.sortByPrefix(trackers);
+    const currentIndex = sortedTrackers.findIndex((t) => t.path === file.path);
     if (currentIndex <= 0) return;
-    const oldPathsMap = /* @__PURE__ */ new Map();
-    for (const tracker of trackers) {
-      oldPathsMap.set(tracker.path, tracker.path);
-    }
-    [trackers[currentIndex - 1], trackers[currentIndex]] = [trackers[currentIndex], trackers[currentIndex - 1]];
+    [sortedTrackers[currentIndex - 1], sortedTrackers[currentIndex]] = [sortedTrackers[currentIndex], sortedTrackers[currentIndex - 1]];
     const newPathsMap = /* @__PURE__ */ new Map();
-    for (let i = 0; i < trackers.length; i++) {
-      const oldPath = trackers[i].path;
-      const parsed = parseFilename(trackers[i].basename);
+    for (let i = 0; i < sortedTrackers.length; i++) {
+      const oldPath = sortedTrackers[i].path;
+      const parsed = parseFilename(sortedTrackers[i].basename);
       const newBasename = formatFilename(parsed.name, i + 1);
       const newPath = `${folderPath}/${newBasename}.md`;
       newPathsMap.set(oldPath, newPath);
     }
-    await this.trackerOrderService.reorderTrackers(folderPath, trackers);
+    await this.swapTrackerElementsInDOM(folderPath, sortedTrackers, newPathsMap);
+    await this.trackerOrderService.reorderTrackers(folderPath, sortedTrackers);
+    this.updateTrackerStateAfterRename(newPathsMap);
     this.folderTreeService.invalidate(folderPath);
-    await this.swapTrackerElementsInDOM(folderPath, oldPathsMap, newPathsMap);
   }
   async moveTrackerDown(file) {
     const folderPath = this.getFolderPathFromFile(file.path);
@@ -18799,82 +18973,163 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     const trackers = folder.children.filter(
       (f) => f instanceof import_obsidian10.TFile && f.extension === "md"
     );
-    trackers.sort((a, b) => {
-      const aParsed = parseFilename(a.basename);
-      const bParsed = parseFilename(b.basename);
-      if (aParsed.prefix !== null && bParsed.prefix !== null) {
-        return aParsed.prefix - bParsed.prefix;
-      }
-      if (aParsed.prefix !== null) return -1;
-      if (bParsed.prefix !== null) return 1;
-      return a.basename.localeCompare(b.basename, void 0, { sensitivity: "base" });
-    });
-    const currentIndex = trackers.findIndex((t) => t.path === file.path);
-    if (currentIndex < 0 || currentIndex >= trackers.length - 1) return;
-    const oldPathsMap = /* @__PURE__ */ new Map();
-    for (const tracker of trackers) {
-      oldPathsMap.set(tracker.path, tracker.path);
-    }
-    [trackers[currentIndex], trackers[currentIndex + 1]] = [trackers[currentIndex + 1], trackers[currentIndex]];
+    const sortedTrackers = this.sortByPrefix(trackers);
+    const currentIndex = sortedTrackers.findIndex((t) => t.path === file.path);
+    if (currentIndex < 0 || currentIndex >= sortedTrackers.length - 1) return;
+    [sortedTrackers[currentIndex], sortedTrackers[currentIndex + 1]] = [sortedTrackers[currentIndex + 1], sortedTrackers[currentIndex]];
     const newPathsMap = /* @__PURE__ */ new Map();
-    for (let i = 0; i < trackers.length; i++) {
-      const oldPath = trackers[i].path;
-      const parsed = parseFilename(trackers[i].basename);
+    for (let i = 0; i < sortedTrackers.length; i++) {
+      const oldPath = sortedTrackers[i].path;
+      const parsed = parseFilename(sortedTrackers[i].basename);
       const newBasename = formatFilename(parsed.name, i + 1);
       const newPath = `${folderPath}/${newBasename}.md`;
       newPathsMap.set(oldPath, newPath);
     }
-    await this.trackerOrderService.reorderTrackers(folderPath, trackers);
+    await this.swapTrackerElementsInDOM(folderPath, sortedTrackers, newPathsMap);
+    await this.trackerOrderService.reorderTrackers(folderPath, sortedTrackers);
+    this.updateTrackerStateAfterRename(newPathsMap);
     this.folderTreeService.invalidate(folderPath);
-    await this.swapTrackerElementsInDOM(folderPath, oldPathsMap, newPathsMap);
   }
   async moveFolderUp(folderPath) {
     const parentFolderPath = this.getFolderPathFromFile(folderPath);
-    const parentFolder = this.app.vault.getAbstractFileByPath(parentFolderPath);
-    if (!parentFolder || !(parentFolder instanceof import_obsidian10.TFolder)) return;
-    const folders = parentFolder.children.filter(
-      (f) => f instanceof import_obsidian10.TFolder
-    );
-    folders.sort((a, b) => {
-      const aParsed = parseFilename(a.name);
-      const bParsed = parseFilename(b.name);
-      if (aParsed.prefix !== null && bParsed.prefix !== null) {
-        return aParsed.prefix - bParsed.prefix;
-      }
-      if (aParsed.prefix !== null) return -1;
-      if (bParsed.prefix !== null) return 1;
-      return a.name.localeCompare(b.name, void 0, { sensitivity: "base" });
-    });
-    const currentIndex = folders.findIndex((f) => f.path === folderPath);
+    let folders;
+    if (!parentFolderPath) {
+      folders = this.app.vault.getRoot().children.filter(
+        (f) => f instanceof import_obsidian10.TFolder
+      );
+    } else {
+      const parentFolder = this.app.vault.getAbstractFileByPath(parentFolderPath);
+      if (!parentFolder || !(parentFolder instanceof import_obsidian10.TFolder)) return;
+      folders = parentFolder.children.filter(
+        (f) => f instanceof import_obsidian10.TFolder
+      );
+    }
+    const sortedFolders = this.sortByPrefix(folders);
+    const currentIndex = sortedFolders.findIndex((f) => f.path === folderPath);
     if (currentIndex <= 0) return;
-    [folders[currentIndex - 1], folders[currentIndex]] = [folders[currentIndex], folders[currentIndex - 1]];
-    await this.trackerOrderService.reorderFolders(parentFolderPath, folders);
-    this.folderTreeService.invalidate(parentFolderPath);
-    await this.refreshBlocksForFolder(parentFolderPath);
+    [sortedFolders[currentIndex - 1], sortedFolders[currentIndex]] = [sortedFolders[currentIndex], sortedFolders[currentIndex - 1]];
+    const newPathsMap = /* @__PURE__ */ new Map();
+    for (let i = 0; i < sortedFolders.length; i++) {
+      const oldPath = sortedFolders[i].path;
+      const parsed = parseFilename(sortedFolders[i].name);
+      const newName = formatFilename(parsed.name, i + 1);
+      const newPath = parentFolderPath ? `${parentFolderPath}/${newName}` : newName;
+      newPathsMap.set(oldPath, newPath);
+    }
+    await this.reorderFolderElementsInDOM(parentFolderPath || "", sortedFolders, newPathsMap);
+    await this.trackerOrderService.reorderFolders(parentFolderPath, sortedFolders);
+    this.updateTrackerStateForRenamedFolders(newPathsMap);
+    this.folderTreeService.invalidate(parentFolderPath || "");
+    await this.updateAllFolderButtonHandlersAfterRename(newPathsMap);
   }
   async moveFolderDown(folderPath) {
     const parentFolderPath = this.getFolderPathFromFile(folderPath);
-    const parentFolder = this.app.vault.getAbstractFileByPath(parentFolderPath);
-    if (!parentFolder || !(parentFolder instanceof import_obsidian10.TFolder)) return;
-    const folders = parentFolder.children.filter(
-      (f) => f instanceof import_obsidian10.TFolder
-    );
-    folders.sort((a, b) => {
-      const aParsed = parseFilename(a.name);
-      const bParsed = parseFilename(b.name);
-      if (aParsed.prefix !== null && bParsed.prefix !== null) {
-        return aParsed.prefix - bParsed.prefix;
+    let folders;
+    if (!parentFolderPath) {
+      folders = this.app.vault.getRoot().children.filter(
+        (f) => f instanceof import_obsidian10.TFolder
+      );
+    } else {
+      const parentFolder = this.app.vault.getAbstractFileByPath(parentFolderPath);
+      if (!parentFolder || !(parentFolder instanceof import_obsidian10.TFolder)) return;
+      folders = parentFolder.children.filter(
+        (f) => f instanceof import_obsidian10.TFolder
+      );
+    }
+    const sortedFolders = this.sortByPrefix(folders);
+    const currentIndex = sortedFolders.findIndex((f) => f.path === folderPath);
+    if (currentIndex < 0 || currentIndex >= sortedFolders.length - 1) return;
+    [sortedFolders[currentIndex], sortedFolders[currentIndex + 1]] = [sortedFolders[currentIndex + 1], sortedFolders[currentIndex]];
+    const newPathsMap = /* @__PURE__ */ new Map();
+    for (let i = 0; i < sortedFolders.length; i++) {
+      const oldPath = sortedFolders[i].path;
+      const parsed = parseFilename(sortedFolders[i].name);
+      const newName = formatFilename(parsed.name, i + 1);
+      const newPath = parentFolderPath ? `${parentFolderPath}/${newName}` : newName;
+      newPathsMap.set(oldPath, newPath);
+    }
+    await this.reorderFolderElementsInDOM(parentFolderPath || "", sortedFolders, newPathsMap);
+    await this.trackerOrderService.reorderFolders(parentFolderPath, sortedFolders);
+    this.updateTrackerStateForRenamedFolders(newPathsMap);
+    this.folderTreeService.invalidate(parentFolderPath || "");
+    await this.updateAllFolderButtonHandlersAfterRename(newPathsMap);
+  }
+  /**
+   * Updates button handlers for all folders and trackers in DOM after folder renaming
+   * Also updates data-folder-path and data-file-path for all nested elements
+   * @param newPathsMap Map of old paths to new paths
+   */
+  async updateAllFolderButtonHandlersAfterRename(newPathsMap) {
+    for (const block of Array.from(this.activeBlocks)) {
+      const hierarchyContainer = block.containerEl.querySelector(`.tracker-notes__hierarchy`);
+      if (!hierarchyContainer) continue;
+      const allFolderNodes = hierarchyContainer.querySelectorAll(`.tracker-notes__folder-node`);
+      for (const folderNode of Array.from(allFolderNodes)) {
+        const currentPath = this.normalizePath(folderNode.dataset.folderPath || "");
+        if (!currentPath) continue;
+        let actualPath = currentPath;
+        for (const [oldPath, newPath] of newPathsMap.entries()) {
+          const normalizedOldPath = this.normalizePath(oldPath);
+          const normalizedNewPath = this.normalizePath(newPath);
+          if (currentPath === normalizedOldPath) {
+            const folder = this.app.vault.getAbstractFileByPath(normalizedNewPath);
+            if (folder instanceof import_obsidian10.TFolder) {
+              actualPath = this.normalizePath(folder.path);
+            } else {
+              actualPath = normalizedNewPath;
+            }
+            break;
+          } else if (currentPath.startsWith(normalizedOldPath + "/")) {
+            const relativePath = currentPath.substring(normalizedOldPath.length);
+            const computedNewPath = normalizedNewPath + relativePath;
+            const folder = this.app.vault.getAbstractFileByPath(computedNewPath);
+            if (folder instanceof import_obsidian10.TFolder) {
+              actualPath = this.normalizePath(folder.path);
+            } else {
+              actualPath = computedNewPath;
+            }
+            break;
+          }
+        }
+        if (actualPath !== currentPath) {
+          folderNode.dataset.folderPath = actualPath;
+          const trackersContainer = folderNode.querySelector(`.tracker-notes__trackers`);
+          if (trackersContainer) {
+            trackersContainer.dataset.folderPath = actualPath;
+          }
+        }
+        this.updateFolderButtonHandlers(folderNode, actualPath);
+        const trackers = folderNode.querySelectorAll(`.tracker-notes__tracker`);
+        for (const tracker of Array.from(trackers)) {
+          const trackerPath = this.normalizePath(tracker.dataset.filePath || "");
+          if (!trackerPath) continue;
+          let actualTrackerPath = trackerPath;
+          for (const [oldPath, newPath] of newPathsMap.entries()) {
+            const normalizedOldPath = this.normalizePath(oldPath);
+            const normalizedNewPath = this.normalizePath(newPath);
+            if (trackerPath.startsWith(normalizedOldPath + "/")) {
+              const relativePath = trackerPath.substring(normalizedOldPath.length);
+              const computedNewPath = normalizedNewPath + relativePath;
+              const file = this.app.vault.getAbstractFileByPath(computedNewPath);
+              if (file instanceof import_obsidian10.TFile) {
+                actualTrackerPath = this.normalizePath(file.path);
+              } else {
+                actualTrackerPath = computedNewPath;
+              }
+              break;
+            }
+          }
+          if (actualTrackerPath !== trackerPath) {
+            tracker.dataset.filePath = actualTrackerPath;
+            const link = tracker.querySelector("a.internal-link");
+            if (link) {
+              link.href = actualTrackerPath;
+              link.setAttribute("data-href", actualTrackerPath);
+            }
+          }
+        }
       }
-      if (aParsed.prefix !== null) return -1;
-      if (bParsed.prefix !== null) return 1;
-      return a.name.localeCompare(b.name, void 0, { sensitivity: "base" });
-    });
-    const currentIndex = folders.findIndex((f) => f.path === folderPath);
-    if (currentIndex < 0 || currentIndex >= folders.length - 1) return;
-    [folders[currentIndex], folders[currentIndex + 1]] = [folders[currentIndex + 1], folders[currentIndex]];
-    await this.trackerOrderService.reorderFolders(parentFolderPath, folders);
-    this.folderTreeService.invalidate(parentFolderPath);
-    await this.refreshBlocksForFolder(parentFolderPath);
+    }
   }
   // Methods for safe file modification (ignoring internal changes)
   /**

@@ -123,72 +123,6 @@ showStats: true
 ```
 ````
 
-**Bad habit:**
-````markdown
-```tracker
-file: 0. Files/Trackers/01-Habits/Smoking.md
-mode: bad-habit
-showStats: true
-```
-````
-
-**Number with automatic saving:**
-````markdown
-```tracker
-file: 0. Files/Trackers/02-Metrics/Weight.md
-mode: number
-showChart: true
-showStats: true
-```
-````
-
-**Counter with visualization:**
-````markdown
-```tracker
-file: 0. Files/Trackers/02-Metrics/Steps.md
-mode: plusminus
-showChart: true
-showStats: true
-```
-````
-
-**Star rating:**
-````markdown
-```tracker
-file: 0. Files/Trackers/02-Metrics/Mood.md
-mode: rating
-maxRating: 10
-showChart: true
-```
-````
-
-**Text note:**
-````markdown
-```tracker
-file: 0. Files/Trackers/02-Metrics/Journal.md
-mode: text
-```
-````
-
-**Scale (slider):**
-````markdown
-```tracker
-file: 0. Files/Trackers/02-Metrics/Energy level.md
-mode: scale
-showChart: true
-showStats: true
-```
-````
-
-**All trackers in folder:**
-````markdown
-```habit
-folder: 0. Files/Trackers/01-Habits
-showChart: true
-showStats: true
-```
-````
-
 ### Quick commands
 
 - `Create new tracker` - create a new tracker
@@ -290,12 +224,10 @@ MIT License © 2025 Vladislav (Vlad Ross)
 
 ## 💡 Ideas for future versions
 
-- [ ] Export data to CSV/JSON
+- [ ] Export data
 - [ ] Import data
 - [ ] Reminders
-- [ ] Themes
 - [ ] Goals (target values) for trackers
-- [ ] Grouping trackers by categories
 - [ ] Period comparison
 
 ---

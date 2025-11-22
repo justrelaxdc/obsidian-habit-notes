@@ -54,18 +54,14 @@ export class ControlsRenderer {
     const trackerItem = container.closest(`.${CSS_CLASSES.TRACKER}`) as HTMLElement;
     const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`) as HTMLElement;
     
-    // Читаем entries при первом рендеринге и сохраняем в замыкании
-    let entries = await this.readAllEntries(file);
-    
     // Функция для обновления визуализаций после записи данных
-    // Используем уже полученные fileOpts и trackerType вместо повторного вызова getFileTypeFromFrontmatter
+    // Всегда читает актуальные данные из бекенда
     const trackerType = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
-    const updateVisualizations = async (updatedEntries?: Map<string, string | number>) => {
+    const updateVisualizations = async () => {
       if (!trackerItem) return;
-      // Обновляем локальный entries если передан обновленный
-      if (updatedEntries) {
-        entries = updatedEntries;
-      }
+      
+      // Всегда читаем актуальные данные из бекенда
+      const entries = await this.readAllEntries(file);
       
       // Ищем date-input в общем header блока или используем переданную дату
       const currentDateIso = (mainContainer?.querySelector(`.${CSS_CLASSES.DATE_INPUT}`) as HTMLInputElement)?.value || dateIso;
@@ -91,13 +87,13 @@ export class ControlsRenderer {
         await this.heatmapService.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
       }
     } else if (mode === TrackerType.NUMBER) {
-      await this.renderNumber(container, file, dateIso, fileOpts, entries, updateVisualizations);
+      await this.renderNumber(container, file, dateIso, fileOpts, updateVisualizations);
     } else if (mode === TrackerType.PLUSMINUS) {
-      await this.renderPlusMinus(container, file, dateIso, fileOpts, entries, updateVisualizations);
+      await this.renderPlusMinus(container, file, dateIso, fileOpts, updateVisualizations);
     } else if (mode === TrackerType.TEXT) {
-      await this.renderText(container, file, dateIso, fileOpts, entries, updateVisualizations);
+      await this.renderText(container, file, dateIso, fileOpts, updateVisualizations);
     } else if (mode === TrackerType.SCALE) {
-      await this.renderScale(container, file, dateIso, opts, fileOpts, entries, updateVisualizations);
+      await this.renderScale(container, file, dateIso, opts, fileOpts, updateVisualizations);
     } else {
       container.createEl("div", { 
         text: `Unknown mode: ${mode}. Available: ${TrackerType.GOOD_HABIT}, ${TrackerType.BAD_HABIT}, ${TrackerType.NUMBER}, ${TrackerType.PLUSMINUS}, ${TrackerType.TEXT}, ${TrackerType.SCALE}` 
@@ -110,8 +106,7 @@ export class ControlsRenderer {
     file: TFile,
     dateIso: string,
     fileOpts: TrackerFileOptions,
-    entries: Map<string, string | number>,
-    updateVisualizations: (entries?: Map<string, string | number>) => Promise<void>
+    updateVisualizations: () => Promise<void>
   ): Promise<void> {
     const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
     const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
@@ -135,8 +130,6 @@ export class ControlsRenderer {
     
     // Обновление визуализаций и локального состояния (немедленно)
     const updateVisualState = async (val: number) => {
-      // Обновляем локальный entries напрямую
-      entries.set(dateIso, val);
       input.value = String(val);
       
       // Проверяем лимиты и применяем цветовые индикаторы только если есть лимиты и значение вне диапазона
@@ -151,8 +144,6 @@ export class ControlsRenderer {
       // Визуальная обратная связь
       input.style.transform = "scale(0.98)";
       setTimeout(() => input.style.transform = "", ANIMATION_DURATION_MS);
-      // Обновляем визуализации с локальными данными
-      await updateVisualizations(entries);
     };
     
     // Запись в файл (с debounce или немедленно)
@@ -163,15 +154,20 @@ export class ControlsRenderer {
           clearTimeout(debounceTimer);
           debounceTimer = null;
         }
-        // Немедленная запись
+        // Немедленная запись (обновляет бекенд и файл)
         await this.writeLogLine(file, dateIso, String(val)).catch(err => console.error("Tracker: write error", err));
+        // Обновляем визуализации из бекенда
+        await updateVisualizations();
       } else {
         // Debounce для записи в файл
         if (debounceTimer) {
           clearTimeout(debounceTimer);
         }
         debounceTimer = setTimeout(async () => {
+          // Обновляем бекенд и файл
           await this.writeLogLine(file, dateIso, String(val)).catch(err => console.error("Tracker: write error", err));
+          // Обновляем визуализации из бекенда
+          await updateVisualizations();
           debounceTimer = null;
         }, DEBOUNCE_DELAY_MS);
       }
@@ -214,8 +210,7 @@ export class ControlsRenderer {
     file: TFile,
     dateIso: string,
     fileOpts: TrackerFileOptions,
-    entries: Map<string, string | number>,
-    updateVisualizations: (entries?: Map<string, string | number>) => Promise<void>
+    updateVisualizations: () => Promise<void>
   ): Promise<void> {
     // Получаем step из frontmatter, по умолчанию 1
     const step = parseFloat(fileOpts.step || "1") || 1;
@@ -255,24 +250,20 @@ export class ControlsRenderer {
     minus.onclick = async () => {
       current = (Number.isFinite(current) ? current : 0) - step;
       updateValueAndLimits(current);
-      // Обновляем локальный entries напрямую
-      entries.set(dateIso, current);
-      // Записываем в файл асинхронно
-      this.writeLogLine(file, dateIso, String(current)).catch(err => console.error("Tracker: write error", err));
+      // Обновляем бекенд и файл
+      await this.writeLogLine(file, dateIso, String(current)).catch(err => console.error("Tracker: write error", err));
       setTimeout(() => valEl.classList.remove(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
-      // Обновляем визуализации с локальными данными
-      await updateVisualizations(entries);
+      // Обновляем визуализации из бекенда
+      await updateVisualizations();
     };
     plus.onclick = async () => {
       current = (Number.isFinite(current) ? current : 0) + step;
       updateValueAndLimits(current);
-      // Обновляем локальный entries напрямую
-      entries.set(dateIso, current);
-      // Записываем в файл асинхронно
-      this.writeLogLine(file, dateIso, String(current)).catch(err => console.error("Tracker: write error", err));
+      // Обновляем бекенд и файл
+      await this.writeLogLine(file, dateIso, String(current)).catch(err => console.error("Tracker: write error", err));
       setTimeout(() => valEl.classList.remove(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
-      // Обновляем визуализации с локальными данными
-      await updateVisualizations(entries);
+      // Обновляем визуализации из бекенда
+      await updateVisualizations();
     };
   }
 
@@ -281,8 +272,7 @@ export class ControlsRenderer {
     file: TFile,
     dateIso: string,
     fileOpts: TrackerFileOptions,
-    entries: Map<string, string | number>,
-    updateVisualizations: (entries?: Map<string, string | number>) => Promise<void>
+    updateVisualizations: () => Promise<void>
   ): Promise<void> {
     const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
     const input = wrap.createEl("textarea", { 
@@ -294,15 +284,13 @@ export class ControlsRenderer {
     const btn = wrap.createEl("button", { text: MODAL_LABELS.SAVE });
     btn.onclick = async () => {
       const val = input.value.trim();
-      // Обновляем локальный entries напрямую
-      entries.set(dateIso, val);
-      // Записываем в файл асинхронно
-      this.writeLogLine(file, dateIso, val).catch(err => console.error("Tracker: write error", err));
+      // Обновляем бекенд и файл
+      await this.writeLogLine(file, dateIso, val).catch(err => console.error("Tracker: write error", err));
       // Визуальная обратная связь
       btn.style.transform = "scale(0.95)";
       setTimeout(() => btn.style.transform = "", ANIMATION_DURATION_MS);
-      // Обновляем визуализации с локальными данными
-      await updateVisualizations(entries);
+      // Обновляем визуализации из бекенда
+      await updateVisualizations();
     };
   }
 
@@ -312,8 +300,7 @@ export class ControlsRenderer {
     dateIso: string,
     opts: Record<string, string>,
     fileOpts: TrackerFileOptions,
-    entries: Map<string, string | number>,
-    updateVisualizations: (entries?: Map<string, string | number>) => Promise<void>
+    updateVisualizations: () => Promise<void>
   ): Promise<void> {
     const minValue = parseFloat(opts.minValue || fileOpts.minValue || "0");
     const maxValue = parseFloat(opts.maxValue || fileOpts.maxValue || "10");
@@ -430,12 +417,10 @@ export class ControlsRenderer {
         isDragging = false;
         progressBarInput.style.cursor = "";
         if (hasMoved) {
-          // Обновляем локальный entries напрямую
-          entries.set(dateIso, currentValue);
-          // Записываем в файл асинхронно
-          this.writeLogLine(file, dateIso, String(currentValue)).catch(err => console.error("Tracker: write error", err));
-          // Обновляем визуализации с локальными данными
-          await updateVisualizations(entries);
+          // Обновляем бекенд и файл
+          await this.writeLogLine(file, dateIso, String(currentValue)).catch(err => console.error("Tracker: write error", err));
+          // Обновляем визуализации из бекенда
+          await updateVisualizations();
         }
       }
     };
@@ -454,12 +439,10 @@ export class ControlsRenderer {
       const newValue = calculateValueFromPosition(e.clientX);
       currentValue = newValue;
       updateProgressBar(currentValue);
-      // Обновляем локальный entries напрямую
-      entries.set(dateIso, currentValue);
-      // Записываем в файл асинхронно
-      this.writeLogLine(file, dateIso, String(currentValue)).catch(err => console.error("Tracker: write error", err));
-      // Обновляем визуализации с локальными данными
-      await updateVisualizations(entries);
+      // Обновляем бекенд и файл
+      await this.writeLogLine(file, dateIso, String(currentValue)).catch(err => console.error("Tracker: write error", err));
+      // Обновляем визуализации из бекенда
+      await updateVisualizations();
     };
     
     // Поддержка клавиатуры
@@ -486,12 +469,10 @@ export class ControlsRenderer {
     
     const handleKeyUp = async (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
-        // Обновляем локальный entries напрямую
-        entries.set(dateIso, currentValue);
-        // Записываем в файл асинхронно
-        this.writeLogLine(file, dateIso, String(currentValue)).catch(err => console.error("Tracker: write error", err));
-        // Обновляем визуализации с локальными данными
-        await updateVisualizations(entries);
+        // Обновляем бекенд и файл
+        await this.writeLogLine(file, dateIso, String(currentValue)).catch(err => console.error("Tracker: write error", err));
+        // Обновляем визуализации из бекенда
+        await updateVisualizations();
       }
     };
     

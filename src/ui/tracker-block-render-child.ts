@@ -247,6 +247,8 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
     const nodeContainer = document.createElement("div");
     nodeContainer.addClass("tracker-notes__folder-node");
     nodeContainer.addClass(`level-${node.level}`);
+    // Store folder path in dataset for easy access (even if folder has no files)
+    nodeContainer.dataset.folderPath = normalizePath(node.path);
 
     const shouldShowHeader =
       node.files.length > 0 || (node.level > 0 && node.children.length > 0);
@@ -275,7 +277,13 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       upButton.title = MODAL_LABELS.MOVE_UP;
       upButton.onclick = async (e) => {
         e.stopPropagation();
-        await this.plugin.moveFolderUp(node.path);
+        // Get the folder node element from the button's parent hierarchy
+        // This ensures we always use the current path from DOM, even after renaming
+        const button = e.currentTarget as HTMLElement;
+        const folderNode = button.closest<HTMLElement>('.tracker-notes__folder-node');
+        if (!folderNode) return;
+        const folderPath = normalizePath(folderNode.dataset.folderPath || node.path);
+        await this.plugin.moveFolderUp(folderPath);
       };
       
       const downButton = orderBtnsContainer.createEl("button", {
@@ -285,7 +293,13 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       downButton.title = MODAL_LABELS.MOVE_DOWN;
       downButton.onclick = async (e) => {
         e.stopPropagation();
-        await this.plugin.moveFolderDown(node.path);
+        // Get the folder node element from the button's parent hierarchy
+        // This ensures we always use the current path from DOM, even after renaming
+        const button = e.currentTarget as HTMLElement;
+        const folderNode = button.closest<HTMLElement>('.tracker-notes__folder-node');
+        if (!folderNode) return;
+        const folderPath = normalizePath(folderNode.dataset.folderPath || node.path);
+        await this.plugin.moveFolderDown(folderPath);
       };
       
       // Disable buttons if folder is first/last

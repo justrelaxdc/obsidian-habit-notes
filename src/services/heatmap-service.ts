@@ -223,17 +223,17 @@ export class HeatmapService {
         const dateStr = dayDiv.dataset.dateStr;
         if (!dateStr) return;
         
-        // Получаем текущее значение из локального entries
+        // Получаем текущее значение из бекенда
         const fileOptsForClick = await this.getFileTypeFromFrontmatter(file);
         const currentValue = entries.get(dateStr);
         const isChecked = isTrackerValueTrue(currentValue);
         const newValue = isChecked ? 0 : 1;
         
-        // Обновляем локальный entries сразу
-        entries.set(dateStr, newValue);
+        // Обновляем бекенд и файл
+        await this.writeLogLine(file, dateStr, String(newValue)).catch(err => console.error("Tracker: write error", err));
         
-        // Записываем в файл асинхронно
-        this.writeLogLine(file, dateStr, String(newValue)).catch(err => console.error("Tracker: write error", err));
+        // Читаем актуальные данные из бекенда
+        const updatedEntries = await this.readAllEntries(file);
         
         // Обновляем только визуальное состояние этого дня
         if (newValue === 1) {
@@ -243,7 +243,7 @@ export class HeatmapService {
         }
         
         // Обновляем start-day маркеры
-        const startTrackingDateStr = this.getStartTrackingDate(entries, fileOptsForClick);
+        const startTrackingDateStr = this.getStartTrackingDate(updatedEntries, fileOptsForClick);
         const allDayElements = Array.from(heatmapDiv.children) as HTMLElement[];
         for (const dayEl of allDayElements) {
           const dayDateStr = dayEl.dataset.dateStr;
@@ -256,7 +256,7 @@ export class HeatmapService {
           }
         }
         
-        // Обновляем график и статистику с локальными данными
+        // Обновляем график и статистику с актуальными данными из бекенда
         const trackerItem = heatmapDiv.closest(`.${CSS_CLASSES.TRACKER}`) as HTMLElement;
         const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`) as HTMLElement;
         if (trackerItem) {
@@ -264,13 +264,13 @@ export class HeatmapService {
           if (this.updateChart) {
             const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
             if (chartDiv) {
-              await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, daysToShow, entries);
+              await this.updateChart(chartDiv as HTMLElement, file, currentDateIso, daysToShow, updatedEntries);
             }
           }
           if (this.updateStats) {
             const statsDiv = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
             if (statsDiv) {
-              await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, daysToShow, trackerType, entries);
+              await this.updateStats(statsDiv as HTMLElement, file, currentDateIso, daysToShow, trackerType, updatedEntries);
             }
           }
         }
