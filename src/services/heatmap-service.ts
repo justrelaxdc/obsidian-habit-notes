@@ -170,9 +170,6 @@ export class HeatmapService {
   ): Promise<void> {
     let heatmapDiv = container.querySelector(`.${CSS_CLASSES.HEATMAP}`) as HTMLElement;
     
-    // Читаем entries при первом рендеринге и сохраняем в замыкании
-    let entries = await this.readAllEntries(file);
-    
     if (!heatmapDiv) {
       heatmapDiv = container.createDiv({ cls: CSS_CLASSES.HEATMAP });
       
@@ -223,7 +220,8 @@ export class HeatmapService {
         const dateStr = dayDiv.dataset.dateStr;
         if (!dateStr) return;
         
-        // Получаем текущее значение из бекенда
+        // Всегда читаем актуальные данные из бекенда перед использованием
+        const entries = await this.readAllEntries(file);
         const fileOptsForClick = await this.getFileTypeFromFrontmatter(file);
         const currentValue = entries.get(dateStr);
         const isChecked = isTrackerValueTrue(currentValue);
@@ -232,7 +230,7 @@ export class HeatmapService {
         // Обновляем бекенд и файл
         await this.writeLogLine(file, dateStr, String(newValue)).catch(err => console.error("Tracker: write error", err));
         
-        // Читаем актуальные данные из бекенда
+        // Читаем актуальные данные из бекенда после записи
         const updatedEntries = await this.readAllEntries(file);
         
         // Обновляем только визуальное состояние этого дня

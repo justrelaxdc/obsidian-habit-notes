@@ -16627,7 +16627,6 @@ var HeatmapService = class {
    */
   async renderTrackerHeatmap(container, file, dateIso, daysToShow, trackerType) {
     let heatmapDiv = container.querySelector(`.${CSS_CLASSES.HEATMAP}`);
-    let entries = await this.readAllEntries(file);
     if (!heatmapDiv) {
       heatmapDiv = container.createDiv({ cls: CSS_CLASSES.HEATMAP });
       let touchStartX = 0;
@@ -16665,6 +16664,7 @@ var HeatmapService = class {
         if (!dayDiv) return;
         const dateStr = dayDiv.dataset.dateStr;
         if (!dateStr) return;
+        const entries = await this.readAllEntries(file);
         const fileOptsForClick = await this.getFileTypeFromFrontmatter(file);
         const currentValue = entries.get(dateStr);
         const isChecked = isTrackerValueTrue(currentValue);
@@ -17452,29 +17452,65 @@ var IconizeService = class {
     this.app = app;
     this.iconData = null;
     this.dataLoaded = false;
+    this.watchInterval = null;
+    this.lastModifiedTime = 0;
+    this.iconDataPath = "";
   }
   /**
    * Loads icon data from Iconize plugin data file
    */
   async loadIconizeData() {
-    if (this.dataLoaded) {
-      return;
-    }
     const configDir = this.app.vault.configDir || ".obsidian";
+    const relativePath = (0, import_obsidian9.normalizePath)(`${configDir}/plugins/obsidian-icon-folder/data.json`);
+    this.iconDataPath = relativePath;
     try {
-      const relativePath = (0, import_obsidian9.normalizePath)(`${configDir}/plugins/obsidian-icon-folder/data.json`);
       try {
         const content = await this.app.vault.adapter.read(relativePath);
         this.iconData = JSON.parse(content);
         this.dataLoaded = true;
+        try {
+          const stat = await this.app.vault.adapter.stat(relativePath);
+          this.lastModifiedTime = stat.mtime || 0;
+        } catch {
+          this.lastModifiedTime = Date.now();
+        }
       } catch (readError) {
         this.iconData = null;
         this.dataLoaded = true;
+        this.lastModifiedTime = 0;
       }
     } catch (error) {
       console.error("[Iconize] Error loading data:", error);
       this.iconData = null;
       this.dataLoaded = true;
+      this.lastModifiedTime = 0;
+    }
+  }
+  /**
+   * Starts watching the icon data file for changes
+   */
+  startWatching() {
+    this.stopWatching();
+    this.watchInterval = setInterval(async () => {
+      if (!this.iconDataPath) return;
+      try {
+        const stat = await this.app.vault.adapter.stat(this.iconDataPath);
+        const currentMtime = stat.mtime || 0;
+        if (currentMtime > this.lastModifiedTime) {
+          this.dataLoaded = false;
+          await this.loadIconizeData();
+        }
+      } catch {
+      }
+    }, 2e3);
+  }
+  /**
+   * Stops watching the icon data file
+   */
+  stopWatching() {
+    if (this.watchInterval) {
+      clearInterval(this.watchInterval);
+      this.watchInterval = null;
     }
   }
   /**
@@ -17619,7 +17655,9 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.visualizationService = new VisualizationService();
     this.trackerOrderService = new TrackerOrderService(this.app);
     this.iconizeService = new IconizeService(this.app);
-    this.iconizeService.loadIconizeData().catch(() => {
+    this.iconizeService.loadIconizeData().then(() => {
+      this.iconizeService.startWatching();
+    }).catch(() => {
     });
     this.heatmapService = new HeatmapService(
       this.settings,
@@ -17703,6 +17741,7 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   async onunload() {
     this.activeBlocks.forEach((block) => block.unload());
     this.activeBlocks.clear();
+    this.iconizeService.stopWatching();
   }
   // ---- Code blocks ------------------------------------------------------------
   async processTrackerBlock(source, el, ctx) {
@@ -17940,8 +17979,20 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
             const baseName = removePrefix(file.basename);
             const unit = fileOpts.unit || "";
             const displayName = unit ? `${baseName} (${unit})` : baseName;
+            const oldPath = trackerItem.dataset.filePath;
+            const pathChanged = oldPath && oldPath !== file.path;
             const titleContainer = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_TITLE}`);
             if (titleContainer) {
+              if (pathChanged) {
+                const oldIcon = titleContainer.querySelector('.iconize-icon, span[style*="margin-right"]');
+                if (oldIcon) {
+                  oldIcon.remove();
+                }
+                const trackerIcon = this.getIconForPath(file.path, true);
+                if (trackerIcon && this.renderIcon) {
+                  this.renderIcon(trackerIcon, titleContainer);
+                }
+              }
               const titleLink = titleContainer.querySelector("a.internal-link");
               if (titleLink) {
                 titleLink.textContent = displayName;
@@ -17972,6 +18023,10 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
               const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
               if (heatmapDiv) {
                 await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, activeDateIso, daysToShow, trackerType);
+                const controlsContainer = trackerItem.querySelector(".tracker-notes__controls");
+                if (controlsContainer) {
+                  controlsContainer.dataset.trackerMode = trackerType;
+                }
               }
             } else if (view === "control") {
               const controlsContainer = trackerItem.querySelector(".tracker-notes__controls");
@@ -18710,14 +18765,13 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.trackerState.delete(path);
   }
   /**
-   * Clears all backend state (trackerState, FolderTreeService cache, and Iconize cache)
+   * Clears all backend state (trackerState, FolderTreeService cache)
    * Called when switching to a new note to ensure fresh data
+   * Iconize cache is automatically updated by file watcher
    */
   async clearAllCaches() {
     this.trackerState.clear();
     this.folderTreeService.invalidate();
-    this.iconizeService.invalidateCache();
-    await this.iconizeService.loadIconizeData();
   }
   invalidateCacheForFolder(folderPath) {
     const normalizedPath = this.normalizePath(folderPath);

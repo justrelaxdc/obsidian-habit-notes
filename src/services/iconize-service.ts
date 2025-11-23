@@ -12,6 +12,9 @@ interface IconizeData {
 export class IconizeService {
   private iconData: IconizeData | null = null;
   private dataLoaded: boolean = false;
+  private watchInterval: ReturnType<typeof setInterval> | null = null;
+  private lastModifiedTime: number = 0;
+  private iconDataPath: string = "";
 
   constructor(private readonly app: App) {}
 
@@ -19,36 +22,73 @@ export class IconizeService {
    * Loads icon data from Iconize plugin data file
    */
   async loadIconizeData(): Promise<void> {
-    if (this.dataLoaded) {
-      return;
-    }
-
     const configDir = this.app.vault.configDir || ".obsidian";
-    
+    const relativePath = normalizePath(`${configDir}/plugins/obsidian-icon-folder/data.json`);
+    this.iconDataPath = relativePath;
+
     try {
-      // Files in .obsidian are not part of the vault
-      // vault.adapter.read() expects a path relative to vault root
-      // configDir is already relative to vault root (e.g., ".obsidian")
-      // So we need: configDir + "/plugins/obsidian-icon-folder/data.json"
-      
-      // Build relative path from vault root
-      const relativePath = normalizePath(`${configDir}/plugins/obsidian-icon-folder/data.json`);
-      
       // Try to read file using adapter (expects relative path)
       try {
         const content = await this.app.vault.adapter.read(relativePath);
         this.iconData = JSON.parse(content);
         this.dataLoaded = true;
+        
+        // Get file modification time
+        try {
+          const stat = await this.app.vault.adapter.stat(relativePath);
+          this.lastModifiedTime = stat.mtime || 0;
+        } catch {
+          // If stat fails, use current time
+          this.lastModifiedTime = Date.now();
+        }
       } catch (readError) {
         // File doesn't exist or can't be read
         this.iconData = null;
         this.dataLoaded = true;
+        this.lastModifiedTime = 0;
       }
     } catch (error) {
       // Silently fail if Iconize is not installed or data is invalid
       console.error("[Iconize] Error loading data:", error);
       this.iconData = null;
       this.dataLoaded = true;
+      this.lastModifiedTime = 0;
+    }
+  }
+
+  /**
+   * Starts watching the icon data file for changes
+   */
+  startWatching(): void {
+    // Stop existing watcher if any
+    this.stopWatching();
+    
+    // Check for file changes every 2 seconds
+    this.watchInterval = setInterval(async () => {
+      if (!this.iconDataPath) return;
+      
+      try {
+        const stat = await this.app.vault.adapter.stat(this.iconDataPath);
+        const currentMtime = stat.mtime || 0;
+        
+        // If file was modified, reload data
+        if (currentMtime > this.lastModifiedTime) {
+          this.dataLoaded = false; // Force reload
+          await this.loadIconizeData();
+        }
+      } catch {
+        // File might not exist or be inaccessible, ignore
+      }
+    }, 2000);
+  }
+
+  /**
+   * Stops watching the icon data file
+   */
+  stopWatching(): void {
+    if (this.watchInterval) {
+      clearInterval(this.watchInterval);
+      this.watchInterval = null;
     }
   }
 

@@ -54,7 +54,10 @@ export default class TrackerPlugin extends Plugin {
     this.iconizeService = new IconizeService(this.app);
     
     // Load Iconize data asynchronously
-    this.iconizeService.loadIconizeData().catch(() => {
+    this.iconizeService.loadIconizeData().then(() => {
+      // Start watching for icon data file changes
+      this.iconizeService.startWatching();
+    }).catch(() => {
       // Silently fail if Iconize is not installed
     });
     
@@ -157,6 +160,9 @@ export default class TrackerPlugin extends Plugin {
     // Clear all active blocks
     this.activeBlocks.forEach(block => block.unload());
     this.activeBlocks.clear();
+    
+    // Stop watching icon data file
+    this.iconizeService.stopWatching();
   }
 
   // ---- Code blocks ------------------------------------------------------------
@@ -492,10 +498,28 @@ export default class TrackerPlugin extends Plugin {
             const unit = fileOpts.unit || "";
             const displayName = unit ? `${baseName} (${unit})` : baseName;
             
-            // Update name in header (leave icons untouched)
+            // Check if path changed (rename occurred)
+            const oldPath = trackerItem.dataset.filePath;
+            const pathChanged = oldPath && oldPath !== file.path;
+            
+            // Update name in header
             const titleContainer = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_TITLE}`) as HTMLElement;
             if (titleContainer) {
-              // Update only title link text and attributes, preserving icons
+              // If path changed, update icon as well
+              if (pathChanged) {
+                // Remove old icon if exists
+                const oldIcon = titleContainer.querySelector('.iconize-icon, span[style*="margin-right"]');
+                if (oldIcon) {
+                  oldIcon.remove();
+                }
+                // Get and render new icon for new path
+                const trackerIcon = this.getIconForPath(file.path, true);
+                if (trackerIcon && this.renderIcon) {
+                  this.renderIcon(trackerIcon, titleContainer);
+                }
+              }
+              
+              // Update only title link text and attributes
               const titleLink = titleContainer.querySelector('a.internal-link') as HTMLAnchorElement;
               if (titleLink) {
                 titleLink.textContent = displayName;
@@ -537,6 +561,11 @@ export default class TrackerPlugin extends Plugin {
               const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap") as HTMLElement;
               if (heatmapDiv) {
                 await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, activeDateIso, daysToShow, trackerType);
+                // Обновляем dataset.trackerMode в controlsContainer для корректной работы проверки в renderControlsForDate
+                const controlsContainer = trackerItem.querySelector(".tracker-notes__controls") as HTMLElement;
+                if (controlsContainer) {
+                  controlsContainer.dataset.trackerMode = trackerType;
+                }
               }
             } else if (view === "control") {
               // For metrics recreate controls to use current settings from frontmatter
@@ -1560,17 +1589,16 @@ export default class TrackerPlugin extends Plugin {
   }
   
   /**
-   * Clears all backend state (trackerState, FolderTreeService cache, and Iconize cache)
+   * Clears all backend state (trackerState, FolderTreeService cache)
    * Called when switching to a new note to ensure fresh data
+   * Iconize cache is automatically updated by file watcher
    */
   private async clearAllCaches(): Promise<void> {
     // Clear all tracker backend state
     this.trackerState.clear();
     // Clear all folder tree cache
     this.folderTreeService.invalidate();
-    // Invalidate and reload Iconize cache to get fresh icon data
-    this.iconizeService.invalidateCache();
-    await this.iconizeService.loadIconizeData();
+    // Iconize cache is automatically updated by file watcher
   }
   
   invalidateCacheForFolder(folderPath: string): void {
@@ -1680,6 +1708,7 @@ export default class TrackerPlugin extends Plugin {
   
   handleTrackerRenamed(oldPath: string, file: TFile): void {
     this.moveTrackerState(oldPath, file.path);
+    // Iconize cache is automatically updated by file watcher
   }
 
   /**
