@@ -263,7 +263,7 @@ export class TrackerFileService {
         break;
       }
 
-      currentDate = currentDate.subtract(1, "day");
+      currentDate = currentDate.subtract(1, "days");
       daysChecked++;
     }
 
@@ -322,8 +322,8 @@ export class TrackerFileService {
       } else {
         currentStreak = 0;
       }
-      
-      currentDate = currentDate.subtract(1, "day");
+
+      currentDate = currentDate.subtract(1, "days");
       daysChecked++;
     }
     
