@@ -257,54 +257,15 @@
         display: flex;
       }
       
-      /* Limit indicators - error and success states */
-      .tracker-notes__limit-error {
-        border-color: var(--text-error, #c00000) !important;
+      /* Limit indicators for tracker header */
+      .tracker-notes__tracker-header.tracker-notes__limit-error {
+        border-bottom-color: var(--text-error, #c00000) !important;
+        transition: border-bottom-color 0.3s ease;
       }
       
-      .tracker-notes__limit-success {
-        border-color: var(--interactive-accent, #7f6df2) !important;
-      }
-      
-      /* Progress bar with limits */
-      .tracker-notes__progress-bar-progress.tracker-notes__limit-error {
-        background: var(--text-error, #c00000) !important;
-      }
-      
-      .tracker-notes__progress-bar-progress.tracker-notes__limit-success {
-        background: var(--interactive-accent, #7f6df2) !important;
-      }
-      
-      /* Number input with limits */
-      .tracker-notes input[type="number"].tracker-notes__limit-error {
-        border-color: var(--text-error, #c00000) !important;
-      }
-      
-      .tracker-notes input[type="number"].tracker-notes__limit-success {
-        border-color: var(--interactive-accent, #7f6df2) !important;
-      }
-      
-      /* Value span with limits */
-      .tracker-notes__value.tracker-notes__limit-error {
-        color: var(--text-error, #c00000) !important;
-      }
-      
-      .tracker-notes__value.tracker-notes__limit-success {
-        color: var(--interactive-accent, #7f6df2) !important;
-      }
-      
-      /* Text input with limits */
-      .tracker-notes__text-input.tracker-notes__limit-error {
-        border-color: var(--text-error, #c00000) !important;
-      }
-      
-      .tracker-notes__text-input.tracker-notes__limit-success {
-        border-color: var(--interactive-accent, #7f6df2) !important;
-      }
-      
-      /* Value display with limits (for PLUSMINUS) */
-      .tracker-notes__value.tracker-notes__limit-error {
-        color: var(--text-error, #c00000) !important;
+      .tracker-notes__tracker-header.tracker-notes__limit-success {
+        border-bottom-color: var(--text-success, #00c000) !important;
+        transition: border-bottom-color 0.3s ease;
       }
       
       /* Iconize integration styles */

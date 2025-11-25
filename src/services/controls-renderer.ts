@@ -101,6 +101,48 @@ export class ControlsRenderer {
     }
   }
 
+  /**
+   * Updates limit indicator classes on tracker header
+   * @param container - The controls container
+   * @param value - Current value (can be null/undefined/NaN)
+   * @param minLimit - Minimum limit
+   * @param maxLimit - Maximum limit
+   */
+  private updateLimitIndicators(
+    container: HTMLElement,
+    value: number | null | undefined,
+    minLimit: number | null,
+    maxLimit: number | null
+  ): void {
+    // Find tracker item and header
+    const trackerItem = container.closest(`.${CSS_CLASSES.TRACKER}`) as HTMLElement;
+    if (!trackerItem) return;
+
+    const header = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_HEADER}`) as HTMLElement;
+
+    // Remove all limit classes first
+    if (header) {
+      header.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
+    }
+
+    // If no limits or value is null/undefined/NaN, keep default (gray)
+    if ((minLimit === null && maxLimit === null) || 
+        value === null || 
+        value === undefined || 
+        isNaN(value) ||
+        this.settings.disableLimitReaction) {
+      return;
+    }
+
+    // Check limits and apply classes
+    const limitCheck = checkLimits(value, minLimit, maxLimit);
+    if (limitCheck.status === 'error') {
+      if (header) header.classList.add(CSS_CLASSES.LIMIT_ERROR);
+    } else if (limitCheck.status === 'success') {
+      if (header) header.classList.add(CSS_CLASSES.LIMIT_SUCCESS);
+    }
+  }
+
   private async renderNumber(
     container: HTMLElement,
     file: TFile,
@@ -115,17 +157,11 @@ export class ControlsRenderer {
     const current = await this.readValueForDate(file, dateIso);
     if (current != null && !isNaN(Number(current))) {
       input.value = String(current);
-      // Применяем цветовые индикаторы при инициализации только если есть лимиты
-      // И только если настройка не отключает реакцию на диапазон
-      if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        const limitCheck = checkLimits(Number(current), minLimit, maxLimit);
-        input.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
-        if (limitCheck.status === 'error') {
-          input.classList.add(CSS_CLASSES.LIMIT_ERROR);
-        } else if (limitCheck.status === 'success') {
-          input.classList.add(CSS_CLASSES.LIMIT_SUCCESS);
-        }
-      }
+    }
+    
+    // Update limit indicators on initialization
+    if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
+      this.updateLimitIndicators(container, current != null ? Number(current) : null, minLimit, maxLimit);
     }
     
     // Debounce таймер для записи в файл
@@ -135,16 +171,9 @@ export class ControlsRenderer {
     const updateVisualState = async (val: number) => {
       input.value = String(val);
       
-      // Проверяем лимиты и применяем цветовые индикаторы только если есть лимиты
-      // И только если настройка не отключает реакцию на диапазон
+      // Update limit indicators
       if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        const limitCheck = checkLimits(val, minLimit, maxLimit);
-        input.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
-        if (limitCheck.status === 'error') {
-          input.classList.add(CSS_CLASSES.LIMIT_ERROR);
-        } else if (limitCheck.status === 'success') {
-          input.classList.add(CSS_CLASSES.LIMIT_SUCCESS);
-        }
+        this.updateLimitIndicators(container, val, minLimit, maxLimit);
       }
       
       // Визуальная обратная связь
@@ -183,6 +212,10 @@ export class ControlsRenderer {
     const updateValue = async (immediate = false) => {
       // Если поле пустое, записываем 0, но не меняем визуальное состояние (поле остается пустым)
       if (input.value === "") {
+        // Update limit indicators to neutral (gray) when field is empty
+        if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
+          this.updateLimitIndicators(container, null, minLimit, maxLimit);
+        }
         await writeToFile(0, immediate);
         return;
       }
@@ -197,8 +230,12 @@ export class ControlsRenderer {
     
     // Обработчик ввода с debounce
     input.oninput = () => {
-      // Если поле пустое, записываем 0 (но поле остается пустым визуально)
+      // Если поле пустое, обновляем индикаторы и записываем 0 (но поле остается пустым визуально)
       if (input.value === "") {
+        // Update limit indicators to neutral (gray) when field is empty
+        if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
+          this.updateLimitIndicators(container, null, minLimit, maxLimit);
+        }
         void updateValue(false);
         return;
       }
@@ -218,8 +255,12 @@ export class ControlsRenderer {
     
     // Немедленная запись при потере фокуса
     input.onblur = async () => {
-      // Если поле пустое, записываем 0 (но поле остается пустым визуально)
+      // Если поле пустое, обновляем индикаторы и записываем 0 (но поле остается пустым визуально)
       if (input.value === "") {
+        // Update limit indicators to neutral (gray) when field is empty
+        if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
+          this.updateLimitIndicators(container, null, minLimit, maxLimit);
+        }
         await updateValue(true);
         return;
       }
@@ -251,32 +292,19 @@ export class ControlsRenderer {
     let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
     if (!isNaN(current)) {
       valEl.setText(String(current));
-      // Применяем цветовые индикаторы при инициализации только если есть лимиты
-      // И только если настройка не отключает реакцию на диапазон
-      if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        const limitCheck = checkLimits(current, minLimit, maxLimit);
-        valEl.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
-        if (limitCheck.status === 'error') {
-          valEl.classList.add(CSS_CLASSES.LIMIT_ERROR);
-        } else if (limitCheck.status === 'success') {
-          valEl.classList.add(CSS_CLASSES.LIMIT_SUCCESS);
-        }
-      }
+    }
+    
+    // Update limit indicators on initialization
+    if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
+      this.updateLimitIndicators(container, isNaN(current) ? null : current, minLimit, maxLimit);
     }
     
     const updateValueAndLimits = (newValue: number) => {
       valEl.setText(String(newValue));
       valEl.classList.add(CSS_CLASSES.VALUE_UPDATED);
-      // Проверяем лимиты и применяем цветовые индикаторы только если есть лимиты
-      // И только если настройка не отключает реакцию на диапазон
+      // Update limit indicators
       if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        const limitCheck = checkLimits(newValue, minLimit, maxLimit);
-        valEl.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
-        if (limitCheck.status === 'error') {
-          valEl.classList.add(CSS_CLASSES.LIMIT_ERROR);
-        } else if (limitCheck.status === 'success') {
-          valEl.classList.add(CSS_CLASSES.LIMIT_SUCCESS);
-        }
+        this.updateLimitIndicators(container, newValue, minLimit, maxLimit);
       }
     };
     
@@ -407,16 +435,9 @@ export class ControlsRenderer {
       progressBar.setAttribute("aria-valuenow", String(value));
       wrapper.setAttribute("data-internal-value", String(value));
       
-      // Проверяем лимиты и применяем цветовые индикаторы только если есть лимиты
-      // И только если настройка не отключает реакцию на диапазон
+      // Update limit indicators instead of progress bar classes
       if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        const limitCheck = checkLimits(value, minLimit, maxLimit);
-        progressBar.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
-        if (limitCheck.status === 'error') {
-          progressBar.classList.add(CSS_CLASSES.LIMIT_ERROR);
-        } else if (limitCheck.status === 'success') {
-          progressBar.classList.add(CSS_CLASSES.LIMIT_SUCCESS);
-        }
+        this.updateLimitIndicators(container, value, minLimit, maxLimit);
       }
     };
     
