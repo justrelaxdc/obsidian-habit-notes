@@ -15010,12 +15010,12 @@ var UI_CONSTANTS = {
 };
 var STATS_LABELS = {
   TOTAL_RECORDS: "Total records",
-  LAST_DAYS: "Last",
+  LAST_DAYS: "Sum",
   CURRENT_STREAK: "Current streak",
   DAYS_SINGULAR: "day",
   DAYS_PLURAL_2_4: "days",
   DAYS_PLURAL_5_PLUS: "days",
-  AVERAGE: "average",
+  AVERAGE: "Average",
   MIN: "Min",
   MAX: "Max",
   MEDIAN: "Median",
@@ -16636,12 +16636,154 @@ var tracker_default = `.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-hab
       .tracker-notes button:active { transform: scale(0.95) translateY(0); }\r
       .tracker-notes__text-input { width: 100%; max-width: 100%; padding: 0.5em; border: 1px solid var(--background-modifier-border); border-radius: 5px; background: var(--background-primary); color: var(--text-normal); font-family: inherit; font-size: 0.9em; transition: border-color 0.2s ease; resize: vertical; min-height: 60px; box-sizing: border-box; }\r
       .tracker-notes__text-input:focus { outline: none !important; border-color: var(--interactive-accent); }\r
-      .tracker-notes__stats { margin-top: 0.75em; margin-bottom: 0.5em; padding-top: 0.75em; padding-bottom: 0.5em; border-top: 1px solid var(--background-modifier-border); font-size: 0.85em; color: var(--text-muted); line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }\r
-      .tracker-notes__stats > div { margin: 0.3em 0; }\r
-      .tracker-notes__stats-section { margin: 0.5em 0; padding: 0.4em 0; border-bottom: 1px solid var(--background-modifier-border); }\r
-      .tracker-notes__stats-section:last-child { border-bottom: none; }\r
+      .tracker-notes__stats { \r
+        margin-top: 0.75em; \r
+        margin-bottom: 0.5em; \r
+        padding-top: 0.75em; \r
+        padding-bottom: 0.5em; \r
+        border-top: 1px solid var(--background-modifier-border); \r
+        font-size: 0.85em; \r
+        color: var(--text-muted); \r
+        line-height: 1.6; \r
+        word-wrap: break-word; \r
+        overflow-wrap: break-word; \r
+      }\r
+      .tracker-notes__stats > div { \r
+        margin: 0.3em 0; \r
+      }\r
+      .tracker-notes__stats-section { \r
+        margin: 0.5em 0; \r
+      }\r
       .tracker-notes__stats-item { margin: 0.25em 0; padding: 0.2em 0; }\r
       .tracker-notes__stats-streak { font-size: 1em; }\r
+      \r
+      /* New statistics styles - Card-based design */\r
+      .tracker-notes__stats-card { \r
+        background: var(--background-secondary, var(--background-primary)); \r
+        border: 1px solid var(--background-modifier-border); \r
+        border-radius: 8px; \r
+        padding: 0.75em 1em; \r
+        margin: 0.5em 0; \r
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);\r
+        transition: box-shadow 0.2s ease, transform 0.2s ease;\r
+      }\r
+      .tracker-notes__stats-card:hover { \r
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);\r
+        transform: translateY(-1px);\r
+      }\r
+      \r
+      .tracker-notes__stats-section-title { \r
+        font-weight: 700; \r
+        font-size: 0.75em; \r
+        color: var(--text-muted); \r
+        margin-bottom: 0.6em; \r
+        text-transform: uppercase; \r
+        letter-spacing: 1px; \r
+        opacity: 0.9;\r
+        display: flex;\r
+        align-items: center;\r
+        gap: 0.4em;\r
+      }\r
+      \r
+      .tracker-notes__stats-metric { \r
+        display: flex; \r
+        align-items: baseline; \r
+        margin: 0.5em 0; \r
+        padding: 0.3em 0; \r
+        gap: 0.4em; \r
+        flex-wrap: wrap; \r
+      }\r
+      \r
+      .tracker-notes__stats-icon { \r
+        font-size: 1.1em; \r
+        line-height: 1; \r
+        display: inline-flex; \r
+        align-items: center; \r
+        justify-content: center;\r
+        flex-shrink: 0;\r
+      }\r
+      .tracker-notes__stats-icon--streak { \r
+        font-size: 1.2em; \r
+      }\r
+      \r
+      .tracker-notes__stats-label { \r
+        color: var(--text-muted); \r
+        font-size: 0.9em; \r
+        font-weight: 500;\r
+      }\r
+      \r
+      .tracker-notes__stats-value { \r
+        color: var(--text-normal); \r
+        font-weight: 600; \r
+        font-size: 0.95em; \r
+      }\r
+      .tracker-notes__stats-value--large { \r
+        font-size: 1.1em; \r
+        font-weight: 700;\r
+      }\r
+      .tracker-notes__stats-value-sub { \r
+        color: var(--text-muted); \r
+        font-size: 0.85em; \r
+        font-weight: normal; \r
+      }\r
+      .tracker-notes__stats-value--success { \r
+        color: var(--text-success, var(--interactive-accent)); \r
+      }\r
+      .tracker-notes__stats-value--warning { \r
+        color: var(--text-warning, var(--interactive-accent)); \r
+      }\r
+      .tracker-notes__stats-value--error { \r
+        color: var(--text-error, var(--interactive-accent)); \r
+      }\r
+      .tracker-notes__stats-value--accent { \r
+        color: var(--interactive-accent, var(--text-normal)); \r
+      }\r
+      \r
+      /* Completion rate with progress bar */\r
+      .tracker-notes__stats-metric--completion { \r
+        flex-direction: column; \r
+        gap: 0.5em; \r
+      }\r
+      .tracker-notes__stats-completion-header { \r
+        display: flex; \r
+        align-items: baseline; \r
+        gap: 0.4em; \r
+        flex-wrap: wrap; \r
+      }\r
+      .tracker-notes__stats-progress-bar { \r
+        width: 100%; \r
+        height: 8px; \r
+        background: var(--background-modifier-border); \r
+        border-radius: 4px; \r
+        overflow: hidden; \r
+        position: relative; \r
+        margin-top: 0.2em;\r
+      }\r
+      .tracker-notes__stats-progress-fill { \r
+        height: 100%; \r
+        border-radius: 4px; \r
+        transition: width 0.4s ease, background-color 0.3s ease; \r
+      }\r
+      .tracker-notes__stats-progress-fill.tracker-notes__stats-value--success { \r
+        background-color: var(--text-success, var(--interactive-accent)); \r
+      }\r
+      .tracker-notes__stats-progress-fill.tracker-notes__stats-value--warning { \r
+        background-color: var(--text-warning, var(--interactive-accent)); \r
+      }\r
+      .tracker-notes__stats-progress-fill.tracker-notes__stats-value--error { \r
+        background-color: var(--text-error, var(--interactive-accent)); \r
+      }\r
+      \r
+      /* Streak styles */\r
+      .tracker-notes__stats-metric--streak { \r
+        margin: 0.5em 0; \r
+        padding: 0.4em 0;\r
+      }\r
+      \r
+      /* Min/Max inline display */\r
+      .tracker-notes__stats-metric--minmax { \r
+        gap: 0.3em; \r
+      }\r
       .tracker-notes__calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3em; margin-top: 0.75em; max-width: 100%; }\r
       .tracker-notes__calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 0.8em; background: var(--background-modifier-border); color: var(--text-muted); transition: all 0.2s ease; cursor: default; min-width: 0; }\r
       .tracker-notes__calendar-day.has-value { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }\r
@@ -16736,6 +16878,12 @@ var tracker_default = `.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-hab
         .tracker-notes button { padding: 0.3em 0.6em; font-size: 0.85em; width: 100%; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r
         .tracker-notes__text-input { padding: 0.4em; font-size: 0.85em; min-height: 50px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r
         .tracker-notes__stats { margin-top: 0.5em; margin-bottom: 0.4em; padding-top: 0.5em; padding-bottom: 0.4em; font-size: 0.8em; }\r
+        .tracker-notes__stats-section { margin: 0.4em 0; padding: 0.3em 0; }\r
+        .tracker-notes__stats-metric { margin: 0.3em 0; padding: 0.2em 0; }\r
+        .tracker-notes__stats-section-title { font-size: 0.85em; margin-bottom: 0.3em; }\r
+        .tracker-notes__stats-label { font-size: 0.85em; }\r
+        .tracker-notes__stats-value { font-size: 0.9em; }\r
+        .tracker-notes__stats-progress-bar { height: 5px; }\r
         .tracker-notes__heatmap { gap: 0.2em; padding: 0.4em 0; margin-top: 0.4em; }\r
         .tracker-notes__heatmap::-webkit-scrollbar { height: 4px !important; }\r
         .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r
@@ -16779,6 +16927,12 @@ var tracker_default = `.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-hab
         .tracker-notes button { padding: 0.25em 0.5em; font-size: 0.8em; background: var(--interactive-normal) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r
         .tracker-notes__text-input { padding: 0.35em; font-size: 0.8em; min-height: 45px; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; color: var(--text-normal) !important; }\r
         .tracker-notes__stats { margin-top: 0.4em; margin-bottom: 0.3em; padding-top: 0.4em; padding-bottom: 0.3em; font-size: 0.75em; }\r
+        .tracker-notes__stats-section { margin: 0.35em 0; padding: 0.25em 0; }\r
+        .tracker-notes__stats-metric { margin: 0.25em 0; padding: 0.15em 0; }\r
+        .tracker-notes__stats-section-title { font-size: 0.8em; margin-bottom: 0.25em; }\r
+        .tracker-notes__stats-label { font-size: 0.8em; }\r
+        .tracker-notes__stats-value { font-size: 0.85em; }\r
+        .tracker-notes__stats-progress-bar { height: 4px; }\r
         .tracker-notes__heatmap { gap: 0.15em; padding: 0.3em 0; margin-top: 0.3em; }\r
         .tracker-notes__heatmap::-webkit-scrollbar { height: 3px !important; }\r
         .tracker-notes__heatmap::-webkit-scrollbar-track { background: transparent !important; border-radius: 0 !important; }\r
@@ -17704,9 +17858,100 @@ var TrackerRenderer = class {
 // src/services/visualization-service.ts
 var VisualizationService = class {
   /**
+   * Updates heatmap day visual state
+   */
+  updateHeatmapDayState(dayDiv, dateStr, entries, startTrackingDateStr, trackerType) {
+    const value = entries.get(dateStr);
+    const hasValue = value === 1 || value === "1" || String(value) === "true";
+    if (hasValue) {
+      dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY_HAS_VALUE);
+    } else {
+      dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_HAS_VALUE);
+    }
+    dayDiv.removeClass(TrackerType.GOOD_HABIT);
+    dayDiv.removeClass(TrackerType.BAD_HABIT);
+    dayDiv.addClass(trackerType);
+    if (dateStr === startTrackingDateStr) {
+      dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY_START);
+    } else {
+      dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_START);
+    }
+  }
+};
+
+// src/services/statistics-service.ts
+var StatisticsService = class {
+  /**
+   * Gets entry value by date, trying multiple date formats
+   */
+  getEntryValueByDate(entries, date, settings) {
+    const formats = [
+      settings.dateFormat,
+      "YYYY-MM-DD",
+      "DD.MM.YYYY",
+      "MM/DD/YYYY"
+    ];
+    const triedFormats = [];
+    for (const format of formats) {
+      const dateStr = DateService.format(date, format);
+      triedFormats.push(`${format}:${dateStr}`);
+      const val = entries.get(dateStr);
+      if (val !== void 0) {
+        return val;
+      }
+    }
+    return void 0;
+  }
+  /**
+   * Determines the start tracking date with priorities:
+   * 1. trackingStartDate from frontmatter
+   * 2. File creation date
+   * 3. First date from entries
+   * 4. Fallback: 365 days ago from current date
+   */
+  determineStartTrackingDate(startTrackingDateStr, file, entries, settings, currentDate) {
+    let startTrackingDate = null;
+    if (startTrackingDateStr) {
+      startTrackingDate = DateService.parseMultiple(startTrackingDateStr, [
+        "YYYY-MM-DD",
+        settings.dateFormat,
+        "DD.MM.YYYY",
+        "MM/DD/YYYY"
+      ]);
+      if (startTrackingDate.isValid()) {
+        startTrackingDate = DateService.startOfDay(startTrackingDate);
+      } else {
+        startTrackingDate = null;
+      }
+    }
+    if (!startTrackingDate && file?.stat?.ctime) {
+      startTrackingDate = DateService.startOfDay(DateService.fromDate(new Date(file.stat.ctime)));
+    }
+    if (entries.size > 0) {
+      const sortedDates = Array.from(entries.keys()).sort();
+      const firstDateStr = sortedDates[0];
+      const firstDate = DateService.parseMultiple(firstDateStr, [
+        settings.dateFormat,
+        "YYYY-MM-DD",
+        "DD.MM.YYYY",
+        "MM/DD/YYYY"
+      ]);
+      if (firstDate.isValid()) {
+        const firstDateNormalized = DateService.startOfDay(firstDate);
+        if (!startTrackingDate || DateService.isBefore(firstDateNormalized, startTrackingDate)) {
+          startTrackingDate = firstDateNormalized;
+        }
+      }
+    }
+    if (!startTrackingDate) {
+      startTrackingDate = DateService.startOfDay(DateService.subtractDays(currentDate, 365));
+    }
+    return startTrackingDate;
+  }
+  /**
    * Calculates statistics for habits (good-habit and bad-habit)
    */
-  calculateHabitStats(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
+  calculateHabitStatistics(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
     const endDate = DateService.parse(dateIso, settings.dateFormat);
     const startDate = endDate.clone().subtract(daysToShow - 1, "days");
     let actualStartDate = startDate;
@@ -17750,26 +17995,23 @@ var VisualizationService = class {
     }
     const sum = periodDays.reduce((a, b) => a + b, 0);
     const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
-    const total = entries.size;
+    const totalRecords = entries.size;
     const activeDays = periodDays.filter((v) => v > 0).length;
     const completionRate = actualDaysCount > 0 ? activeDays / actualDaysCount * 100 : 0;
     return {
-      total,
-      sum,
-      avg,
+      totalRecords,
       periodDays,
-      min: null,
-      max: null,
-      median: null,
+      actualDaysCount,
       completionRate,
       activeDays,
-      actualDaysCount
+      sum,
+      avg
     };
   }
   /**
-   * Calculates statistics for metrics (number, plusminus, scale, text)
+   * Calculates statistics for metrics (number, scale, plusminus, text)
    */
-  calculateMetricStats(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
+  calculateMetricStatistics(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
     const endDate = DateService.parse(dateIso, settings.dateFormat);
     const startDate = endDate.clone().subtract(daysToShow - 1, "days");
     let actualStartDate = startDate;
@@ -17809,7 +18051,7 @@ var VisualizationService = class {
     }
     const sum = periodDays.reduce((a, b) => a + b, 0);
     const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
-    const total = entries.size;
+    const totalRecords = entries.size;
     let min = null;
     let max = null;
     let median = null;
@@ -17827,156 +18069,382 @@ var VisualizationService = class {
     }
     const activeDays = nonZeroValues.length;
     return {
-      total,
+      totalRecords,
+      periodDays,
+      actualDaysCount,
       sum,
       avg,
-      periodDays,
       min,
       max,
       median,
-      completionRate: null,
-      activeDays,
-      actualDaysCount
+      activeDays
     };
   }
   /**
-   * Calculates statistics for a tracker
+   * Calculates streak information (current and best streak)
    */
-  calculateStats(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
-    const metricType = trackerType.toLowerCase();
-    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
-    if (isHabit) {
-      return this.calculateHabitStats(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr);
-    } else {
-      return this.calculateMetricStats(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr);
-    }
-  }
-  /**
-   * Displays statistics for habits
-   */
-  displayHabitStats(statsDiv, stats, currentStreak, bestStreak, trackerType, fileOpts) {
+  calculateStreaks(entries, settings, endDate, trackerType, file, startTrackingDateStr) {
     const metricType = trackerType.toLowerCase();
     const isBadHabit = metricType === TrackerType.BAD_HABIT;
-    const getCompletionColor = (rate) => {
-      if (rate >= 80) return "var(--text-success, var(--text-normal))";
-      if (rate >= 50) return "var(--text-warning, var(--text-normal))";
-      return "var(--text-error, var(--text-normal))";
+    let currentDate;
+    if (endDate instanceof Date) {
+      currentDate = DateService.fromDate(endDate);
+    } else if (endDate && typeof endDate.isValid === "function" && typeof endDate.clone === "function") {
+      currentDate = endDate.clone();
+    } else {
+      currentDate = DateService.fromDate(new Date(endDate));
+    }
+    if (!currentDate || !currentDate.isValid || !currentDate.isValid()) {
+      return { current: 0, best: 0 };
+    }
+    currentDate = DateService.startOfDay(currentDate);
+    const startTrackingDate = this.determineStartTrackingDate(
+      startTrackingDateStr,
+      file,
+      entries,
+      settings,
+      currentDate
+    );
+    if (!startTrackingDate || !startTrackingDate.isValid()) {
+      return { current: 0, best: 0 };
+    }
+    let currentStreak = 0;
+    let daysChecked = 0;
+    let checkDate = currentDate.clone();
+    while (daysChecked < MAX_DAYS_BACK) {
+      if (DateService.isBefore(checkDate, startTrackingDate)) {
+        break;
+      }
+      const val = this.getEntryValueByDate(entries, checkDate, settings);
+      let isSuccess = false;
+      if (isBadHabit) {
+        if (val == null || val === void 0) {
+          isSuccess = true;
+        } else {
+          const hasValue = isTrackerValueTrue(val);
+          isSuccess = !hasValue;
+        }
+      } else {
+        if (val != null && val !== void 0) {
+          isSuccess = isTrackerValueTrue(val);
+        }
+      }
+      if (isSuccess) {
+        currentStreak++;
+      } else {
+        break;
+      }
+      checkDate = checkDate.subtract(1, "days");
+      daysChecked++;
+    }
+    let bestStreak = 0;
+    let bestCurrentStreak = 0;
+    daysChecked = 0;
+    let bestCheckDate = currentDate.clone();
+    while (!DateService.isBefore(bestCheckDate, startTrackingDate) && daysChecked < MAX_DAYS_BACK) {
+      const val = this.getEntryValueByDate(entries, bestCheckDate, settings);
+      let isSuccess = false;
+      if (isBadHabit) {
+        if (val == null || val === void 0) {
+          isSuccess = true;
+        } else {
+          const hasValue = isTrackerValueTrue(val);
+          isSuccess = !hasValue;
+        }
+      } else {
+        if (val != null && val !== void 0) {
+          isSuccess = isTrackerValueTrue(val);
+        }
+      }
+      if (isSuccess) {
+        bestCurrentStreak++;
+        bestStreak = Math.max(bestStreak, bestCurrentStreak);
+      } else {
+        bestCurrentStreak = 0;
+      }
+      bestCheckDate = bestCheckDate.subtract(1, "days");
+      daysChecked++;
+    }
+    return {
+      current: currentStreak,
+      best: bestStreak
     };
-    const generalSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
-    generalSection.createEl("div", {
-      text: `\u{1F4CA} ${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}`,
-      cls: "tracker-notes__stats-item"
-    });
-    const periodSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
-    if (stats.completionRate !== null) {
-      const completionEl = periodSection.createEl("div", {
-        cls: "tracker-notes__stats-item"
-      });
-      const rate = Math.round(stats.completionRate);
-      const completionLabel = isBadHabit ? "Days without" : STATS_LABELS.COMPLETION_RATE;
-      completionEl.createSpan({ text: `\u2705 ${completionLabel}: ` });
-      const rateSpan = completionEl.createSpan({ text: `${rate}%` });
-      rateSpan.style.color = getCompletionColor(rate);
-      rateSpan.style.fontWeight = "600";
-      completionEl.createSpan({ text: ` (${stats.activeDays}/${stats.actualDaysCount})` });
-    }
-    const activeDaysLabel = isBadHabit ? "Days without" : STATS_LABELS.ACTIVE_DAYS;
-    periodSection.createEl("div", {
-      text: `\u{1F4C5} ${activeDaysLabel}: ${stats.activeDays}/${stats.actualDaysCount}`,
-      cls: "tracker-notes__stats-item"
-    });
-    if (currentStreak > 0 || bestStreak) {
-      const recordsSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
-      if (currentStreak > 0) {
-        const daysLabel = currentStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : currentStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
-        const streakEl = recordsSection.createEl("div", {
-          text: `\u{1F525} ${STATS_LABELS.CURRENT_STREAK}: ${currentStreak} ${daysLabel}`,
-          cls: "tracker-notes__stats-item tracker-notes__stats-streak"
-        });
-        streakEl.style.color = "var(--interactive-accent)";
-        streakEl.style.fontWeight = UI_CONSTANTS.FONT_WEIGHT_BOLD;
-      }
-      if (bestStreak && bestStreak > currentStreak) {
-        const bestDaysLabel = bestStreak === 1 ? STATS_LABELS.DAYS_SINGULAR : bestStreak < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
-        recordsSection.createEl("div", {
-          text: `\u2B50 ${STATS_LABELS.BEST_STREAK}: ${bestStreak} ${bestDaysLabel}`,
-          cls: "tracker-notes__stats-item"
-        });
-      }
-    }
   }
   /**
-   * Displays statistics for metrics
+   * Calculates complete statistics for a tracker
    */
-  displayMetricStats(statsDiv, stats, fileOpts) {
-    const unit = fileOpts?.unit || "";
-    const unitSuffix = unit ? ` ${unit}` : "";
-    const formatValue = (value, decimals = 1) => {
-      return `${value.toFixed(decimals)}${unitSuffix}`;
+  calculateStatistics(entries, settings, dateIso, daysToShow, trackerType, endDate, file, startTrackingDateStr) {
+    const metricType = trackerType.toLowerCase();
+    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
+    const streaks = this.calculateStreaks(
+      entries,
+      settings,
+      endDate,
+      trackerType,
+      file,
+      startTrackingDateStr
+    );
+    let habit = null;
+    let metric = null;
+    let base;
+    if (isHabit) {
+      habit = this.calculateHabitStatistics(
+        entries,
+        settings,
+        dateIso,
+        daysToShow,
+        trackerType,
+        startTrackingDateStr
+      );
+      base = {
+        totalRecords: habit.totalRecords,
+        periodDays: habit.periodDays,
+        actualDaysCount: habit.actualDaysCount
+      };
+    } else {
+      metric = this.calculateMetricStatistics(
+        entries,
+        settings,
+        dateIso,
+        daysToShow,
+        trackerType,
+        startTrackingDateStr
+      );
+      base = {
+        totalRecords: metric.totalRecords,
+        periodDays: metric.periodDays,
+        actualDaysCount: metric.actualDaysCount
+      };
+    }
+    return {
+      base,
+      habit,
+      metric,
+      streaks,
+      trackerType
     };
-    const generalSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
-    generalSection.createEl("div", {
-      text: `\u{1F4CA} ${STATS_LABELS.TOTAL_RECORDS}: ${stats.total}`,
-      cls: "tracker-notes__stats-item"
+  }
+};
+
+// src/services/statistics-renderer.ts
+var StatisticsRenderer = class {
+  /**
+   * Helper to get completion rate color class
+   */
+  getCompletionColorClass(rate) {
+    if (rate >= 80) return "tracker-notes__stats-value--success";
+    if (rate >= 50) return "tracker-notes__stats-value--warning";
+    return "tracker-notes__stats-value--error";
+  }
+  /**
+   * Helper to format value with unit
+   */
+  formatValue(value, decimals = 1, unit = "") {
+    const formatted = value.toFixed(decimals);
+    return unit ? `${formatted} ${unit}` : formatted;
+  }
+  /**
+   * Helper to get days label (singular/plural)
+   */
+  getDaysLabel(count) {
+    if (count === 1) return STATS_LABELS.DAYS_SINGULAR;
+    if (count < 5) return STATS_LABELS.DAYS_PLURAL_2_4;
+    return STATS_LABELS.DAYS_PLURAL_5_PLUS;
+  }
+  /**
+   * Creates a metric item (label + value) with optional icon
+   */
+  createMetricItem(container, label, value, valueClass, icon) {
+    const item = container.createDiv({ cls: "tracker-notes__stats-metric" });
+    if (icon) {
+      const iconEl = item.createSpan({
+        text: icon,
+        cls: "tracker-notes__stats-icon"
+      });
+    }
+    const labelEl = item.createSpan({
+      text: label,
+      cls: "tracker-notes__stats-label"
     });
-    const periodSection = statsDiv.createDiv({ cls: "tracker-notes__stats-section" });
-    const daysLabel = stats.actualDaysCount === 1 ? STATS_LABELS.DAYS_SINGULAR : stats.actualDaysCount < 5 ? STATS_LABELS.DAYS_PLURAL_2_4 : STATS_LABELS.DAYS_PLURAL_5_PLUS;
-    periodSection.createEl("div", {
-      text: `\u{1F4C8} ${STATS_LABELS.LAST_DAYS} ${stats.actualDaysCount} ${daysLabel}: ${formatValue(stats.sum)}`,
-      cls: "tracker-notes__stats-item"
+    labelEl.createSpan({ text: ": " });
+    const valueEl = item.createSpan({
+      text: value,
+      cls: `tracker-notes__stats-value ${valueClass || ""}`.trim()
     });
-    periodSection.createEl("div", {
-      text: `\u{1F4CA} ${STATS_LABELS.AVERAGE}: ${formatValue(stats.avg)}`,
-      cls: "tracker-notes__stats-item"
+    return item;
+  }
+  /**
+   * Creates a section with title (card style)
+   */
+  createSection(container, title) {
+    const section = container.createDiv({ cls: "tracker-notes__stats-section tracker-notes__stats-card" });
+    if (title) {
+      const titleEl = section.createDiv({
+        cls: "tracker-notes__stats-section-title"
+      });
+      titleEl.createSpan({ text: title });
+    }
+    return section;
+  }
+  /**
+   * Renders completion rate with progress bar
+   */
+  renderCompletionRate(container, rate, activeDays, totalDays, label) {
+    const item = container.createDiv({ cls: "tracker-notes__stats-metric tracker-notes__stats-metric--completion" });
+    const header = item.createDiv({ cls: "tracker-notes__stats-completion-header" });
+    header.createSpan({
+      text: "\u2705",
+      cls: "tracker-notes__stats-icon"
     });
+    const labelEl = header.createSpan({
+      text: label,
+      cls: "tracker-notes__stats-label"
+    });
+    labelEl.createSpan({ text: ": " });
+    const rateValue = Math.round(rate);
+    const valueEl = header.createSpan({
+      text: `${rateValue}%`,
+      cls: `tracker-notes__stats-value ${this.getCompletionColorClass(rateValue)}`
+    });
+    header.createSpan({
+      text: ` (${activeDays}/${totalDays})`,
+      cls: "tracker-notes__stats-value-sub"
+    });
+    const progressBar = item.createDiv({ cls: "tracker-notes__stats-progress-bar" });
+    const progressFill = progressBar.createDiv({
+      cls: "tracker-notes__stats-progress-fill"
+    });
+    progressFill.style.width = `${rate}%`;
+    progressFill.classList.add(this.getCompletionColorClass(rateValue));
+  }
+  /**
+   * Renders streak information
+   */
+  renderStreak(container, streak, label, isCurrent = false) {
+    const item = container.createDiv({
+      cls: `tracker-notes__stats-metric tracker-notes__stats-metric--streak ${isCurrent ? "tracker-notes__stats-metric--current" : ""}`
+    });
+    const icon = isCurrent ? "\u{1F525}" : "\u2B50";
+    item.createSpan({
+      text: icon,
+      cls: "tracker-notes__stats-icon tracker-notes__stats-icon--streak"
+    });
+    const labelEl = item.createSpan({
+      text: label,
+      cls: "tracker-notes__stats-label"
+    });
+    labelEl.createSpan({ text: ": " });
+    const daysLabel = this.getDaysLabel(streak);
+    const valueEl = item.createSpan({
+      text: `${streak} ${daysLabel}`,
+      cls: "tracker-notes__stats-value"
+    });
+  }
+  /**
+   * Renders statistics for habits
+   */
+  renderHabitStats(statsDiv, result, fileOpts) {
+    statsDiv.empty();
+    if (!result.habit) return;
+    const stats = result.habit;
+    const isBadHabit = result.trackerType.toLowerCase() === TrackerType.BAD_HABIT;
+    const periodSection = this.createSection(statsDiv, "PERIOD");
+    const completionLabel = isBadHabit ? "Days without" : STATS_LABELS.COMPLETION_RATE;
+    this.renderCompletionRate(
+      periodSection,
+      stats.completionRate,
+      stats.activeDays,
+      stats.actualDaysCount,
+      completionLabel
+    );
+    const streaksSection = this.createSection(statsDiv, "STREAKS");
+    this.renderStreak(
+      streaksSection,
+      result.streaks.current,
+      STATS_LABELS.CURRENT_STREAK,
+      true
+    );
+    this.renderStreak(
+      streaksSection,
+      result.streaks.best,
+      STATS_LABELS.BEST_STREAK,
+      false
+    );
+  }
+  /**
+   * Renders statistics for metrics
+   */
+  renderMetricStats(statsDiv, result, fileOpts) {
+    statsDiv.empty();
+    if (!result.metric) return;
+    const stats = result.metric;
+    const unit = fileOpts?.unit || "";
+    const periodSection = this.createSection(statsDiv, "PERIOD");
+    this.createMetricItem(
+      periodSection,
+      STATS_LABELS.LAST_DAYS,
+      this.formatValue(stats.sum, 1, unit),
+      void 0,
+      "\u{1F4C8}"
+    );
+    this.createMetricItem(
+      periodSection,
+      STATS_LABELS.AVERAGE,
+      this.formatValue(stats.avg, 1, unit),
+      void 0,
+      "\u{1F4CA}"
+    );
     if (stats.min !== null && stats.max !== null) {
-      periodSection.createEl("div", {
-        text: `\u{1F4C9} ${STATS_LABELS.MIN}: ${formatValue(stats.min)} | ${STATS_LABELS.MAX}: ${formatValue(stats.max)}`,
-        cls: "tracker-notes__stats-item"
+      const minMaxItem = periodSection.createDiv({ cls: "tracker-notes__stats-metric tracker-notes__stats-metric--minmax" });
+      minMaxItem.createSpan({
+        text: "\u{1F4C9}",
+        cls: "tracker-notes__stats-icon"
+      });
+      minMaxItem.createSpan({
+        text: `${STATS_LABELS.MIN}: `,
+        cls: "tracker-notes__stats-label"
+      });
+      minMaxItem.createSpan({
+        text: this.formatValue(stats.min, 1, unit),
+        cls: "tracker-notes__stats-value"
+      });
+      minMaxItem.createSpan({ text: " | " });
+      minMaxItem.createSpan({
+        text: `${STATS_LABELS.MAX}: `,
+        cls: "tracker-notes__stats-label"
+      });
+      minMaxItem.createSpan({
+        text: this.formatValue(stats.max, 1, unit),
+        cls: "tracker-notes__stats-value"
       });
     }
     if (stats.median !== null) {
-      periodSection.createEl("div", {
-        text: `\u{1F4CA} ${STATS_LABELS.MEDIAN}: ${formatValue(stats.median)}`,
-        cls: "tracker-notes__stats-item"
-      });
+      this.createMetricItem(
+        periodSection,
+        STATS_LABELS.MEDIAN,
+        this.formatValue(stats.median, 1, unit),
+        void 0,
+        "\u{1F4CA}"
+      );
     }
-    periodSection.createEl("div", {
-      text: `\u{1F4C5} ${STATS_LABELS.ACTIVE_DAYS}: ${stats.activeDays}/${stats.actualDaysCount}`,
-      cls: "tracker-notes__stats-item"
-    });
+    this.createMetricItem(
+      periodSection,
+      STATS_LABELS.ACTIVE_DAYS,
+      `${stats.activeDays}/${stats.actualDaysCount}`,
+      void 0,
+      "\u{1F4C5}"
+    );
   }
   /**
-   * Updates statistics DOM element
+   * Renders statistics based on tracker type
    */
-  updateStatsDisplay(statsDiv, stats, currentStreak, daysToShow, trackerType, fileOpts, bestStreak) {
-    statsDiv.empty();
-    const metricType = trackerType.toLowerCase();
+  renderStats(statsDiv, result, fileOpts) {
+    const metricType = result.trackerType.toLowerCase();
     const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
     if (isHabit) {
-      this.displayHabitStats(statsDiv, stats, currentStreak, bestStreak, trackerType, fileOpts);
+      this.renderHabitStats(statsDiv, result, fileOpts);
     } else {
-      this.displayMetricStats(statsDiv, stats, fileOpts);
-    }
-  }
-  /**
-   * Updates heatmap day visual state
-   */
-  updateHeatmapDayState(dayDiv, dateStr, entries, startTrackingDateStr, trackerType) {
-    const value = entries.get(dateStr);
-    const hasValue = value === 1 || value === "1" || String(value) === "true";
-    if (hasValue) {
-      dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY_HAS_VALUE);
-    } else {
-      dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_HAS_VALUE);
-    }
-    dayDiv.removeClass(TrackerType.GOOD_HABIT);
-    dayDiv.removeClass(TrackerType.BAD_HABIT);
-    dayDiv.addClass(trackerType);
-    if (dateStr === startTrackingDateStr) {
-      dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY_START);
-    } else {
-      dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_START);
+      this.renderMetricStats(statsDiv, result, fileOpts);
     }
   }
 };
@@ -18258,6 +18726,8 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.folderTreeService.updateSettings(this.settings);
     this.trackerFileService = new TrackerFileService(this.app);
     this.visualizationService = new VisualizationService();
+    this.statisticsService = new StatisticsService();
+    this.statisticsRenderer = new StatisticsRenderer();
     this.trackerOrderService = new TrackerOrderService(this.app);
     this.iconizeService = new IconizeService(this.app);
     this.iconizeService.loadIconizeData().then(() => {
@@ -19335,17 +19805,17 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     const days = daysToShow || this.settings.daysToShow;
     const dateIsoFormatted = DateService.format(endDate, this.settings.dateFormat);
     const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
-    const stats = this.visualizationService.calculateStats(
+    const result = this.statisticsService.calculateStatistics(
       entriesToUse,
       this.settings,
       dateIsoFormatted,
       days,
       metricType,
+      endDate,
+      file,
       startTrackingDateStr
     );
-    const currentStreak = this.calculateStreak(entriesToUse, endDate, metricType, file, startTrackingDateStr);
-    const bestStreak = this.calculateBestStreak(entriesToUse, metricType, file, startTrackingDateStr);
-    this.visualizationService.updateStatsDisplay(statsDiv, stats, currentStreak, days, metricType, fileOpts, bestStreak);
+    this.statisticsRenderer.renderStats(statsDiv, result, fileOpts);
   }
   async renderStats(container, file, dateIso, daysToShow, trackerType, entries) {
     const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });

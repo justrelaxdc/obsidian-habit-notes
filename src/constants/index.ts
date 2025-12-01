@@ -282,12 +282,12 @@ export const UI_CONSTANTS = {
 // Statistics labels
 export const STATS_LABELS = {
   TOTAL_RECORDS: "Total records",
-  LAST_DAYS: "Last",
+  LAST_DAYS: "Sum",
   CURRENT_STREAK: "Current streak",
   DAYS_SINGULAR: "day",
   DAYS_PLURAL_2_4: "days",
   DAYS_PLURAL_5_PLUS: "days",
-  AVERAGE: "average",
+  AVERAGE: "Average",
   MIN: "Min",
   MAX: "Max",
   MEDIAN: "Median",

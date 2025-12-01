@@ -19,6 +19,8 @@ import { HeatmapService } from "../services/heatmap-service";
 import { ControlsRenderer } from "../services/controls-renderer";
 import { TrackerRenderer } from "../services/tracker-renderer";
 import { VisualizationService } from "../services/visualization-service";
+import { StatisticsService } from "../services/statistics-service";
+import { StatisticsRenderer } from "../services/statistics-renderer";
 import { TrackerOrderService } from "../services/tracker-order-service";
 import { IconizeService } from "../services/iconize-service";
 import { FILE_UPDATE_DELAY_MS, ANIMATION_DURATION_MS, ANIMATION_DURATION_SHORT_MS, SCROLL_RESTORE_DELAY_2_MS, IMMEDIATE_TIMEOUT_MS, MOBILE_BREAKPOINT, CHART_CONFIG, NOTICE_TIMEOUT_MS, UI_CONSTANTS, ERROR_MESSAGES, MODAL_LABELS, CSS_CLASSES } from "../constants";
@@ -38,6 +40,8 @@ export default class TrackerPlugin extends Plugin {
   private controlsRenderer: ControlsRenderer;
   private trackerRenderer: TrackerRenderer;
   private visualizationService: VisualizationService;
+  private statisticsService: StatisticsService;
+  private statisticsRenderer: StatisticsRenderer;
   private trackerOrderService: TrackerOrderService;
   private iconizeService: IconizeService;
 
@@ -51,6 +55,8 @@ export default class TrackerPlugin extends Plugin {
     this.folderTreeService.updateSettings(this.settings);
     this.trackerFileService = new TrackerFileService(this.app);
     this.visualizationService = new VisualizationService();
+    this.statisticsService = new StatisticsService();
+    this.statisticsRenderer = new StatisticsRenderer();
     this.trackerOrderService = new TrackerOrderService(this.app);
     this.iconizeService = new IconizeService(this.app);
     
@@ -1539,24 +1545,20 @@ export default class TrackerPlugin extends Plugin {
     // Получаем дату начала отслеживания
     const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
     
-    // Используем VisualizationService для расчета статистики
-    const stats = this.visualizationService.calculateStats(
+    // Используем StatisticsService для расчета статистики
+    const result = this.statisticsService.calculateStatistics(
       entriesToUse,
       this.settings,
       dateIsoFormatted,
       days,
       metricType,
+      endDate,
+      file,
       startTrackingDateStr
     );
     
-    // Вычисляем текущий стрик (последовательные дни с записью)
-    const currentStreak = this.calculateStreak(entriesToUse, endDate, metricType, file, startTrackingDateStr);
-    
-    // Вычисляем лучший стрик
-    const bestStreak = this.calculateBestStreak(entriesToUse, metricType, file, startTrackingDateStr);
-    
-    // Используем VisualizationService для обновления DOM
-    this.visualizationService.updateStatsDisplay(statsDiv, stats, currentStreak, days, metricType, fileOpts, bestStreak);
+    // Используем StatisticsRenderer для отображения статистики
+    this.statisticsRenderer.renderStats(statsDiv, result, fileOpts);
   }
 
   async renderStats(container: HTMLElement, file: TFile, dateIso?: string, daysToShow?: number, trackerType?: string, entries?: Map<string, string | number>) {
