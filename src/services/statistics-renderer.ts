@@ -224,6 +224,15 @@ export class StatisticsRenderer {
     // Period section
     const periodSection = this.createSection(statsDiv, "PERIOD");
     
+    // Active days (moved to top)
+    this.createMetricItem(
+      periodSection,
+      STATS_LABELS.ACTIVE_DAYS,
+      `${stats.activeDays}/${stats.actualDaysCount}`,
+      undefined,
+      "📅"
+    );
+    
     // Sum for period
     this.createMetricItem(
       periodSection,
@@ -278,15 +287,6 @@ export class StatisticsRenderer {
         "📊"
       );
     }
-    
-    // Active days
-    this.createMetricItem(
-      periodSection,
-      STATS_LABELS.ACTIVE_DAYS,
-      `${stats.activeDays}/${stats.actualDaysCount}`,
-      undefined,
-      "📅"
-    );
   }
 
   /**

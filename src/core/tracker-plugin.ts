@@ -23,7 +23,7 @@ import { StatisticsService } from "../services/statistics-service";
 import { StatisticsRenderer } from "../services/statistics-renderer";
 import { TrackerOrderService } from "../services/tracker-order-service";
 import { IconizeService } from "../services/iconize-service";
-import { FILE_UPDATE_DELAY_MS, ANIMATION_DURATION_MS, ANIMATION_DURATION_SHORT_MS, SCROLL_RESTORE_DELAY_2_MS, IMMEDIATE_TIMEOUT_MS, MOBILE_BREAKPOINT, CHART_CONFIG, NOTICE_TIMEOUT_MS, UI_CONSTANTS, ERROR_MESSAGES, MODAL_LABELS, CSS_CLASSES } from "../constants";
+import { FILE_UPDATE_DELAY_MS, ANIMATION_DURATION_MS, ANIMATION_DURATION_SHORT_MS, SCROLL_RESTORE_DELAY_2_MS, IMMEDIATE_TIMEOUT_MS, MOBILE_BREAKPOINT, CHART_CONFIG, NOTICE_TIMEOUT_MS, UI_CONSTANTS, ERROR_MESSAGES, MODAL_LABELS, CSS_CLASSES, DEBOUNCE_DELAY_MS } from "../constants";
 import { getThemeColors, colorToRgba } from "../utils/theme";
 import { showNoticeIfNotMobile } from "../utils/notifications";
 import { parseFilename, formatFilename } from "../utils/filename-parser";
@@ -36,6 +36,7 @@ export default class TrackerPlugin extends Plugin {
   private styleEl?: HTMLStyleElement;
   private trackerState: Map<string, { entries: Map<string, string | number>; fileOpts: TrackerFileOptions }> = new Map();
   private currentNotePath: string | null = null;
+  private refreshBlocksDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private heatmapService: HeatmapService;
   private controlsRenderer: ControlsRenderer;
   private trackerRenderer: TrackerRenderer;
@@ -2225,6 +2226,14 @@ export default class TrackerPlugin extends Plugin {
   async saveSettings() { 
     await this.saveData(this.settings);
     this.folderTreeService.updateSettings(this.settings);
+    // Debounce refresh to avoid multiple re-renders when multiple settings change quickly
+    if (this.refreshBlocksDebounceTimer) {
+      clearTimeout(this.refreshBlocksDebounceTimer);
+    }
+    this.refreshBlocksDebounceTimer = setTimeout(async () => {
+      await this.refreshAllBlocks();
+      this.refreshBlocksDebounceTimer = null;
+    }, DEBOUNCE_DELAY_MS);
   }
 
   editTracker(file: TFile): void {

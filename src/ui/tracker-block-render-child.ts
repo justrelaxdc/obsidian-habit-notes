@@ -37,6 +37,11 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
     // Cache invalidation is handled at plugin level when note changes
     // No need to invalidate on every render
     
+    // Update folderPath if it's not explicitly set in opts (to reflect settings changes)
+    if (!this.opts.folder) {
+      this.folderPath = this.plugin.settings.trackersFolder;
+    }
+    
     // Create temporary container for off-screen rendering
     const tempContainer = document.createElement('div');
     tempContainer.className = this.containerEl.className;

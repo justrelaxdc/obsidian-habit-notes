@@ -15035,6 +15035,9 @@ var TrackerBlockRenderChild = class extends import_obsidian.MarkdownRenderChild 
     this.ctx = ctx;
   }
   async render() {
+    if (!this.opts.folder) {
+      this.folderPath = this.plugin.settings.trackersFolder;
+    }
     const tempContainer = document.createElement("div");
     tempContainer.className = this.containerEl.className;
     try {
@@ -19732,6 +19735,13 @@ var StatisticsRenderer = class {
     const periodSection = this.createSection(statsDiv, "PERIOD");
     this.createMetricItem(
       periodSection,
+      STATS_LABELS.ACTIVE_DAYS,
+      `${stats.activeDays}/${stats.actualDaysCount}`,
+      void 0,
+      "\u{1F4C5}"
+    );
+    this.createMetricItem(
+      periodSection,
       STATS_LABELS.LAST_DAYS,
       this.formatValue(stats.sum, 1, unit),
       void 0,
@@ -19777,13 +19787,6 @@ var StatisticsRenderer = class {
         "\u{1F4CA}"
       );
     }
-    this.createMetricItem(
-      periodSection,
-      STATS_LABELS.ACTIVE_DAYS,
-      `${stats.activeDays}/${stats.actualDaysCount}`,
-      void 0,
-      "\u{1F4C5}"
-    );
   }
   /**
    * Renders statistics based on tracker type
@@ -20066,6 +20069,7 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.activeBlocks = /* @__PURE__ */ new Set();
     this.trackerState = /* @__PURE__ */ new Map();
     this.currentNotePath = null;
+    this.refreshBlocksDebounceTimer = null;
   }
   isMobileDevice() {
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -21657,6 +21661,13 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
     this.folderTreeService.updateSettings(this.settings);
+    if (this.refreshBlocksDebounceTimer) {
+      clearTimeout(this.refreshBlocksDebounceTimer);
+    }
+    this.refreshBlocksDebounceTimer = setTimeout(async () => {
+      await this.refreshAllBlocks();
+      this.refreshBlocksDebounceTimer = null;
+    }, DEBOUNCE_DELAY_MS);
   }
   editTracker(file) {
     new EditTrackerModal(this.app, this, file).open();
