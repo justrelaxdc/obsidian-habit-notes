@@ -17471,10 +17471,8 @@ var tracker_default = `/* ============================================\r
   flex-wrap: wrap; \r
   justify-content: center; \r
   max-width: 100%;\r
-  padding: 0.5em;\r
   background: var(--background-primary);\r
   border-radius: 12px;\r
-  border: 1px solid var(--background-modifier-border);\r
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);\r
 }\r
 \r
