@@ -35,12 +35,15 @@ Transform your Obsidian vault into a powerful tracking system. Track everything 
   - Period summaries  
 
 ### 🎨 Visuals & UX
-- **Heatmaps** — calendar overview of habit activity  
+- **Modern card-based design** — elegant tracker cards with subtle shadows and smooth animations  
+- **Heatmaps** — calendar overview of habit activity with beautiful hover effects  
 - **Interactive charts** — line graphs with optional limit guides  
-- **Limit indicators** — animated visual feedback when crossing thresholds  
-- **Date navigation** — one date picker controls all trackers in the block  
+- **Limit indicators** — animated progress bar feedback when crossing thresholds  
+- **Date navigation** — sleek date picker controls all trackers in the block  
 - **Hierarchical view** — folders (up to 3 levels) act as categories/subcategories  
 - **Iconize integration** — automatic display of emoji or icon from Iconize plugin  
+- **Responsive design** — optimized for desktop, tablet, and mobile devices  
+- **Theme-aware** — adapts to any Obsidian theme (light/dark)  
 
 ---
 
