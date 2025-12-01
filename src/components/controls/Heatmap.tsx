@@ -85,8 +85,18 @@ export function Heatmap({
     return result;
   }, [dateIso, daysToShow, entries, plugin.settings.dateFormat, startTrackingDate]);
 
-  // Handle day click
-  const handleDayClick = useCallback(async (day: HeatmapDay) => {
+  // Handle day click using event delegation for better performance
+  const handleContainerClick = useCallback(async (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.classList.contains(CSS_CLASSES.HEATMAP_DAY)) return;
+    
+    const dateStr = target.dataset.dateStr;
+    if (!dateStr) return;
+    
+    // Find the day data
+    const day = days.find(d => d.dateStr === dateStr);
+    if (!day) return;
+    
     // Don't allow clicking on future days or days before tracking start
     if (day.isAfterToday || day.isBeforeStart) {
       return;
@@ -101,7 +111,7 @@ export function Heatmap({
     } catch (err) {
       console.error("Heatmap: write error", err);
     }
-  }, [plugin, file, onValueChange]);
+  }, [plugin, file, onValueChange, days]);
 
   // Touch event handlers to prevent sidebar opening on horizontal scroll
   const handleTouchStart = useCallback((e: TouchEvent) => {
@@ -150,6 +160,7 @@ export function Heatmap({
     <div
       ref={heatmapRef}
       class={CSS_CLASSES.HEATMAP}
+      onClick={handleContainerClick}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -159,7 +170,6 @@ export function Heatmap({
           key={day.dateStr}
           class={getDayClassName(day)}
           data-date-str={day.dateStr}
-          onClick={() => handleDayClick(day)}
         >
           {day.dayNum}
         </div>

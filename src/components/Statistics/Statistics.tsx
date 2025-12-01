@@ -216,6 +216,9 @@ function MetricStats({ result, unit }: MetricStatsProps) {
   );
 }
 
+// Singleton instance - StatisticsService is stateless
+const statisticsService = new StatisticsService();
+
 /**
  * Main Statistics component
  */
@@ -231,7 +234,6 @@ export function Statistics({
   // Calculate statistics
   const statisticsResult = useMemo<StatisticsResult | null>(() => {
     try {
-      const statisticsService = new StatisticsService();
       const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
       const startTrackingDateStr = plugin.getStartTrackingDate(entries, fileOptions);
       

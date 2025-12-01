@@ -29,11 +29,2148 @@ module.exports = __toCommonJS(main_exports);
 // src/core/tracker-plugin.ts
 var import_obsidian10 = require("obsidian");
 
+// src/ui/tracker-block-render-child.tsx
+var import_obsidian = require("obsidian");
+
+// node_modules/preact/dist/preact.module.js
+var n;
+var l;
+var u;
+var t;
+var i;
+var r;
+var o;
+var e;
+var f;
+var c;
+var s;
+var a;
+var h;
+var p = {};
+var v = [];
+var y = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
+var w = Array.isArray;
+function d(n2, l3) {
+  for (var u4 in l3) n2[u4] = l3[u4];
+  return n2;
+}
+function g(n2) {
+  n2 && n2.parentNode && n2.parentNode.removeChild(n2);
+}
+function _(l3, u4, t3) {
+  var i4, r3, o3, e3 = {};
+  for (o3 in u4) "key" == o3 ? i4 = u4[o3] : "ref" == o3 ? r3 = u4[o3] : e3[o3] = u4[o3];
+  if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t3), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
+  return m(l3, e3, i4, r3, null);
+}
+function m(n2, t3, i4, r3, o3) {
+  var e3 = { type: n2, props: t3, key: i4, ref: r3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
+  return null == o3 && null != l.vnode && l.vnode(e3), e3;
+}
+function k(n2) {
+  return n2.children;
+}
+function x(n2, l3) {
+  this.props = n2, this.context = l3;
+}
+function S(n2, l3) {
+  if (null == l3) return n2.__ ? S(n2.__, n2.__i + 1) : null;
+  for (var u4; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) return u4.__e;
+  return "function" == typeof n2.type ? S(n2) : null;
+}
+function C(n2) {
+  var l3, u4;
+  if (null != (n2 = n2.__) && null != n2.__c) {
+    for (n2.__e = n2.__c.base = null, l3 = 0; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) {
+      n2.__e = n2.__c.base = u4.__e;
+      break;
+    }
+    return C(n2);
+  }
+}
+function M(n2) {
+  (!n2.__d && (n2.__d = true) && i.push(n2) && !$.__r++ || r != l.debounceRendering) && ((r = l.debounceRendering) || o)($);
+}
+function $() {
+  for (var n2, u4, t3, r3, o3, f4, c3, s3 = 1; i.length; ) i.length > s3 && i.sort(e), n2 = i.shift(), s3 = i.length, n2.__d && (t3 = void 0, r3 = void 0, o3 = (r3 = (u4 = n2).__v).__e, f4 = [], c3 = [], u4.__P && ((t3 = d({}, r3)).__v = r3.__v + 1, l.vnode && l.vnode(t3), O(u4.__P, t3, r3, u4.__n, u4.__P.namespaceURI, 32 & r3.__u ? [o3] : null, f4, null == o3 ? S(r3) : o3, !!(32 & r3.__u), c3), t3.__v = r3.__v, t3.__.__k[t3.__i] = t3, N(f4, t3, c3), r3.__e = r3.__ = null, t3.__e != o3 && C(t3)));
+  $.__r = 0;
+}
+function I(n2, l3, u4, t3, i4, r3, o3, e3, f4, c3, s3) {
+  var a3, h3, y3, w3, d3, g2, _2, m3 = t3 && t3.__k || v, b = l3.length;
+  for (f4 = P(u4, l3, m3, f4, b), a3 = 0; a3 < b; a3++) null != (y3 = u4.__k[a3]) && (h3 = -1 == y3.__i ? p : m3[y3.__i] || p, y3.__i = a3, g2 = O(n2, y3, h3, i4, r3, o3, e3, f4, c3, s3), w3 = y3.__e, y3.ref && h3.ref != y3.ref && (h3.ref && B(h3.ref, null, y3), s3.push(y3.ref, y3.__c || w3, y3)), null == d3 && null != w3 && (d3 = w3), (_2 = !!(4 & y3.__u)) || h3.__k === y3.__k ? f4 = A(y3, f4, n2, _2) : "function" == typeof y3.type && void 0 !== g2 ? f4 = g2 : w3 && (f4 = w3.nextSibling), y3.__u &= -7);
+  return u4.__e = d3, f4;
+}
+function P(n2, l3, u4, t3, i4) {
+  var r3, o3, e3, f4, c3, s3 = u4.length, a3 = s3, h3 = 0;
+  for (n2.__k = new Array(i4), r3 = 0; r3 < i4; r3++) null != (o3 = l3[r3]) && "boolean" != typeof o3 && "function" != typeof o3 ? (f4 = r3 + h3, (o3 = n2.__k[r3] = "string" == typeof o3 || "number" == typeof o3 || "bigint" == typeof o3 || o3.constructor == String ? m(null, o3, null, null, null) : w(o3) ? m(k, { children: o3 }, null, null, null) : null == o3.constructor && o3.__b > 0 ? m(o3.type, o3.props, o3.key, o3.ref ? o3.ref : null, o3.__v) : o3).__ = n2, o3.__b = n2.__b + 1, e3 = null, -1 != (c3 = o3.__i = L(o3, u4, f4, a3)) && (a3--, (e3 = u4[c3]) && (e3.__u |= 2)), null == e3 || null == e3.__v ? (-1 == c3 && (i4 > s3 ? h3-- : i4 < s3 && h3++), "function" != typeof o3.type && (o3.__u |= 4)) : c3 != f4 && (c3 == f4 - 1 ? h3-- : c3 == f4 + 1 ? h3++ : (c3 > f4 ? h3-- : h3++, o3.__u |= 4))) : n2.__k[r3] = null;
+  if (a3) for (r3 = 0; r3 < s3; r3++) null != (e3 = u4[r3]) && 0 == (2 & e3.__u) && (e3.__e == t3 && (t3 = S(e3)), D(e3, e3));
+  return t3;
+}
+function A(n2, l3, u4, t3) {
+  var i4, r3;
+  if ("function" == typeof n2.type) {
+    for (i4 = n2.__k, r3 = 0; i4 && r3 < i4.length; r3++) i4[r3] && (i4[r3].__ = n2, l3 = A(i4[r3], l3, u4, t3));
+    return l3;
+  }
+  n2.__e != l3 && (t3 && (l3 && n2.type && !l3.parentNode && (l3 = S(n2)), u4.insertBefore(n2.__e, l3 || null)), l3 = n2.__e);
+  do {
+    l3 = l3 && l3.nextSibling;
+  } while (null != l3 && 8 == l3.nodeType);
+  return l3;
+}
+function L(n2, l3, u4, t3) {
+  var i4, r3, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], s3 = null != c3 && 0 == (2 & c3.__u);
+  if (null === c3 && null == n2.key || s3 && e3 == c3.key && f4 == c3.type) return u4;
+  if (t3 > (s3 ? 1 : 0)) {
+    for (i4 = u4 - 1, r3 = u4 + 1; i4 >= 0 || r3 < l3.length; ) if (null != (c3 = l3[o3 = i4 >= 0 ? i4-- : r3++]) && 0 == (2 & c3.__u) && e3 == c3.key && f4 == c3.type) return o3;
+  }
+  return -1;
+}
+function T(n2, l3, u4) {
+  "-" == l3[0] ? n2.setProperty(l3, null == u4 ? "" : u4) : n2[l3] = null == u4 ? "" : "number" != typeof u4 || y.test(l3) ? u4 : u4 + "px";
+}
+function j(n2, l3, u4, t3, i4) {
+  var r3, o3;
+  n: if ("style" == l3) if ("string" == typeof u4) n2.style.cssText = u4;
+  else {
+    if ("string" == typeof t3 && (n2.style.cssText = t3 = ""), t3) for (l3 in t3) u4 && l3 in u4 || T(n2.style, l3, "");
+    if (u4) for (l3 in u4) t3 && u4[l3] == t3[l3] || T(n2.style, l3, u4[l3]);
+  }
+  else if ("o" == l3[0] && "n" == l3[1]) r3 = l3 != (l3 = l3.replace(f, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r3] = u4, u4 ? t3 ? u4.u = t3.u : (u4.u = c, n2.addEventListener(l3, r3 ? a : s, r3)) : n2.removeEventListener(l3, r3 ? a : s, r3);
+  else {
+    if ("http://www.w3.org/2000/svg" == i4) l3 = l3.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
+    else if ("width" != l3 && "height" != l3 && "href" != l3 && "list" != l3 && "form" != l3 && "tabIndex" != l3 && "download" != l3 && "rowSpan" != l3 && "colSpan" != l3 && "role" != l3 && "popover" != l3 && l3 in n2) try {
+      n2[l3] = null == u4 ? "" : u4;
+      break n;
+    } catch (n3) {
+    }
+    "function" == typeof u4 || (null == u4 || false === u4 && "-" != l3[4] ? n2.removeAttribute(l3) : n2.setAttribute(l3, "popover" == l3 && 1 == u4 ? "" : u4));
+  }
+}
+function F(n2) {
+  return function(u4) {
+    if (this.l) {
+      var t3 = this.l[u4.type + n2];
+      if (null == u4.t) u4.t = c++;
+      else if (u4.t < t3.u) return;
+      return t3(l.event ? l.event(u4) : u4);
+    }
+  };
+}
+function O(n2, u4, t3, i4, r3, o3, e3, f4, c3, s3) {
+  var a3, h3, p3, v3, y3, _2, m3, b, S2, C3, M2, $2, P2, A3, H, L2, T3, j3 = u4.type;
+  if (null != u4.constructor) return null;
+  128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (a3 = l.__b) && a3(u4);
+  n: if ("function" == typeof j3) try {
+    if (b = u4.props, S2 = "prototype" in j3 && j3.prototype.render, C3 = (a3 = j3.contextType) && i4[a3.__c], M2 = a3 ? C3 ? C3.props.value : a3.__ : i4, t3.__c ? m3 = (h3 = u4.__c = t3.__c).__ = h3.__E : (S2 ? u4.__c = h3 = new j3(b, M2) : (u4.__c = h3 = new x(b, M2), h3.constructor = j3, h3.render = E), C3 && C3.sub(h3), h3.props = b, h3.state || (h3.state = {}), h3.context = M2, h3.__n = i4, p3 = h3.__d = true, h3.__h = [], h3._sb = []), S2 && null == h3.__s && (h3.__s = h3.state), S2 && null != j3.getDerivedStateFromProps && (h3.__s == h3.state && (h3.__s = d({}, h3.__s)), d(h3.__s, j3.getDerivedStateFromProps(b, h3.__s))), v3 = h3.props, y3 = h3.state, h3.__v = u4, p3) S2 && null == j3.getDerivedStateFromProps && null != h3.componentWillMount && h3.componentWillMount(), S2 && null != h3.componentDidMount && h3.__h.push(h3.componentDidMount);
+    else {
+      if (S2 && null == j3.getDerivedStateFromProps && b !== v3 && null != h3.componentWillReceiveProps && h3.componentWillReceiveProps(b, M2), !h3.__e && null != h3.shouldComponentUpdate && false === h3.shouldComponentUpdate(b, h3.__s, M2) || u4.__v == t3.__v) {
+        for (u4.__v != t3.__v && (h3.props = b, h3.state = h3.__s, h3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
+          n3 && (n3.__ = u4);
+        }), $2 = 0; $2 < h3._sb.length; $2++) h3.__h.push(h3._sb[$2]);
+        h3._sb = [], h3.__h.length && e3.push(h3);
+        break n;
+      }
+      null != h3.componentWillUpdate && h3.componentWillUpdate(b, h3.__s, M2), S2 && null != h3.componentDidUpdate && h3.__h.push(function() {
+        h3.componentDidUpdate(v3, y3, _2);
+      });
+    }
+    if (h3.context = M2, h3.props = b, h3.__P = n2, h3.__e = false, P2 = l.__r, A3 = 0, S2) {
+      for (h3.state = h3.__s, h3.__d = false, P2 && P2(u4), a3 = h3.render(h3.props, h3.state, h3.context), H = 0; H < h3._sb.length; H++) h3.__h.push(h3._sb[H]);
+      h3._sb = [];
+    } else do {
+      h3.__d = false, P2 && P2(u4), a3 = h3.render(h3.props, h3.state, h3.context), h3.state = h3.__s;
+    } while (h3.__d && ++A3 < 25);
+    h3.state = h3.__s, null != h3.getChildContext && (i4 = d(d({}, i4), h3.getChildContext())), S2 && !p3 && null != h3.getSnapshotBeforeUpdate && (_2 = h3.getSnapshotBeforeUpdate(v3, y3)), L2 = a3, null != a3 && a3.type === k && null == a3.key && (L2 = V(a3.props.children)), f4 = I(n2, w(L2) ? L2 : [L2], u4, t3, i4, r3, o3, e3, f4, c3, s3), h3.base = u4.__e, u4.__u &= -161, h3.__h.length && e3.push(h3), m3 && (h3.__E = h3.__ = null);
+  } catch (n3) {
+    if (u4.__v = null, c3 || null != o3) if (n3.then) {
+      for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
+      o3[o3.indexOf(f4)] = null, u4.__e = f4;
+    } else {
+      for (T3 = o3.length; T3--; ) g(o3[T3]);
+      z(u4);
+    }
+    else u4.__e = t3.__e, u4.__k = t3.__k, n3.then || z(u4);
+    l.__e(n3, u4, t3);
+  }
+  else null == o3 && u4.__v == t3.__v ? (u4.__k = t3.__k, u4.__e = t3.__e) : f4 = u4.__e = q(t3.__e, u4, t3, i4, r3, o3, e3, c3, s3);
+  return (a3 = l.diffed) && a3(u4), 128 & u4.__u ? void 0 : f4;
+}
+function z(n2) {
+  n2 && n2.__c && (n2.__c.__e = true), n2 && n2.__k && n2.__k.forEach(z);
+}
+function N(n2, u4, t3) {
+  for (var i4 = 0; i4 < t3.length; i4++) B(t3[i4], t3[++i4], t3[++i4]);
+  l.__c && l.__c(u4, n2), n2.some(function(u5) {
+    try {
+      n2 = u5.__h, u5.__h = [], n2.some(function(n3) {
+        n3.call(u5);
+      });
+    } catch (n3) {
+      l.__e(n3, u5.__v);
+    }
+  });
+}
+function V(n2) {
+  return "object" != typeof n2 || null == n2 || n2.__b && n2.__b > 0 ? n2 : w(n2) ? n2.map(V) : d({}, n2);
+}
+function q(u4, t3, i4, r3, o3, e3, f4, c3, s3) {
+  var a3, h3, v3, y3, d3, _2, m3, b = i4.props, k3 = t3.props, x3 = t3.type;
+  if ("svg" == x3 ? o3 = "http://www.w3.org/2000/svg" : "math" == x3 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
+    for (a3 = 0; a3 < e3.length; a3++) if ((d3 = e3[a3]) && "setAttribute" in d3 == !!x3 && (x3 ? d3.localName == x3 : 3 == d3.nodeType)) {
+      u4 = d3, e3[a3] = null;
+      break;
+    }
+  }
+  if (null == u4) {
+    if (null == x3) return document.createTextNode(k3);
+    u4 = document.createElementNS(o3, x3, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
+  }
+  if (null == x3) b === k3 || c3 && u4.data == k3 || (u4.data = k3);
+  else {
+    if (e3 = e3 && n.call(u4.childNodes), b = i4.props || p, !c3 && null != e3) for (b = {}, a3 = 0; a3 < u4.attributes.length; a3++) b[(d3 = u4.attributes[a3]).name] = d3.value;
+    for (a3 in b) if (d3 = b[a3], "children" == a3) ;
+    else if ("dangerouslySetInnerHTML" == a3) v3 = d3;
+    else if (!(a3 in k3)) {
+      if ("value" == a3 && "defaultValue" in k3 || "checked" == a3 && "defaultChecked" in k3) continue;
+      j(u4, a3, null, d3, o3);
+    }
+    for (a3 in k3) d3 = k3[a3], "children" == a3 ? y3 = d3 : "dangerouslySetInnerHTML" == a3 ? h3 = d3 : "value" == a3 ? _2 = d3 : "checked" == a3 ? m3 = d3 : c3 && "function" != typeof d3 || b[a3] === d3 || j(u4, a3, d3, b[a3], o3);
+    if (h3) c3 || v3 && (h3.__html == v3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
+    else if (v3 && (u4.innerHTML = ""), I("template" == t3.type ? u4.content : u4, w(y3) ? y3 : [y3], t3, i4, r3, "foreignObject" == x3 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i4.__k && S(i4, 0), c3, s3), null != e3) for (a3 = e3.length; a3--; ) g(e3[a3]);
+    c3 || (a3 = "value", "progress" == x3 && null == _2 ? u4.removeAttribute("value") : null != _2 && (_2 !== u4[a3] || "progress" == x3 && !_2 || "option" == x3 && _2 != b[a3]) && j(u4, a3, _2, b[a3], o3), a3 = "checked", null != m3 && m3 != u4[a3] && j(u4, a3, m3, b[a3], o3));
+  }
+  return u4;
+}
+function B(n2, u4, t3) {
+  try {
+    if ("function" == typeof n2) {
+      var i4 = "function" == typeof n2.__u;
+      i4 && n2.__u(), i4 && null == u4 || (n2.__u = n2(u4));
+    } else n2.current = u4;
+  } catch (n3) {
+    l.__e(n3, t3);
+  }
+}
+function D(n2, u4, t3) {
+  var i4, r3;
+  if (l.unmount && l.unmount(n2), (i4 = n2.ref) && (i4.current && i4.current != n2.__e || B(i4, null, u4)), null != (i4 = n2.__c)) {
+    if (i4.componentWillUnmount) try {
+      i4.componentWillUnmount();
+    } catch (n3) {
+      l.__e(n3, u4);
+    }
+    i4.base = i4.__P = null;
+  }
+  if (i4 = n2.__k) for (r3 = 0; r3 < i4.length; r3++) i4[r3] && D(i4[r3], u4, t3 || "function" != typeof n2.type);
+  t3 || g(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
+}
+function E(n2, l3, u4) {
+  return this.constructor(n2, u4);
+}
+function G(u4, t3, i4) {
+  var r3, o3, e3, f4;
+  t3 == document && (t3 = document.documentElement), l.__ && l.__(u4, t3), o3 = (r3 = "function" == typeof i4) ? null : i4 && i4.__k || t3.__k, e3 = [], f4 = [], O(t3, u4 = (!r3 && i4 || t3).__k = _(k, null, [u4]), o3 || p, p, t3.namespaceURI, !r3 && i4 ? [i4] : o3 ? null : t3.firstChild ? n.call(t3.childNodes) : null, e3, !r3 && i4 ? i4 : o3 ? o3.__e : t3.firstChild, r3, f4), N(e3, u4, f4);
+}
+function Q(n2) {
+  function l3(n3) {
+    var u4, t3;
+    return this.getChildContext || (u4 = /* @__PURE__ */ new Set(), (t3 = {})[l3.__c] = this, this.getChildContext = function() {
+      return t3;
+    }, this.componentWillUnmount = function() {
+      u4 = null;
+    }, this.shouldComponentUpdate = function(n4) {
+      this.props.value != n4.value && u4.forEach(function(n5) {
+        n5.__e = true, M(n5);
+      });
+    }, this.sub = function(n4) {
+      u4.add(n4);
+      var l4 = n4.componentWillUnmount;
+      n4.componentWillUnmount = function() {
+        u4 && u4.delete(n4), l4 && l4.call(n4);
+      };
+    }), n3.children;
+  }
+  return l3.__c = "__cC" + h++, l3.__ = n2, l3.Provider = l3.__l = (l3.Consumer = function(n3, l4) {
+    return n3.children(l4);
+  }).contextType = l3, l3;
+}
+n = v.slice, l = { __e: function(n2, l3, u4, t3) {
+  for (var i4, r3, o3; l3 = l3.__; ) if ((i4 = l3.__c) && !i4.__) try {
+    if ((r3 = i4.constructor) && null != r3.getDerivedStateFromError && (i4.setState(r3.getDerivedStateFromError(n2)), o3 = i4.__d), null != i4.componentDidCatch && (i4.componentDidCatch(n2, t3 || {}), o3 = i4.__d), o3) return i4.__E = i4;
+  } catch (l4) {
+    n2 = l4;
+  }
+  throw n2;
+} }, u = 0, t = function(n2) {
+  return null != n2 && null == n2.constructor;
+}, x.prototype.setState = function(n2, l3) {
+  var u4;
+  u4 = null != this.__s && this.__s != this.state ? this.__s : this.__s = d({}, this.state), "function" == typeof n2 && (n2 = n2(d({}, u4), this.props)), n2 && d(u4, n2), null != n2 && this.__v && (l3 && this._sb.push(l3), M(this));
+}, x.prototype.forceUpdate = function(n2) {
+  this.__v && (this.__e = true, n2 && this.__h.push(n2), M(this));
+}, x.prototype.render = k, i = [], o = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e = function(n2, l3) {
+  return n2.__v.__b - l3.__v.__b;
+}, $.__r = 0, f = /(PointerCapture)$|Capture$/i, c = 0, s = F(false), a = F(true), h = 0;
+
+// src/utils/options.ts
+function parseOptions(src) {
+  const options = {};
+  src.split(/\r?\n/).forEach((line) => {
+    const match = line.match(/^\s*([a-zA-Z_]+)\s*:\s*(.+)\s*$/);
+    if (match) {
+      options[match[1].trim()] = match[2].trim();
+    }
+  });
+  return options;
+}
+
+// src/services/date-service.ts
+var DateService = class {
+  static momentAvailable() {
+    return typeof window.moment !== "undefined";
+  }
+  static getMoment() {
+    return window.moment;
+  }
+  /**
+   * Create a DateWrapper from a date string and format
+   */
+  static parse(dateStr, format) {
+    const m3 = this.getMoment();
+    if (m3) {
+      const parsed = m3(dateStr, format, true);
+      if (parsed.isValid()) {
+        return this.wrapMoment(parsed);
+      }
+    }
+    return this.wrapDate(this.parseNativeDate(dateStr, format));
+  }
+  /**
+   * Create a DateWrapper from multiple possible formats
+   */
+  static parseMultiple(dateStr, formats) {
+    const m3 = this.getMoment();
+    if (m3) {
+      const parsed = m3(dateStr, formats, true);
+      if (parsed.isValid()) {
+        return this.wrapMoment(parsed);
+      }
+    }
+    for (const fmt of formats) {
+      try {
+        const date = this.parseNativeDate(dateStr, fmt);
+        if (!isNaN(date.getTime())) {
+          return this.wrapDate(date);
+        }
+      } catch {
+      }
+    }
+    return this.now();
+  }
+  /**
+   * Get current date/time
+   */
+  static now() {
+    const m3 = this.getMoment();
+    if (m3) {
+      return this.wrapMoment(m3());
+    }
+    return this.wrapDate(/* @__PURE__ */ new Date());
+  }
+  /**
+   * Create DateWrapper from native Date
+   */
+  static fromDate(date) {
+    const m3 = this.getMoment();
+    if (m3) {
+      return this.wrapMoment(m3(date));
+    }
+    return this.wrapDate(new Date(date.getTime()));
+  }
+  /**
+   * Format date to string
+   */
+  static format(date, format) {
+    if (date instanceof Date) {
+      return this.formatNativeDate(date, format);
+    }
+    return date.format(format);
+  }
+  /**
+   * Add days to date
+   */
+  static addDays(date, days) {
+    if (date instanceof Date) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return this.wrapDate(result);
+    }
+    return date.clone().add(days, "days");
+  }
+  /**
+   * Subtract days from date
+   */
+  static subtractDays(date, days) {
+    if (date instanceof Date) {
+      const result = new Date(date);
+      result.setDate(result.getDate() - days);
+      return this.wrapDate(result);
+    }
+    return date.clone().subtract(days, "days");
+  }
+  /**
+   * Check if date is before another date
+   */
+  static isBefore(date, other) {
+    const date1 = date instanceof Date ? this.wrapDate(date) : date;
+    const date2 = other instanceof Date ? this.wrapDate(other) : other;
+    return date1.isBefore(date2);
+  }
+  /**
+   * Check if date is after another date
+   */
+  static isAfter(date, other) {
+    const date1 = date instanceof Date ? this.wrapDate(date) : date;
+    const date2 = other instanceof Date ? this.wrapDate(other) : other;
+    return date1.isAfter(date2);
+  }
+  /**
+   * Start of day
+   */
+  static startOfDay(date) {
+    if (date instanceof Date) {
+      const result = new Date(date);
+      result.setHours(0, 0, 0, 0);
+      return this.wrapDate(result);
+    }
+    return date.clone().startOf("day");
+  }
+  /**
+   * Resolve date string to ISO format
+   */
+  static resolveDateIso(input, fmt) {
+    if (!input || input.toLowerCase() === "today") {
+      return this.format(this.now(), fmt);
+    }
+    const m3 = this.getMoment();
+    if (m3) {
+      const tryParse = m3(input, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
+      if (tryParse.isValid()) {
+        return tryParse.format(fmt);
+      }
+      return m3().format(fmt);
+    }
+    const today = /* @__PURE__ */ new Date();
+    const parsed = new Date(input);
+    if (isNaN(parsed.getTime())) {
+      return this.formatNativeDate(today, fmt);
+    }
+    return this.formatNativeDate(parsed, fmt);
+  }
+  // Private helper methods
+  static wrapMoment(momentObj) {
+    const m3 = this.getMoment();
+    return {
+      format: (fmt) => momentObj.format(fmt),
+      date: () => momentObj.date(),
+      month: () => momentObj.month() + 1,
+      // moment uses 0-based, we use 1-based
+      year: () => momentObj.year(),
+      getDate: () => momentObj.date(),
+      getMonth: () => momentObj.month(),
+      getFullYear: () => momentObj.year(),
+      getTime: () => momentObj.valueOf(),
+      isBefore: (other) => {
+        if (other instanceof Date) {
+          return momentObj.isBefore(m3 ? m3(other) : other);
+        }
+        return momentObj.isBefore(other.toDate ? other.toDate() : other);
+      },
+      isAfter: (other) => {
+        if (other instanceof Date) {
+          return momentObj.isAfter(m3 ? m3(other) : other);
+        }
+        return momentObj.isAfter(other.toDate ? other.toDate() : other);
+      },
+      isValid: () => momentObj.isValid(),
+      clone: () => this.wrapMoment(momentObj.clone()),
+      add: (amount, unit) => {
+        return this.wrapMoment(momentObj.clone().add(amount, unit));
+      },
+      subtract: (amount, unit) => {
+        return this.wrapMoment(momentObj.clone().subtract(amount, unit));
+      },
+      startOf: (unit) => {
+        return this.wrapMoment(momentObj.clone().startOf(unit));
+      },
+      toDate: () => momentObj.toDate()
+    };
+  }
+  static wrapDate(date) {
+    return {
+      format: (fmt) => this.formatNativeDate(date, fmt),
+      date: () => date.getDate(),
+      month: () => date.getMonth() + 1,
+      year: () => date.getFullYear(),
+      getDate: () => date.getDate(),
+      getMonth: () => date.getMonth(),
+      getFullYear: () => date.getFullYear(),
+      getTime: () => date.getTime(),
+      isBefore: (other) => {
+        const otherDate = other instanceof Date ? other : other.toDate();
+        return date < otherDate;
+      },
+      isAfter: (other) => {
+        const otherDate = other instanceof Date ? other : other.toDate();
+        return date > otherDate;
+      },
+      isValid: () => !isNaN(date.getTime()),
+      clone: () => this.wrapDate(new Date(date.getTime())),
+      add: (amount, unit) => {
+        const result = new Date(date);
+        if (unit === "days") {
+          result.setDate(result.getDate() + amount);
+        } else if (unit === "months") {
+          result.setMonth(result.getMonth() + amount);
+        } else if (unit === "years") {
+          result.setFullYear(result.getFullYear() + amount);
+        }
+        return this.wrapDate(result);
+      },
+      subtract: (amount, unit) => {
+        const result = new Date(date);
+        if (unit === "days") {
+          result.setDate(result.getDate() - amount);
+        } else if (unit === "months") {
+          result.setMonth(result.getMonth() - amount);
+        } else if (unit === "years") {
+          result.setFullYear(result.getFullYear() - amount);
+        }
+        return this.wrapDate(result);
+      },
+      startOf: (unit) => {
+        const result = new Date(date);
+        if (unit === "day") {
+          result.setHours(0, 0, 0, 0);
+        } else if (unit === "month") {
+          result.setDate(1);
+          result.setHours(0, 0, 0, 0);
+        } else if (unit === "year") {
+          result.setMonth(0, 1);
+          result.setHours(0, 0, 0, 0);
+        }
+        return this.wrapDate(result);
+      },
+      toDate: () => new Date(date.getTime())
+    };
+  }
+  static parseNativeDate(dateStr, format) {
+    if (format === "YYYY-MM-DD") {
+      const parts = dateStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+    }
+    return new Date(dateStr);
+  }
+  static formatNativeDate(date, format) {
+    if (format === "YYYY-MM-DD") {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    return date.toISOString().split("T")[0];
+  }
+};
+
+// src/utils/date.ts
+function resolveDateIso(input, fmt) {
+  return DateService.resolveDateIso(input, fmt);
+}
+
+// src/constants/index.ts
+var MOBILE_BREAKPOINT = 768;
+var MAX_DAYS_BACK = 3650;
+var CACHE_TTL_MS = 5 * 60 * 1e3;
+var DEBOUNCE_DELAY_MS = 300;
+var ANIMATION_DURATION_MS = 300;
+var SCROLL_RESTORE_DELAY_2_MS = 100;
+var IMMEDIATE_TIMEOUT_MS = 0;
+var TrackerType = {
+  GOOD_HABIT: "good-habit",
+  BAD_HABIT: "bad-habit",
+  NUMBER: "number",
+  SCALE: "scale",
+  PLUSMINUS: "plusminus",
+  TEXT: "text"
+};
+var ViewMode = {
+  CONTROL: "control",
+  DISPLAY: "display"
+};
+var CSS_CLASSES = {
+  // Main container
+  TRACKER_NOTES: "tracker-notes",
+  TRACKER_NOTES_HEADER: "tracker-notes__header",
+  TRACKER_NOTES_HIERARCHY: "tracker-notes__hierarchy",
+  // Tracker item
+  TRACKER: "tracker-notes__tracker",
+  TRACKER_HEADER: "tracker-notes__tracker-header",
+  TRACKER_TITLE: "tracker-notes__tracker-title",
+  TRACKER_CONTROLS: "tracker-notes__controls",
+  SETTINGS_BTN: "tracker-notes__settings-btn",
+  ORDER_BTN_CONTAINER: "tracker-notes__order-btns",
+  ORDER_BTN_UP: "tracker-notes__order-btn-up",
+  ORDER_BTN_DOWN: "tracker-notes__order-btn-down",
+  // Controls
+  ROW: "tracker-notes__row",
+  VALUE: "tracker-notes__value",
+  VALUE_UPDATED: "updated",
+  // Text input
+  TEXT_INPUT: "tracker-notes__text-input",
+  // Scale/Progress bar
+  PROGRESS_BAR_WRAPPER: "tracker-notes__progress-bar-wrapper",
+  PROGRESS_BAR_INPUT: "tracker-notes__progress-bar-input",
+  PROGRESS_BAR_PROGRESS: "tracker-notes__progress-bar-progress",
+  PROGRESS_BAR_VALUE: "tracker-notes__progress-bar-value",
+  PROGRESS_BAR_LABEL_LEFT: "tracker-notes__progress-bar-label-left",
+  PROGRESS_BAR_LABEL_RIGHT: "tracker-notes__progress-bar-label-right",
+  // Heatmap
+  HEATMAP: "tracker-notes__heatmap",
+  HEATMAP_DAY: "tracker-notes__heatmap-day",
+  HEATMAP_DAY_HAS_VALUE: "has-value",
+  HEATMAP_DAY_START: "start-day",
+  // Calendar
+  CALENDAR: "tracker-notes__calendar",
+  CALENDAR_DAY: "tracker-notes__calendar-day",
+  CALENDAR_DAY_HAS_VALUE: "has-value",
+  CALENDAR_DAY_START: "start-day",
+  // Visualizations
+  CHART: "tracker-notes__chart",
+  STATS: "tracker-notes__stats",
+  // Date picker
+  DATE_PICKER_CONTAINER: "tracker-notes__date-picker-container",
+  DATE_PICKER: "tracker-notes__date-picker",
+  DATE_INPUT: "tracker-notes__date-input",
+  DATE_INPUT_UPDATING: "is-updating",
+  DATE_NAV_BTN: "tracker-notes__date-nav-btn",
+  DATE_NAV_BTN_LEFT: "tracker-notes__date-nav-btn-left",
+  DATE_NAV_BTN_RIGHT: "tracker-notes__date-nav-btn-right",
+  // Loading
+  LOADING: "tracker-notes__loading",
+  LOADING_ACTIVE: "is-active",
+  LOADING_DOT: "tracker-notes__loading-dot",
+  // Folder structure
+  FOLDER_NODE: "tracker-notes__folder-node",
+  FOLDER_HEADER: "tracker-notes__folder-header",
+  TRACKERS_CONTAINER: "tracker-notes__trackers",
+  // Messages
+  ERROR: "tracker-notes__error",
+  SUCCESS: "tracker-notes__success",
+  // Limit indicators
+  LIMIT_ERROR: "tracker-notes__limit-error",
+  LIMIT_SUCCESS: "tracker-notes__limit-success"
+};
+var CSS_VARIABLES = {
+  // Colors
+  INTERACTIVE_ACCENT: "--interactive-accent",
+  COLOR_ACCENT: "--color-accent",
+  ACCENT_COLOR: "--accent-color",
+  TEXT_MUTED: "--text-muted",
+  TEXT_FAINT: "--text-faint",
+  TEXT_NORMAL: "--text-normal",
+  TEXT_ERROR: "--text-error",
+  TEXT_SUCCESS: "--text-success",
+  TEXT_ACCENT: "--text-accent",
+  TEXT_ON_ACCENT: "--text-on-accent",
+  // Backgrounds
+  BACKGROUND_PRIMARY: "--background-primary",
+  BACKGROUND_SECONDARY: "--background-secondary",
+  BACKGROUND_MODIFIER_BORDER: "--background-modifier-border",
+  BACKGROUND_MODIFIER_BORDER_HOVER: "--background-modifier-border-hover",
+  BACKGROUND_MODIFIER_BORDER_FOCUS: "--background-modifier-border-focus",
+  // Interactive
+  INTERACTIVE_NORMAL: "--interactive-normal",
+  INTERACTIVE_HOVER: "--interactive-hover",
+  INTERACTIVE_ACCENT_HOVER: "--interactive-accent-hover",
+  // Fonts
+  FONT_TEXT: "--font-text",
+  FONT_UI_SMALL: "--font-ui-small"
+};
+var FALLBACK_COLORS = {
+  ACCENT: "#7f6df2",
+  TEXT_MUTED: "#999999",
+  TEXT_FAINT: "#666666",
+  TEXT_ERROR: "#c00000",
+  TEXT_SUCCESS: "#00c000",
+  BORDER: "#e0e0e0",
+  BG_PRIMARY: "#ffffff"
+};
+var CHART_CONFIG = {
+  DEFAULT_HEIGHT: 200,
+  CANVAS_HEIGHT: 180,
+  POINT_RADIUS: 3,
+  POINT_BORDER_WIDTH: 2,
+  POINT_HOVER_RADIUS: 5,
+  POINT_HIT_RADIUS: 10,
+  BORDER_WIDTH: 2.5,
+  LINE_TENSION: 0.4,
+  MAX_TICKS_LIMIT: 10,
+  GRID_LINE_WIDTH: 1,
+  FONT_SIZE_SMALL: 11,
+  FUTURE_DAYS_OFFSET: 5,
+  // Show 5 days ahead in chart
+  GRADIENT_HEIGHT: 180,
+  OPACITY_LIGHT: 0.25,
+  OPACITY_DARK: 0.1,
+  OPACITY_MEDIUM: 0.3,
+  PADDING_FACTOR: 0.1,
+  LINE_WIDTH: 2
+};
+var DATE_FORMATS = {
+  ISO: "YYYY-MM-DD",
+  ISO_SLASH: "YYYY/MM/DD",
+  EU: "DD.MM.YYYY",
+  DISPLAY_SHORT: "D MMM"
+};
+var ERROR_MESSAGES = {
+  NO_TRACKERS: "no trackers found in folder",
+  NO_FRONTMATTER: "Frontmatter not found",
+  ENTER_NAME: "Enter name",
+  CREATE_ERROR: "Error creating tracker",
+  UPDATE_ERROR: "Error updating tracker",
+  WRITE_ERROR: "Write error",
+  READ_ERROR: "Read error",
+  RENDER_ERROR: "error processing block"
+};
+var SUCCESS_MESSAGES = {
+  TRACKER_CREATED: "Tracker created",
+  TRACKER_UPDATED: "Tracker updated",
+  TRACKER_DELETED: "Tracker deleted",
+  VALUE_SAVED: "\u2713 Saved"
+};
+var PLACEHOLDERS = {
+  TRACKER_NAME: "e.g., Morning workout",
+  UNIT: "Default: none",
+  TEXT_INPUT: "Enter text...",
+  NUMBER_INPUT: "0",
+  LIMIT_NONE: "Default: none"
+};
+var TRACKER_TYPE_LABELS = {
+  [TrackerType.GOOD_HABIT]: "Good habit",
+  [TrackerType.BAD_HABIT]: "Bad habit",
+  [TrackerType.NUMBER]: "Number",
+  [TrackerType.SCALE]: "Scale",
+  [TrackerType.PLUSMINUS]: "Counter (+/-)",
+  [TrackerType.TEXT]: "Text"
+};
+var MODAL_LABELS = {
+  CREATE_TRACKER: "Create new tracker",
+  EDIT_TRACKER: "Edit tracker",
+  NAME: "Name",
+  PATH: "Path",
+  TYPE: "Type",
+  PARAMETERS: "Parameters",
+  UNIT: "Unit",
+  STEP: "Step",
+  VALUE_FROM: 'Value "from"',
+  VALUE_TO: 'Value "to"',
+  LIMITS: "Success limits",
+  LOWER_LIMIT: "Lower limit",
+  UPPER_LIMIT: "Upper limit",
+  CREATE: "Create",
+  SAVE: "Save",
+  DELETE: "Delete",
+  DELETE_CONFIRM_TITLE: "Delete tracker?",
+  DELETE_CONFIRM_MESSAGE: 'Are you sure you want to delete tracker "{name}"? This action cannot be undone.',
+  CANCEL: "Cancel",
+  HABITS_GROUP: "Habits",
+  METRICS_GROUP: "Metrics",
+  START_DATE: "Tracking start date",
+  LIMITS_DESCRIPTION: "Optionally, you can make the metric limiting and set desired threshold values, they will be displayed on the chart. If the value does not fall within the specified range, you will see a color response.",
+  ROOT_FOLDER: "/ (root folder)",
+  NO_TRACKERS_FOUND: "No trackers found",
+  SELECT_TRACKER: "Select tracker",
+  YESTERDAY: "Yesterday",
+  TOMORROW: "Tomorrow",
+  UPDATING: "Updating\u2026",
+  MOVE_UP: "Move up",
+  MOVE_DOWN: "Move down",
+  TRACKER_SETTINGS: "Tracker settings",
+  UPPER_LIMIT_MUST_BE_GREATER: "Upper limit must be greater than lower limit",
+  ENTER_NAME: "Enter name",
+  TRACKER_UPDATED: "Tracker updated",
+  WARNING_RECORDS_BEFORE_DATE: "Warning: found {count} {records} BEFORE date {date}, which will be deleted when saving.",
+  RECORD_SINGULAR: "record",
+  RECORDS_PLURAL: "records"
+};
+var DEFAULTS = {
+  STEP: 1,
+  MIN_VALUE: 0,
+  MAX_VALUE: 10,
+  TEXT_UNIT: "words"
+};
+var UI_CONSTANTS = {
+  FONT_WEIGHT_BOLD: "600",
+  TRANSITION_OPACITY_DURATION_MS: 200
+};
+var STATS_LABELS = {
+  TOTAL_RECORDS: "Total records",
+  LAST_DAYS: "Sum",
+  CURRENT_STREAK: "Current streak",
+  DAYS_SINGULAR: "day",
+  DAYS_PLURAL_2_4: "days",
+  DAYS_PLURAL_5_PLUS: "days",
+  AVERAGE: "Average",
+  MIN: "Min",
+  MAX: "Max",
+  MEDIAN: "Median",
+  COMPLETION_RATE: "Completed",
+  ACTIVE_DAYS: "Active days",
+  BEST_STREAK: "Best streak"
+};
+
+// node_modules/preact/hooks/dist/hooks.module.js
+var t2;
+var r2;
+var u2;
+var i2;
+var o2 = 0;
+var f2 = [];
+var c2 = l;
+var e2 = c2.__b;
+var a2 = c2.__r;
+var v2 = c2.diffed;
+var l2 = c2.__c;
+var m2 = c2.unmount;
+var s2 = c2.__;
+function p2(n2, t3) {
+  c2.__h && c2.__h(r2, n2, o2 || t3), o2 = 0;
+  var u4 = r2.__H || (r2.__H = { __: [], __h: [] });
+  return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
+}
+function d2(n2) {
+  return o2 = 1, h2(D2, n2);
+}
+function h2(n2, u4, i4) {
+  var o3 = p2(t2++, 2);
+  if (o3.t = n2, !o3.__c && (o3.__ = [i4 ? i4(u4) : D2(void 0, u4), function(n3) {
+    var t3 = o3.__N ? o3.__N[0] : o3.__[0], r3 = o3.t(t3, n3);
+    t3 !== r3 && (o3.__N = [r3, o3.__[1]], o3.__c.setState({}));
+  }], o3.__c = r2, !r2.__f)) {
+    var f4 = function(n3, t3, r3) {
+      if (!o3.__c.__H) return true;
+      var u5 = o3.__c.__H.__.filter(function(n4) {
+        return !!n4.__c;
+      });
+      if (u5.every(function(n4) {
+        return !n4.__N;
+      })) return !c3 || c3.call(this, n3, t3, r3);
+      var i5 = o3.__c.props !== n3;
+      return u5.forEach(function(n4) {
+        if (n4.__N) {
+          var t4 = n4.__[0];
+          n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i5 = true);
+        }
+      }), c3 && c3.call(this, n3, t3, r3) || i5;
+    };
+    r2.__f = true;
+    var c3 = r2.shouldComponentUpdate, e3 = r2.componentWillUpdate;
+    r2.componentWillUpdate = function(n3, t3, r3) {
+      if (this.__e) {
+        var u5 = c3;
+        c3 = void 0, f4(n3, t3, r3), c3 = u5;
+      }
+      e3 && e3.call(this, n3, t3, r3);
+    }, r2.shouldComponentUpdate = f4;
+  }
+  return o3.__N || o3.__;
+}
+function y2(n2, u4) {
+  var i4 = p2(t2++, 3);
+  !c2.__s && C2(i4.__H, u4) && (i4.__ = n2, i4.u = u4, r2.__H.__h.push(i4));
+}
+function A2(n2) {
+  return o2 = 5, T2(function() {
+    return { current: n2 };
+  }, []);
+}
+function T2(n2, r3) {
+  var u4 = p2(t2++, 7);
+  return C2(u4.__H, r3) && (u4.__ = n2(), u4.__H = r3, u4.__h = n2), u4.__;
+}
+function q2(n2, t3) {
+  return o2 = 8, T2(function() {
+    return n2;
+  }, t3);
+}
+function x2(n2) {
+  var u4 = r2.context[n2.__c], i4 = p2(t2++, 9);
+  return i4.c = n2, u4 ? (null == i4.__ && (i4.__ = true, u4.sub(r2)), u4.props.value) : n2.__;
+}
+function j2() {
+  for (var n2; n2 = f2.shift(); ) if (n2.__P && n2.__H) try {
+    n2.__H.__h.forEach(z2), n2.__H.__h.forEach(B2), n2.__H.__h = [];
+  } catch (t3) {
+    n2.__H.__h = [], c2.__e(t3, n2.__v);
+  }
+}
+c2.__b = function(n2) {
+  r2 = null, e2 && e2(n2);
+}, c2.__ = function(n2, t3) {
+  n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), s2 && s2(n2, t3);
+}, c2.__r = function(n2) {
+  a2 && a2(n2), t2 = 0;
+  var i4 = (r2 = n2.__c).__H;
+  i4 && (u2 === r2 ? (i4.__h = [], r2.__h = [], i4.__.forEach(function(n3) {
+    n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
+  })) : (i4.__h.forEach(z2), i4.__h.forEach(B2), i4.__h = [], t2 = 0)), u2 = r2;
+}, c2.diffed = function(n2) {
+  v2 && v2(n2);
+  var t3 = n2.__c;
+  t3 && t3.__H && (t3.__H.__h.length && (1 !== f2.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.forEach(function(n3) {
+    n3.u && (n3.__H = n3.u), n3.u = void 0;
+  })), u2 = r2 = null;
+}, c2.__c = function(n2, t3) {
+  t3.some(function(n3) {
+    try {
+      n3.__h.forEach(z2), n3.__h = n3.__h.filter(function(n4) {
+        return !n4.__ || B2(n4);
+      });
+    } catch (r3) {
+      t3.some(function(n4) {
+        n4.__h && (n4.__h = []);
+      }), t3 = [], c2.__e(r3, n3.__v);
+    }
+  }), l2 && l2(n2, t3);
+}, c2.unmount = function(n2) {
+  m2 && m2(n2);
+  var t3, r3 = n2.__c;
+  r3 && r3.__H && (r3.__H.__.forEach(function(n3) {
+    try {
+      z2(n3);
+    } catch (n4) {
+      t3 = n4;
+    }
+  }), r3.__H = void 0, t3 && c2.__e(t3, r3.__v));
+};
+var k2 = "function" == typeof requestAnimationFrame;
+function w2(n2) {
+  var t3, r3 = function() {
+    clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
+  }, u4 = setTimeout(r3, 35);
+  k2 && (t3 = requestAnimationFrame(r3));
+}
+function z2(n2) {
+  var t3 = r2, u4 = n2.__c;
+  "function" == typeof u4 && (n2.__c = void 0, u4()), r2 = t3;
+}
+function B2(n2) {
+  var t3 = r2;
+  n2.__c = n2.__(), r2 = t3;
+}
+function C2(n2, t3) {
+  return !n2 || n2.length !== t3.length || t3.some(function(t4, r3) {
+    return t4 !== n2[r3];
+  });
+}
+function D2(n2, t3) {
+  return "function" == typeof t3 ? t3(n2) : t3;
+}
+
+// src/components/TrackerContext.tsx
+var TrackerContext = Q(null);
+function useTrackerContext() {
+  const context = x2(TrackerContext);
+  if (!context) {
+    throw new Error("useTrackerContext must be used within TrackerContext.Provider");
+  }
+  return context;
+}
+
+// node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
+var f3 = 0;
+var i3 = Array.isArray;
+function u3(e3, t3, n2, o3, i4, u4) {
+  t3 || (t3 = {});
+  var a3, c3, p3 = t3;
+  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
+  var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i4, __self: u4 };
+  if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
+  return l.vnode && l.vnode(l3), l3;
+}
+
+// src/components/TrackerBlock/DatePicker.tsx
+function DatePicker({ dateIso, onDateChange, onNavigate, isUpdating }) {
+  const handleInputChange = q2((e3) => {
+    const target = e3.target;
+    onDateChange(target.value);
+  }, [onDateChange]);
+  const handlePrevDay = q2(() => {
+    onNavigate(-1);
+  }, [onNavigate]);
+  const handleNextDay = q2(() => {
+    onNavigate(1);
+  }, [onNavigate]);
+  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.DATE_PICKER_CONTAINER, children: /* @__PURE__ */ u3("div", { class: CSS_CLASSES.DATE_PICKER, children: [
+    /* @__PURE__ */ u3(
+      "button",
+      {
+        type: "button",
+        class: `${CSS_CLASSES.DATE_NAV_BTN} ${CSS_CLASSES.DATE_NAV_BTN_LEFT}`,
+        onClick: handlePrevDay,
+        disabled: isUpdating,
+        title: MODAL_LABELS.YESTERDAY,
+        children: "\u25C0"
+      }
+    ),
+    /* @__PURE__ */ u3(
+      "input",
+      {
+        type: "date",
+        class: `${CSS_CLASSES.DATE_INPUT}${isUpdating ? ` ${CSS_CLASSES.DATE_INPUT_UPDATING}` : ""}`,
+        value: dateIso,
+        onChange: handleInputChange,
+        disabled: isUpdating
+      }
+    ),
+    /* @__PURE__ */ u3(
+      "button",
+      {
+        type: "button",
+        class: `${CSS_CLASSES.DATE_NAV_BTN} ${CSS_CLASSES.DATE_NAV_BTN_RIGHT}`,
+        onClick: handleNextDay,
+        disabled: isUpdating,
+        title: MODAL_LABELS.TOMORROW,
+        children: "\u25B6"
+      }
+    )
+  ] }) });
+}
+
+// src/components/TrackerBlock/LoadingIndicator.tsx
+function LoadingIndicator({ isActive }) {
+  return /* @__PURE__ */ u3("div", { class: `${CSS_CLASSES.LOADING}${isActive ? ` ${CSS_CLASSES.LOADING_ACTIVE}` : ""}`, children: [
+    /* @__PURE__ */ u3("div", { class: CSS_CLASSES.LOADING_DOT }),
+    /* @__PURE__ */ u3("span", { children: MODAL_LABELS.UPDATING })
+  ] });
+}
+
+// src/utils/path.ts
+function normalizePath(path) {
+  if (!path) return "";
+  return path.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
+}
+
+// src/components/TrackerItem/TrackerHeader.tsx
+function TrackerHeader({
+  file,
+  displayName,
+  plugin,
+  onEdit,
+  onMoveUp,
+  onMoveDown,
+  limitProgress
+}) {
+  const headerRef = A2(null);
+  const iconContainerRef = A2(null);
+  y2(() => {
+    if (iconContainerRef.current) {
+      const trackerIcon = plugin.getIconForPath(file.path, true);
+      if (trackerIcon) {
+        iconContainerRef.current.innerHTML = "";
+        plugin.renderIcon(trackerIcon, iconContainerRef.current);
+      }
+    }
+  }, [plugin, file.path]);
+  y2(() => {
+    if (headerRef.current) {
+      if (limitProgress) {
+        headerRef.current.style.setProperty("--limit-progress-width", limitProgress.width);
+        headerRef.current.style.setProperty("--limit-progress-color", limitProgress.color);
+      } else {
+        headerRef.current.style.setProperty("--limit-progress-width", "0%");
+        headerRef.current.style.setProperty("--limit-progress-color", "transparent");
+      }
+    }
+  }, [limitProgress]);
+  const handleTitleClick = q2((e3) => {
+    e3.preventDefault();
+    e3.stopPropagation();
+    plugin.app.workspace.openLinkText(file.path, "", false);
+  }, [plugin, file.path]);
+  return /* @__PURE__ */ u3("div", { ref: headerRef, class: CSS_CLASSES.TRACKER_HEADER, children: [
+    /* @__PURE__ */ u3("div", { class: CSS_CLASSES.TRACKER_TITLE, children: [
+      /* @__PURE__ */ u3("span", { ref: iconContainerRef, class: "tracker-notes__tracker-icon" }),
+      /* @__PURE__ */ u3(
+        "a",
+        {
+          class: "internal-link",
+          href: file.path,
+          "data-href": file.path,
+          onClick: handleTitleClick,
+          children: displayName
+        }
+      )
+    ] }),
+    (onMoveUp || onMoveDown) && /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ORDER_BTN_CONTAINER, children: [
+      onMoveUp && /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: CSS_CLASSES.ORDER_BTN_UP,
+          onClick: onMoveUp,
+          title: MODAL_LABELS.MOVE_UP,
+          children: "\u2191"
+        }
+      ),
+      onMoveDown && /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: CSS_CLASSES.ORDER_BTN_DOWN,
+          onClick: onMoveDown,
+          title: MODAL_LABELS.MOVE_DOWN,
+          children: "\u2193"
+        }
+      )
+    ] }),
+    onEdit && /* @__PURE__ */ u3(
+      "button",
+      {
+        type: "button",
+        class: CSS_CLASSES.SETTINGS_BTN,
+        onClick: onEdit,
+        title: MODAL_LABELS.TRACKER_SETTINGS,
+        children: "\u2699\uFE0F"
+      }
+    )
+  ] });
+}
+
+// src/components/controls/NumberControl.tsx
+function NumberControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
+  const currentValue = entries.get(dateIso);
+  const initialValue = currentValue != null && !isNaN(Number(currentValue)) ? String(currentValue) : "";
+  const [inputValue, setInputValue] = d2(initialValue);
+  const inputRef = A2(null);
+  const debounceRef = A2(null);
+  y2(() => {
+    const newValue = entries.get(dateIso);
+    const newInputValue = newValue != null && !isNaN(Number(newValue)) ? String(newValue) : "";
+    setInputValue(newInputValue);
+  }, [entries, dateIso]);
+  const writeValue = q2(async (value, immediate = false) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    const val = value === "" ? "0" : value;
+    const numVal = Number(val);
+    if (isNaN(numVal)) return;
+    const doWrite = async () => {
+      try {
+        await plugin.writeLogLine(file, dateIso, String(numVal));
+        await onValueChange();
+      } catch (err) {
+        console.error("NumberControl: write error", err);
+      }
+    };
+    if (immediate) {
+      await doWrite();
+    } else {
+      debounceRef.current = setTimeout(doWrite, DEBOUNCE_DELAY_MS);
+    }
+  }, [plugin, file, dateIso, onValueChange]);
+  const handleChange = q2((e3) => {
+    const target = e3.target;
+    setInputValue(target.value);
+    writeValue(target.value, false);
+    if (inputRef.current) {
+      inputRef.current.style.transform = "scale(0.98)";
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.style.transform = "";
+        }
+      }, ANIMATION_DURATION_MS);
+    }
+  }, [writeValue]);
+  const handleKeyPress = q2((e3) => {
+    if (e3.key === "Enter") {
+      writeValue(inputValue, true);
+    }
+  }, [inputValue, writeValue]);
+  const handleBlur = q2(() => {
+    writeValue(inputValue, true);
+  }, [inputValue, writeValue]);
+  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ROW, children: /* @__PURE__ */ u3(
+    "input",
+    {
+      ref: inputRef,
+      type: "number",
+      placeholder: "0",
+      value: inputValue,
+      onInput: handleChange,
+      onKeyPress: handleKeyPress,
+      onBlur: handleBlur
+    }
+  ) });
+}
+
+// src/components/controls/PlusMinusControl.tsx
+function PlusMinusControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
+  const step = parseFloat(fileOptions.step || String(DEFAULTS.STEP)) || DEFAULTS.STEP;
+  const currentValue = entries.get(dateIso);
+  const initialValue = currentValue != null && !isNaN(Number(currentValue)) ? Number(currentValue) : 0;
+  const [value, setValue] = d2(initialValue);
+  const [isUpdated, setIsUpdated] = d2(false);
+  const valueRef = A2(null);
+  y2(() => {
+    const newValue = entries.get(dateIso);
+    const newNumValue = newValue != null && !isNaN(Number(newValue)) ? Number(newValue) : 0;
+    setValue(newNumValue);
+  }, [entries, dateIso]);
+  const writeValue = q2(async (newValue) => {
+    try {
+      await plugin.writeLogLine(file, dateIso, String(newValue));
+      await onValueChange();
+    } catch (err) {
+      console.error("PlusMinusControl: write error", err);
+    }
+  }, [plugin, file, dateIso, onValueChange]);
+  const handleMinus = q2(async () => {
+    const newValue = (Number.isFinite(value) ? value : 0) - step;
+    setValue(newValue);
+    setIsUpdated(true);
+    await writeValue(newValue);
+    setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
+  }, [value, step, writeValue]);
+  const handlePlus = q2(async () => {
+    const newValue = (Number.isFinite(value) ? value : 0) + step;
+    setValue(newValue);
+    setIsUpdated(true);
+    await writeValue(newValue);
+    setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
+  }, [value, step, writeValue]);
+  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ROW, children: [
+    /* @__PURE__ */ u3("button", { type: "button", onClick: handleMinus, children: "\u2212" }),
+    /* @__PURE__ */ u3(
+      "span",
+      {
+        ref: valueRef,
+        class: `${CSS_CLASSES.VALUE}${isUpdated ? ` ${CSS_CLASSES.VALUE_UPDATED}` : ""}`,
+        children: value
+      }
+    ),
+    /* @__PURE__ */ u3("button", { type: "button", onClick: handlePlus, children: "+" })
+  ] });
+}
+
+// src/components/controls/TextControl.tsx
+function TextControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
+  const currentValue = entries.get(dateIso);
+  const initialValue = currentValue != null && typeof currentValue === "string" ? currentValue : "";
+  const [inputValue, setInputValue] = d2(initialValue);
+  const buttonRef = A2(null);
+  y2(() => {
+    const newValue = entries.get(dateIso);
+    const newInputValue = newValue != null && typeof newValue === "string" ? newValue : "";
+    setInputValue(newInputValue);
+  }, [entries, dateIso]);
+  const handleChange = q2((e3) => {
+    const target = e3.target;
+    setInputValue(target.value);
+  }, []);
+  const handleSave = q2(async () => {
+    try {
+      const val = inputValue.trim();
+      await plugin.writeLogLine(file, dateIso, val);
+      await onValueChange();
+      if (buttonRef.current) {
+        buttonRef.current.style.transform = "scale(0.95)";
+        setTimeout(() => {
+          if (buttonRef.current) {
+            buttonRef.current.style.transform = "";
+          }
+        }, ANIMATION_DURATION_MS);
+      }
+    } catch (err) {
+      console.error("TextControl: write error", err);
+    }
+  }, [plugin, file, dateIso, inputValue, onValueChange]);
+  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ROW, children: [
+    /* @__PURE__ */ u3(
+      "textarea",
+      {
+        class: CSS_CLASSES.TEXT_INPUT,
+        placeholder: PLACEHOLDERS.TEXT_INPUT,
+        value: inputValue,
+        onInput: handleChange
+      }
+    ),
+    /* @__PURE__ */ u3("button", { ref: buttonRef, type: "button", onClick: handleSave, children: MODAL_LABELS.SAVE })
+  ] });
+}
+
+// src/components/controls/ScaleControl.tsx
+function ScaleControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
+  const minValue = parseFloat(fileOptions.minValue || String(DEFAULTS.MIN_VALUE)) || DEFAULTS.MIN_VALUE;
+  const maxValue = parseFloat(fileOptions.maxValue || String(DEFAULTS.MAX_VALUE)) || DEFAULTS.MAX_VALUE;
+  const step = parseFloat(fileOptions.step || String(DEFAULTS.STEP)) || DEFAULTS.STEP;
+  const currentValue = entries.get(dateIso);
+  let initialValue = minValue;
+  if (currentValue != null && !isNaN(Number(currentValue))) {
+    initialValue = Math.max(minValue, Math.min(maxValue, Number(currentValue)));
+  }
+  const [value, setValue] = d2(initialValue);
+  const [isDragging, setIsDragging] = d2(false);
+  const progressBarRef = A2(null);
+  const hasMoved = A2(false);
+  y2(() => {
+    const newValue = entries.get(dateIso);
+    if (newValue != null && !isNaN(Number(newValue))) {
+      const numVal = Math.max(minValue, Math.min(maxValue, Number(newValue)));
+      setValue(numVal);
+    }
+  }, [entries, dateIso, minValue, maxValue]);
+  const calculateValue = q2((clientX) => {
+    if (!progressBarRef.current) return minValue;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const percentage2 = Math.max(0, Math.min(1, clickX / rect.width));
+    const rawValue = minValue + (maxValue - minValue) * percentage2;
+    const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
+    return Math.max(minValue, Math.min(maxValue, steppedValue));
+  }, [minValue, maxValue, step]);
+  const writeValue = q2(async (newValue) => {
+    try {
+      await plugin.writeLogLine(file, dateIso, String(newValue));
+      await onValueChange();
+    } catch (err) {
+      console.error("ScaleControl: write error", err);
+    }
+  }, [plugin, file, dateIso, onValueChange]);
+  const handleMouseDown = q2((e3) => {
+    if (e3.button !== 0) return;
+    setIsDragging(true);
+    hasMoved.current = false;
+    const newValue = calculateValue(e3.clientX);
+    setValue(newValue);
+    e3.preventDefault();
+  }, [calculateValue]);
+  const handleMouseMove = q2((e3) => {
+    if (!isDragging) return;
+    hasMoved.current = true;
+    const newValue = calculateValue(e3.clientX);
+    setValue(newValue);
+  }, [isDragging, calculateValue]);
+  const handleMouseUp = q2(async () => {
+    if (isDragging) {
+      setIsDragging(false);
+      if (hasMoved.current) {
+        await writeValue(value);
+      }
+    }
+  }, [isDragging, value, writeValue]);
+  const handleClick = q2(async (e3) => {
+    if (hasMoved.current) {
+      hasMoved.current = false;
+      return;
+    }
+    const target = e3.target;
+    if (target.classList.contains(CSS_CLASSES.PROGRESS_BAR_PROGRESS) || target.classList.contains(CSS_CLASSES.PROGRESS_BAR_VALUE) || target.classList.contains(CSS_CLASSES.PROGRESS_BAR_LABEL_LEFT) || target.classList.contains(CSS_CLASSES.PROGRESS_BAR_LABEL_RIGHT)) {
+      return;
+    }
+    const newValue = calculateValue(e3.clientX);
+    setValue(newValue);
+    await writeValue(newValue);
+  }, [calculateValue, writeValue]);
+  const handleKeyDown = q2((e3) => {
+    let newValue = value;
+    if (e3.key === "ArrowLeft" || e3.key === "ArrowDown") {
+      e3.preventDefault();
+      newValue = Math.max(minValue, value - step);
+    } else if (e3.key === "ArrowRight" || e3.key === "ArrowUp") {
+      e3.preventDefault();
+      newValue = Math.min(maxValue, value + step);
+    } else if (e3.key === "Home") {
+      e3.preventDefault();
+      newValue = minValue;
+    } else if (e3.key === "End") {
+      e3.preventDefault();
+      newValue = maxValue;
+    } else {
+      return;
+    }
+    setValue(newValue);
+  }, [value, minValue, maxValue, step]);
+  const handleKeyUp = q2(async (e3) => {
+    if (["ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp", "Home", "End"].includes(e3.key)) {
+      await writeValue(value);
+    }
+  }, [value, writeValue]);
+  y2(() => {
+    if (isDragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+  const percentage = (value - minValue) / (maxValue - minValue) * 100;
+  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.PROGRESS_BAR_WRAPPER, "data-internal-value": value, children: /* @__PURE__ */ u3(
+    "div",
+    {
+      ref: progressBarRef,
+      class: CSS_CLASSES.PROGRESS_BAR_INPUT,
+      tabIndex: 0,
+      role: "button",
+      "aria-label": String(value),
+      "aria-valuemin": minValue,
+      "aria-valuemax": maxValue,
+      "aria-valuenow": value,
+      onClick: handleClick,
+      onMouseDown: handleMouseDown,
+      onKeyDown: handleKeyDown,
+      onKeyUp: handleKeyUp,
+      style: { cursor: isDragging ? "col-resize" : void 0 },
+      children: [
+        /* @__PURE__ */ u3(
+          "div",
+          {
+            class: CSS_CLASSES.PROGRESS_BAR_PROGRESS,
+            role: "slider",
+            tabIndex: 0,
+            "aria-valuemin": minValue,
+            "aria-valuemax": maxValue,
+            "aria-valuenow": value,
+            style: { width: `${percentage}%` }
+          }
+        ),
+        /* @__PURE__ */ u3("span", { class: CSS_CLASSES.PROGRESS_BAR_VALUE, children: value }),
+        /* @__PURE__ */ u3("span", { class: CSS_CLASSES.PROGRESS_BAR_LABEL_LEFT, children: minValue }),
+        /* @__PURE__ */ u3("span", { class: CSS_CLASSES.PROGRESS_BAR_LABEL_RIGHT, children: maxValue })
+      ]
+    }
+  ) });
+}
+
+// src/utils/validation.ts
+function sanitizeFileName(name) {
+  return name.replace(/[<>:"/\\|?*]/g, "_");
+}
+function isTrackerValueTrue(value) {
+  if (value === null || value === void 0) {
+    return false;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  const str = String(value);
+  return str === "1" || str === "true" || str.trim() !== "";
+}
+
+// src/components/controls/Heatmap.tsx
+function Heatmap({
+  file,
+  dateIso,
+  plugin,
+  fileOptions,
+  entries,
+  onValueChange,
+  daysToShow,
+  trackerType,
+  startTrackingDate
+}) {
+  const heatmapRef = A2(null);
+  const touchStartRef = A2({ x: 0, y: 0, isScrolling: false });
+  const days = T2(() => {
+    const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
+    const today = DateService.now();
+    const todayStart = DateService.startOfDay(today);
+    const todayStr = DateService.format(todayStart, plugin.settings.dateFormat);
+    const result = [];
+    for (let i4 = 0; i4 < daysToShow; i4++) {
+      const date = endDate.clone().subtract(i4, "days");
+      const dateStr = DateService.format(date, plugin.settings.dateFormat);
+      const dayNum = date.getDate();
+      const value = entries.get(dateStr);
+      const hasValue = isTrackerValueTrue(value);
+      const isStartDay = dateStr === startTrackingDate;
+      let isBeforeStart = false;
+      let isAfterToday = false;
+      if (DateService.isAfter(date, todayStart)) {
+        isAfterToday = true;
+      } else if (startTrackingDate) {
+        try {
+          const startDateObj = DateService.parseMultiple(startTrackingDate, [
+            plugin.settings.dateFormat,
+            "YYYY-MM-DD",
+            "DD.MM.YYYY",
+            "MM/DD/YYYY"
+          ]);
+          if (DateService.isBefore(date, startDateObj)) {
+            isBeforeStart = true;
+          }
+        } catch (e3) {
+        }
+      }
+      result.push({
+        dateStr,
+        dayNum,
+        hasValue,
+        isStartDay,
+        isBeforeStart,
+        isAfterToday
+      });
+    }
+    return result;
+  }, [dateIso, daysToShow, entries, plugin.settings.dateFormat, startTrackingDate]);
+  const handleContainerClick = q2(async (e3) => {
+    const target = e3.target;
+    if (!target.classList.contains(CSS_CLASSES.HEATMAP_DAY)) return;
+    const dateStr = target.dataset.dateStr;
+    if (!dateStr) return;
+    const day = days.find((d3) => d3.dateStr === dateStr);
+    if (!day) return;
+    if (day.isAfterToday || day.isBeforeStart) {
+      return;
+    }
+    const isChecked = day.hasValue;
+    const newValue = isChecked ? 0 : 1;
+    try {
+      await plugin.writeLogLine(file, day.dateStr, String(newValue));
+      await onValueChange();
+    } catch (err) {
+      console.error("Heatmap: write error", err);
+    }
+  }, [plugin, file, onValueChange, days]);
+  const handleTouchStart = q2((e3) => {
+    if (e3.touches.length === 1) {
+      touchStartRef.current = {
+        x: e3.touches[0].clientX,
+        y: e3.touches[0].clientY,
+        isScrolling: false
+      };
+    }
+  }, []);
+  const handleTouchMove = q2((e3) => {
+    if (e3.touches.length === 1 && touchStartRef.current.x !== 0) {
+      const deltaX = Math.abs(e3.touches[0].clientX - touchStartRef.current.x);
+      const deltaY = Math.abs(e3.touches[0].clientY - touchStartRef.current.y);
+      if (deltaX > deltaY * 1.5 && deltaX > 10) {
+        touchStartRef.current.isScrolling = true;
+        e3.stopPropagation();
+      } else {
+        touchStartRef.current.isScrolling = false;
+      }
+    }
+  }, []);
+  const handleTouchEnd = q2((e3) => {
+    if (touchStartRef.current.isScrolling) {
+      e3.stopPropagation();
+    }
+    touchStartRef.current = { x: 0, y: 0, isScrolling: false };
+  }, []);
+  const getDayClassName = q2((day) => {
+    const classes = [CSS_CLASSES.HEATMAP_DAY, trackerType];
+    if (day.hasValue) classes.push("has-value");
+    if (day.isStartDay) classes.push("start-day");
+    if (day.isBeforeStart) classes.push("before-start");
+    if (day.isAfterToday) classes.push("after-today");
+    return classes.join(" ");
+  }, [trackerType]);
+  return /* @__PURE__ */ u3(
+    "div",
+    {
+      ref: heatmapRef,
+      class: CSS_CLASSES.HEATMAP,
+      onClick: handleContainerClick,
+      onTouchStart: handleTouchStart,
+      onTouchMove: handleTouchMove,
+      onTouchEnd: handleTouchEnd,
+      children: days.map((day) => /* @__PURE__ */ u3(
+        "div",
+        {
+          class: getDayClassName(day),
+          "data-date-str": day.dateStr,
+          children: day.dayNum
+        },
+        day.dateStr
+      ))
+    }
+  );
+}
+
+// src/utils/misc.ts
+function parseMaybeNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : value;
+}
+function countWords(text) {
+  const trimmed = text.trim();
+  if (trimmed === "") return 0;
+  return trimmed.split(/\s+/).filter((word) => word.length > 0).length;
+}
+
+// src/services/statistics-service.ts
+var StatisticsService = class {
+  /**
+   * Gets entry value by date, trying multiple date formats
+   */
+  getEntryValueByDate(entries, date, settings) {
+    const formats = [
+      settings.dateFormat,
+      "YYYY-MM-DD",
+      "DD.MM.YYYY",
+      "MM/DD/YYYY"
+    ];
+    const triedFormats = [];
+    for (const format of formats) {
+      const dateStr = DateService.format(date, format);
+      triedFormats.push(`${format}:${dateStr}`);
+      const val = entries.get(dateStr);
+      if (val !== void 0) {
+        return val;
+      }
+    }
+    return void 0;
+  }
+  /**
+   * Determines the start tracking date with priorities:
+   * 1. trackingStartDate from frontmatter
+   * 2. File creation date
+   * 3. First date from entries
+   * 4. Fallback: 365 days ago from current date
+   */
+  determineStartTrackingDate(startTrackingDateStr, file, entries, settings, currentDate) {
+    let startTrackingDate = null;
+    if (startTrackingDateStr) {
+      startTrackingDate = DateService.parseMultiple(startTrackingDateStr, [
+        "YYYY-MM-DD",
+        settings.dateFormat,
+        "DD.MM.YYYY",
+        "MM/DD/YYYY"
+      ]);
+      if (startTrackingDate.isValid()) {
+        startTrackingDate = DateService.startOfDay(startTrackingDate);
+      } else {
+        startTrackingDate = null;
+      }
+    }
+    if (!startTrackingDate && file?.stat?.ctime) {
+      startTrackingDate = DateService.startOfDay(DateService.fromDate(new Date(file.stat.ctime)));
+    }
+    if (entries.size > 0) {
+      const sortedDates = Array.from(entries.keys()).sort();
+      const firstDateStr = sortedDates[0];
+      const firstDate = DateService.parseMultiple(firstDateStr, [
+        settings.dateFormat,
+        "YYYY-MM-DD",
+        "DD.MM.YYYY",
+        "MM/DD/YYYY"
+      ]);
+      if (firstDate.isValid()) {
+        const firstDateNormalized = DateService.startOfDay(firstDate);
+        if (!startTrackingDate || DateService.isBefore(firstDateNormalized, startTrackingDate)) {
+          startTrackingDate = firstDateNormalized;
+        }
+      }
+    }
+    if (!startTrackingDate) {
+      startTrackingDate = DateService.startOfDay(DateService.subtractDays(currentDate, 365));
+    }
+    return startTrackingDate;
+  }
+  /**
+   * Calculates statistics for habits (good-habit and bad-habit)
+   */
+  calculateHabitStatistics(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
+    const endDate = DateService.parse(dateIso, settings.dateFormat);
+    const startDate = endDate.clone().subtract(daysToShow - 1, "days");
+    let actualStartDate = startDate;
+    if (startTrackingDateStr) {
+      const trackingStartDate = DateService.parseMultiple(startTrackingDateStr, [
+        settings.dateFormat,
+        "YYYY-MM-DD",
+        "YYYY/MM/DD",
+        "DD.MM.YYYY"
+      ]);
+      if (trackingStartDate.isValid() && DateService.isAfter(trackingStartDate, startDate)) {
+        actualStartDate = trackingStartDate;
+      }
+    }
+    const periodDays = [];
+    const metricType = trackerType.toLowerCase();
+    const isBadHabit = metricType === TrackerType.BAD_HABIT;
+    let actualDaysCount = 0;
+    let currentDate = actualStartDate.clone();
+    while (!DateService.isAfter(currentDate, endDate)) {
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
+      const val = entries.get(dateStr);
+      let numVal = 0;
+      if (val != null) {
+        if (typeof val === "number") {
+          numVal = val;
+        } else if (val === "1" || String(val) === "true") {
+          numVal = 1;
+        } else {
+          numVal = Number(val) || 0;
+        }
+      }
+      if (isBadHabit) {
+        numVal = numVal === 0 || val == null ? 1 : 0;
+      } else {
+        numVal = val != null && numVal > 0 ? 1 : 0;
+      }
+      periodDays.push(numVal);
+      actualDaysCount++;
+      currentDate = currentDate.add(1, "days");
+    }
+    const sum = periodDays.reduce((a3, b) => a3 + b, 0);
+    const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
+    const totalRecords = entries.size;
+    const activeDays = periodDays.filter((v3) => v3 > 0).length;
+    const completionRate = actualDaysCount > 0 ? activeDays / actualDaysCount * 100 : 0;
+    return {
+      totalRecords,
+      periodDays,
+      actualDaysCount,
+      completionRate,
+      activeDays,
+      sum,
+      avg
+    };
+  }
+  /**
+   * Calculates statistics for metrics (number, scale, plusminus, text)
+   */
+  calculateMetricStatistics(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
+    const endDate = DateService.parse(dateIso, settings.dateFormat);
+    const startDate = endDate.clone().subtract(daysToShow - 1, "days");
+    let actualStartDate = startDate;
+    if (startTrackingDateStr) {
+      const trackingStartDate = DateService.parseMultiple(startTrackingDateStr, [
+        settings.dateFormat,
+        "YYYY-MM-DD",
+        "YYYY/MM/DD",
+        "DD.MM.YYYY"
+      ]);
+      if (trackingStartDate.isValid() && DateService.isAfter(trackingStartDate, startDate)) {
+        actualStartDate = trackingStartDate;
+      }
+    }
+    const periodDays = [];
+    const metricType = trackerType.toLowerCase();
+    let actualDaysCount = 0;
+    let currentDate = actualStartDate.clone();
+    while (!DateService.isAfter(currentDate, endDate)) {
+      const dateStr = DateService.format(currentDate, settings.dateFormat);
+      const val = entries.get(dateStr);
+      let numVal = 0;
+      if (val != null) {
+        if (metricType === TrackerType.TEXT) {
+          numVal = countWords(String(val));
+        } else if (typeof val === "number") {
+          numVal = val;
+        } else if (val === "1" || String(val) === "true") {
+          numVal = 1;
+        } else {
+          numVal = Number(val) || 0;
+        }
+      }
+      periodDays.push(numVal);
+      actualDaysCount++;
+      currentDate = currentDate.add(1, "days");
+    }
+    const sum = periodDays.reduce((a3, b) => a3 + b, 0);
+    const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
+    const totalRecords = entries.size;
+    let min = null;
+    let max = null;
+    let median = null;
+    const nonZeroValues = periodDays.filter((v3) => v3 > 0);
+    if (periodDays.length > 0) {
+      const sortedValues = [...periodDays].sort((a3, b) => a3 - b);
+      min = sortedValues[0];
+      max = sortedValues[sortedValues.length - 1];
+      const mid = Math.floor(sortedValues.length / 2);
+      if (sortedValues.length % 2 === 0) {
+        median = (sortedValues[mid - 1] + sortedValues[mid]) / 2;
+      } else {
+        median = sortedValues[mid];
+      }
+    }
+    const activeDays = nonZeroValues.length;
+    return {
+      totalRecords,
+      periodDays,
+      actualDaysCount,
+      sum,
+      avg,
+      min,
+      max,
+      median,
+      activeDays
+    };
+  }
+  /**
+   * Calculates streak information (current and best streak)
+   */
+  calculateStreaks(entries, settings, endDate, trackerType, file, startTrackingDateStr) {
+    const metricType = trackerType.toLowerCase();
+    const isBadHabit = metricType === TrackerType.BAD_HABIT;
+    let currentDate;
+    if (endDate instanceof Date) {
+      currentDate = DateService.fromDate(endDate);
+    } else if (endDate && typeof endDate.isValid === "function" && typeof endDate.clone === "function") {
+      currentDate = endDate.clone();
+    } else {
+      currentDate = DateService.fromDate(new Date(endDate));
+    }
+    if (!currentDate || !currentDate.isValid || !currentDate.isValid()) {
+      return { current: 0, best: 0 };
+    }
+    currentDate = DateService.startOfDay(currentDate);
+    const startTrackingDate = this.determineStartTrackingDate(
+      startTrackingDateStr,
+      file,
+      entries,
+      settings,
+      currentDate
+    );
+    if (!startTrackingDate || !startTrackingDate.isValid()) {
+      return { current: 0, best: 0 };
+    }
+    let currentStreak = 0;
+    let daysChecked = 0;
+    let checkDate = currentDate.clone();
+    while (daysChecked < MAX_DAYS_BACK) {
+      if (DateService.isBefore(checkDate, startTrackingDate)) {
+        break;
+      }
+      const val = this.getEntryValueByDate(entries, checkDate, settings);
+      let isSuccess = false;
+      if (isBadHabit) {
+        if (val == null || val === void 0) {
+          isSuccess = true;
+        } else {
+          const hasValue = isTrackerValueTrue(val);
+          isSuccess = !hasValue;
+        }
+      } else {
+        if (val != null && val !== void 0) {
+          isSuccess = isTrackerValueTrue(val);
+        }
+      }
+      if (isSuccess) {
+        currentStreak++;
+      } else {
+        break;
+      }
+      checkDate = checkDate.subtract(1, "days");
+      daysChecked++;
+    }
+    let bestStreak = 0;
+    let bestCurrentStreak = 0;
+    daysChecked = 0;
+    let bestCheckDate = currentDate.clone();
+    while (!DateService.isBefore(bestCheckDate, startTrackingDate) && daysChecked < MAX_DAYS_BACK) {
+      const val = this.getEntryValueByDate(entries, bestCheckDate, settings);
+      let isSuccess = false;
+      if (isBadHabit) {
+        if (val == null || val === void 0) {
+          isSuccess = true;
+        } else {
+          const hasValue = isTrackerValueTrue(val);
+          isSuccess = !hasValue;
+        }
+      } else {
+        if (val != null && val !== void 0) {
+          isSuccess = isTrackerValueTrue(val);
+        }
+      }
+      if (isSuccess) {
+        bestCurrentStreak++;
+        bestStreak = Math.max(bestStreak, bestCurrentStreak);
+      } else {
+        bestCurrentStreak = 0;
+      }
+      bestCheckDate = bestCheckDate.subtract(1, "days");
+      daysChecked++;
+    }
+    return {
+      current: currentStreak,
+      best: bestStreak
+    };
+  }
+  /**
+   * Calculates complete statistics for a tracker
+   */
+  calculateStatistics(entries, settings, dateIso, daysToShow, trackerType, endDate, file, startTrackingDateStr) {
+    const metricType = trackerType.toLowerCase();
+    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
+    const streaks = this.calculateStreaks(
+      entries,
+      settings,
+      endDate,
+      trackerType,
+      file,
+      startTrackingDateStr
+    );
+    let habit = null;
+    let metric = null;
+    let base;
+    if (isHabit) {
+      habit = this.calculateHabitStatistics(
+        entries,
+        settings,
+        dateIso,
+        daysToShow,
+        trackerType,
+        startTrackingDateStr
+      );
+      base = {
+        totalRecords: habit.totalRecords,
+        periodDays: habit.periodDays,
+        actualDaysCount: habit.actualDaysCount
+      };
+    } else {
+      metric = this.calculateMetricStatistics(
+        entries,
+        settings,
+        dateIso,
+        daysToShow,
+        trackerType,
+        startTrackingDateStr
+      );
+      base = {
+        totalRecords: metric.totalRecords,
+        periodDays: metric.periodDays,
+        actualDaysCount: metric.actualDaysCount
+      };
+    }
+    return {
+      base,
+      habit,
+      metric,
+      streaks,
+      trackerType
+    };
+  }
+};
+
+// src/components/Statistics/Statistics.tsx
+function getCompletionColorClass(rate) {
+  if (rate >= 80) return "tracker-notes__stats-value--success";
+  if (rate >= 50) return "tracker-notes__stats-value--warning";
+  return "tracker-notes__stats-value--error";
+}
+function formatValue(value, decimals = 1, unit = "") {
+  const formatted = value.toFixed(decimals);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+function getDaysLabel(count) {
+  if (count === 1) return STATS_LABELS.DAYS_SINGULAR;
+  if (count < 5) return STATS_LABELS.DAYS_PLURAL_2_4;
+  return STATS_LABELS.DAYS_PLURAL_5_PLUS;
+}
+function Section({ title, children }) {
+  return /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-section tracker-notes__stats-card", children: [
+    title && /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-section-title", children: /* @__PURE__ */ u3("span", { children: title }) }),
+    children
+  ] });
+}
+function MetricItem({ label, value, valueClass, icon }) {
+  return /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-metric", children: [
+    icon && /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon", children: icon }),
+    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
+      label,
+      ": "
+    ] }),
+    /* @__PURE__ */ u3("span", { class: `tracker-notes__stats-value ${valueClass || ""}`.trim(), children: value })
+  ] });
+}
+function CompletionRate({ rate, activeDays, totalDays, label }) {
+  const rateValue = Math.round(rate);
+  const colorClass = getCompletionColorClass(rateValue);
+  return /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-metric tracker-notes__stats-metric--completion", children: [
+    /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-completion-header", children: [
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon", children: "\u2705" }),
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
+        label,
+        ": "
+      ] }),
+      /* @__PURE__ */ u3("span", { class: `tracker-notes__stats-value ${colorClass}`, children: [
+        rateValue,
+        "%"
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value-sub", children: [
+        " (",
+        activeDays,
+        "/",
+        totalDays,
+        ")"
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-progress-bar", children: /* @__PURE__ */ u3(
+      "div",
+      {
+        class: `tracker-notes__stats-progress-fill ${colorClass}`,
+        style: { width: `${rate}%` }
+      }
+    ) })
+  ] });
+}
+function Streak({ streak, label, isCurrent = false }) {
+  const icon = isCurrent ? "\u{1F525}" : "\u2B50";
+  const daysLabel = getDaysLabel(streak);
+  return /* @__PURE__ */ u3("div", { class: `tracker-notes__stats-metric tracker-notes__stats-metric--streak ${isCurrent ? "tracker-notes__stats-metric--current" : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon tracker-notes__stats-icon--streak", children: icon }),
+    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
+      label,
+      ": "
+    ] }),
+    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value", children: [
+      streak,
+      " ",
+      daysLabel
+    ] })
+  ] });
+}
+function HabitStats({ result }) {
+  if (!result.habit) return null;
+  const stats = result.habit;
+  const isBadHabit = result.trackerType.toLowerCase() === TrackerType.BAD_HABIT;
+  const completionLabel = isBadHabit ? "Days without" : STATS_LABELS.COMPLETION_RATE;
+  return /* @__PURE__ */ u3(k, { children: [
+    /* @__PURE__ */ u3(Section, { title: "PERIOD", children: /* @__PURE__ */ u3(
+      CompletionRate,
+      {
+        rate: stats.completionRate,
+        activeDays: stats.activeDays,
+        totalDays: stats.actualDaysCount,
+        label: completionLabel
+      }
+    ) }),
+    /* @__PURE__ */ u3(Section, { title: "STREAKS", children: [
+      /* @__PURE__ */ u3(
+        Streak,
+        {
+          streak: result.streaks.current,
+          label: STATS_LABELS.CURRENT_STREAK,
+          isCurrent: true
+        }
+      ),
+      /* @__PURE__ */ u3(
+        Streak,
+        {
+          streak: result.streaks.best,
+          label: STATS_LABELS.BEST_STREAK
+        }
+      )
+    ] })
+  ] });
+}
+function MetricStats({ result, unit }) {
+  if (!result.metric) return null;
+  const stats = result.metric;
+  return /* @__PURE__ */ u3(Section, { title: "PERIOD", children: [
+    /* @__PURE__ */ u3(
+      MetricItem,
+      {
+        label: STATS_LABELS.ACTIVE_DAYS,
+        value: `${stats.activeDays}/${stats.actualDaysCount}`,
+        icon: "\u{1F4C5}"
+      }
+    ),
+    /* @__PURE__ */ u3(
+      MetricItem,
+      {
+        label: STATS_LABELS.LAST_DAYS,
+        value: formatValue(stats.sum, 1, unit),
+        icon: "\u{1F4C8}"
+      }
+    ),
+    /* @__PURE__ */ u3(
+      MetricItem,
+      {
+        label: STATS_LABELS.AVERAGE,
+        value: formatValue(stats.avg, 1, unit),
+        icon: "\u{1F4CA}"
+      }
+    ),
+    stats.min !== null && stats.max !== null && /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-metric tracker-notes__stats-metric--minmax", children: [
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon", children: "\u{1F4C9}" }),
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
+        STATS_LABELS.MIN,
+        ": "
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value", children: formatValue(stats.min, 1, unit) }),
+      /* @__PURE__ */ u3("span", { children: " | " }),
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
+        STATS_LABELS.MAX,
+        ": "
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value", children: formatValue(stats.max, 1, unit) })
+    ] }),
+    stats.median !== null && /* @__PURE__ */ u3(
+      MetricItem,
+      {
+        label: STATS_LABELS.MEDIAN,
+        value: formatValue(stats.median, 1, unit),
+        icon: "\u{1F4CA}"
+      }
+    )
+  ] });
+}
+var statisticsService = new StatisticsService();
+function Statistics({
+  file,
+  plugin,
+  dateIso,
+  daysToShow,
+  trackerType,
+  entries,
+  fileOptions
+}) {
+  const statisticsResult = T2(() => {
+    try {
+      const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
+      const startTrackingDateStr = plugin.getStartTrackingDate(entries, fileOptions);
+      return statisticsService.calculateStatistics(
+        entries,
+        plugin.settings,
+        dateIso,
+        daysToShow,
+        trackerType,
+        endDate,
+        file,
+        startTrackingDateStr
+      );
+    } catch (error) {
+      console.error("Statistics: error calculating statistics", error);
+      return null;
+    }
+  }, [file, plugin, dateIso, daysToShow, trackerType, entries, fileOptions]);
+  if (!statisticsResult) return null;
+  const isHabit = trackerType === TrackerType.GOOD_HABIT || trackerType === TrackerType.BAD_HABIT;
+  const unit = fileOptions?.unit || "";
+  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.STATS, children: isHabit ? /* @__PURE__ */ u3(HabitStats, { result: statisticsResult }) : /* @__PURE__ */ u3(MetricStats, { result: statisticsResult, unit }) });
+}
+
 // node_modules/@kurkle/color/dist/color.esm.js
 function round(v3) {
   return v3 + 0.5 | 0;
 }
-var lim = (v3, l3, h4) => Math.max(Math.min(v3, h4), l3);
+var lim = (v3, l3, h3) => Math.max(Math.min(v3, h3), l3);
 function p2b(v3) {
   return lim(round(v3 * 2.55), 0, 255);
 }
@@ -49,7 +2186,7 @@ function n2p(v3) {
 var map$1 = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, A: 10, B: 11, C: 12, D: 13, E: 14, F: 15, a: 10, b: 11, c: 12, d: 13, e: 14, f: 15 };
 var hex = [..."0123456789ABCDEF"];
 var h1 = (b) => hex[b & 15];
-var h2 = (b) => hex[(b & 240) >> 4] + hex[b & 15];
+var h22 = (b) => hex[(b & 240) >> 4] + hex[b & 15];
 var eq = (b) => (b & 240) >> 4 === (b & 15);
 var isShort = (v3) => eq(v3.r) && eq(v3.g) && eq(v3.b) && eq(v3.a);
 function hexParse(str) {
@@ -76,21 +2213,21 @@ function hexParse(str) {
 }
 var alpha = (a3, f4) => a3 < 255 ? f4(a3) : "";
 function hexString(v3) {
-  var f4 = isShort(v3) ? h1 : h2;
+  var f4 = isShort(v3) ? h1 : h22;
   return v3 ? "#" + f4(v3.r) + f4(v3.g) + f4(v3.b) + alpha(v3.a, f4) : void 0;
 }
 var HUE_RE = /^(hsla?|hwb|hsv)\(\s*([-+.e\d]+)(?:deg)?[\s,]+([-+.e\d]+)%[\s,]+([-+.e\d]+)%(?:[\s,]+([-+.e\d]+)(%)?)?\s*\)$/;
-function hsl2rgbn(h4, s3, l3) {
+function hsl2rgbn(h3, s3, l3) {
   const a3 = s3 * Math.min(l3, 1 - l3);
-  const f4 = (n2, k3 = (n2 + h4 / 30) % 12) => l3 - a3 * Math.max(Math.min(k3 - 3, 9 - k3, 1), -1);
+  const f4 = (n2, k3 = (n2 + h3 / 30) % 12) => l3 - a3 * Math.max(Math.min(k3 - 3, 9 - k3, 1), -1);
   return [f4(0), f4(8), f4(4)];
 }
-function hsv2rgbn(h4, s3, v3) {
-  const f4 = (n2, k3 = (n2 + h4 / 60) % 6) => v3 - v3 * s3 * Math.max(Math.min(k3, 4 - k3, 1), 0);
+function hsv2rgbn(h3, s3, v3) {
+  const f4 = (n2, k3 = (n2 + h3 / 60) % 6) => v3 - v3 * s3 * Math.max(Math.min(k3, 4 - k3, 1), 0);
   return [f4(5), f4(3), f4(1)];
 }
-function hwb2rgbn(h4, w3, b) {
-  const rgb = hsl2rgbn(h4, 1, 0.5);
+function hwb2rgbn(h3, w3, b) {
+  const rgb = hsl2rgbn(h3, 1, 0.5);
   let i4;
   if (w3 + b > 1) {
     i4 = 1 / (w3 + b);
@@ -120,29 +2257,29 @@ function rgb2hsl(v3) {
   const max = Math.max(r3, g2, b);
   const min = Math.min(r3, g2, b);
   const l3 = (max + min) / 2;
-  let h4, s3, d3;
+  let h3, s3, d3;
   if (max !== min) {
     d3 = max - min;
     s3 = l3 > 0.5 ? d3 / (2 - max - min) : d3 / (max + min);
-    h4 = hueValue(r3, g2, b, d3, max);
-    h4 = h4 * 60 + 0.5;
+    h3 = hueValue(r3, g2, b, d3, max);
+    h3 = h3 * 60 + 0.5;
   }
-  return [h4 | 0, s3 || 0, l3];
+  return [h3 | 0, s3 || 0, l3];
 }
 function calln(f4, a3, b, c3) {
   return (Array.isArray(a3) ? f4(a3[0], a3[1], a3[2]) : f4(a3, b, c3)).map(n2b);
 }
-function hsl2rgb(h4, s3, l3) {
-  return calln(hsl2rgbn, h4, s3, l3);
+function hsl2rgb(h3, s3, l3) {
+  return calln(hsl2rgbn, h3, s3, l3);
 }
-function hwb2rgb(h4, w3, b) {
-  return calln(hwb2rgbn, h4, w3, b);
+function hwb2rgb(h3, w3, b) {
+  return calln(hwb2rgbn, h3, w3, b);
 }
-function hsv2rgb(h4, s3, v3) {
-  return calln(hsv2rgbn, h4, s3, v3);
+function hsv2rgb(h3, s3, v3) {
+  return calln(hsv2rgbn, h3, s3, v3);
 }
-function hue(h4) {
-  return (h4 % 360 + 360) % 360;
+function hue(h3) {
+  return (h3 % 360 + 360) % 360;
 }
 function hueParse(str) {
   const m3 = HUE_RE.exec(str);
@@ -154,15 +2291,15 @@ function hueParse(str) {
   if (m3[5] !== v3) {
     a3 = m3[6] ? p2b(+m3[5]) : n2b(+m3[5]);
   }
-  const h4 = hue(+m3[2]);
+  const h3 = hue(+m3[2]);
   const p1 = +m3[3] / 100;
   const p22 = +m3[4] / 100;
   if (m3[1] === "hwb") {
-    v3 = hwb2rgb(h4, p1, p22);
+    v3 = hwb2rgb(h3, p1, p22);
   } else if (m3[1] === "hsv") {
-    v3 = hsv2rgb(h4, p1, p22);
+    v3 = hsv2rgb(h3, p1, p22);
   } else {
-    v3 = hsl2rgb(h4, p1, p22);
+    v3 = hsl2rgb(h3, p1, p22);
   }
   return {
     r: v3[0],
@@ -172,22 +2309,22 @@ function hueParse(str) {
   };
 }
 function rotate(v3, deg) {
-  var h4 = rgb2hsl(v3);
-  h4[0] = hue(h4[0] + deg);
-  h4 = hsl2rgb(h4);
-  v3.r = h4[0];
-  v3.g = h4[1];
-  v3.b = h4[2];
+  var h3 = rgb2hsl(v3);
+  h3[0] = hue(h3[0] + deg);
+  h3 = hsl2rgb(h3);
+  v3.r = h3[0];
+  v3.g = h3[1];
+  v3.b = h3[2];
 }
 function hslString(v3) {
   if (!v3) {
     return;
   }
   const a3 = rgb2hsl(v3);
-  const h4 = a3[0];
+  const h3 = a3[0];
   const s3 = n2p(a3[1]);
   const l3 = n2p(a3[2]);
-  return v3.a < 255 ? `hsla(${h4}, ${s3}%, ${l3}%, ${b2n(v3.a)})` : `hsl(${h4}, ${s3}%, ${l3}%)`;
+  return v3.a < 255 ? `hsla(${h3}, ${s3}%, ${l3}%, ${b2n(v3.a)})` : `hsl(${h3}, ${s3}%, ${l3}%)`;
 }
 var map = {
   x: "dark",
@@ -1832,12 +3969,12 @@ function renderText(ctx, text, x3, y3, font, opts = {}) {
   ctx.restore();
 }
 function addRoundedRectPath(ctx, rect) {
-  const { x: x3, y: y3, w: w3, h: h4, radius } = rect;
+  const { x: x3, y: y3, w: w3, h: h3, radius } = rect;
   ctx.arc(x3 + radius.topLeft, y3 + radius.topLeft, radius.topLeft, 1.5 * PI, PI, true);
-  ctx.lineTo(x3, y3 + h4 - radius.bottomLeft);
-  ctx.arc(x3 + radius.bottomLeft, y3 + h4 - radius.bottomLeft, radius.bottomLeft, PI, HALF_PI, true);
-  ctx.lineTo(x3 + w3 - radius.bottomRight, y3 + h4);
-  ctx.arc(x3 + w3 - radius.bottomRight, y3 + h4 - radius.bottomRight, radius.bottomRight, HALF_PI, 0, true);
+  ctx.lineTo(x3, y3 + h3 - radius.bottomLeft);
+  ctx.arc(x3 + radius.bottomLeft, y3 + h3 - radius.bottomLeft, radius.bottomLeft, PI, HALF_PI, true);
+  ctx.lineTo(x3 + w3 - radius.bottomRight, y3 + h3);
+  ctx.arc(x3 + w3 - radius.bottomRight, y3 + h3 - radius.bottomRight, radius.bottomRight, HALF_PI, 0, true);
   ctx.lineTo(x3 + w3, y3 + radius.topRight);
   ctx.arc(x3 + w3 - radius.topRight, y3 + radius.topRight, radius.topRight, 0, -HALF_PI, true);
   ctx.lineTo(x3 + radius.topLeft, y3);
@@ -7285,8 +9422,8 @@ var Scale = class _Scale extends Element {
     const labelSizes = this._getLabelSizes();
     const padding = optionTicks.autoSkipPadding || 0;
     const w3 = labelSizes ? labelSizes.widest.width + padding : 0;
-    const h4 = labelSizes ? labelSizes.highest.height + padding : 0;
-    return this.isHorizontal() ? h4 * cos > w3 * sin ? w3 / cos : h4 / sin : h4 * sin < w3 * cos ? h4 / cos : w3 / sin;
+    const h3 = labelSizes ? labelSizes.highest.height + padding : 0;
+    return this.isHorizontal() ? h3 * cos > w3 * sin ? w3 / cos : h3 / sin : h3 * sin < w3 * cos ? h3 / cos : w3 / sin;
   }
   _isVisible() {
     const display = this.options.display;
@@ -10195,12 +12332,12 @@ function inflateRect(rect, amount, refRect = {}) {
   const x3 = rect.x !== refRect.x ? -amount : 0;
   const y3 = rect.y !== refRect.y ? -amount : 0;
   const w3 = (rect.x + rect.w !== refRect.x + refRect.w ? amount : 0) - x3;
-  const h4 = (rect.y + rect.h !== refRect.y + refRect.h ? amount : 0) - y3;
+  const h3 = (rect.y + rect.h !== refRect.y + refRect.h ? amount : 0) - y3;
   return {
     x: rect.x + x3,
     y: rect.y + y3,
     w: rect.w + w3,
-    h: rect.h + h4,
+    h: rect.h + h3,
     radius: rect.radius
   };
 }
@@ -13624,11 +15761,11 @@ function leftForTextAlign(x3, w3, align) {
   }
   return x3;
 }
-function yForAngle(y3, h4, angle) {
+function yForAngle(y3, h3, angle) {
   if (angle === 90 || angle === 270) {
-    y3 -= h4 / 2;
+    y3 -= h3 / 2;
   } else if (angle > 270 || angle < 90) {
-    y3 -= h4;
+    y3 -= h3;
   }
   return y3;
 }
@@ -13726,10 +15863,10 @@ var RadialLinearScale = class extends LinearScaleBase {
   setDimensions() {
     const padding = this._padding = toPadding(getTickBackdropHeight(this.options) / 2);
     const w3 = this.width = this.maxWidth - padding.width;
-    const h4 = this.height = this.maxHeight - padding.height;
+    const h3 = this.height = this.maxHeight - padding.height;
     this.xCenter = Math.floor(this.left + w3 / 2 + padding.left);
-    this.yCenter = Math.floor(this.top + h4 / 2 + padding.top);
-    this.drawingArea = Math.floor(Math.min(w3, h4) / 2);
+    this.yCenter = Math.floor(this.top + h3 / 2 + padding.top);
+    this.drawingArea = Math.floor(Math.min(w3, h3) / 2);
   }
   determineDataLimits() {
     const { min, max } = this.getMinMax(false);
@@ -14499,2137 +16636,6 @@ var registerables = [
   plugins,
   scales
 ];
-
-// src/ui/tracker-block-render-child.tsx
-var import_obsidian = require("obsidian");
-
-// node_modules/preact/dist/preact.module.js
-var n;
-var l;
-var u;
-var t;
-var i;
-var r;
-var o;
-var e;
-var f;
-var c;
-var s;
-var a;
-var h;
-var p = {};
-var v = [];
-var y = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
-var w = Array.isArray;
-function d(n2, l3) {
-  for (var u4 in l3) n2[u4] = l3[u4];
-  return n2;
-}
-function g(n2) {
-  n2 && n2.parentNode && n2.parentNode.removeChild(n2);
-}
-function _(l3, u4, t3) {
-  var i4, r3, o3, e3 = {};
-  for (o3 in u4) "key" == o3 ? i4 = u4[o3] : "ref" == o3 ? r3 = u4[o3] : e3[o3] = u4[o3];
-  if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t3), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
-  return m(l3, e3, i4, r3, null);
-}
-function m(n2, t3, i4, r3, o3) {
-  var e3 = { type: n2, props: t3, key: i4, ref: r3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
-  return null == o3 && null != l.vnode && l.vnode(e3), e3;
-}
-function k(n2) {
-  return n2.children;
-}
-function x(n2, l3) {
-  this.props = n2, this.context = l3;
-}
-function S(n2, l3) {
-  if (null == l3) return n2.__ ? S(n2.__, n2.__i + 1) : null;
-  for (var u4; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) return u4.__e;
-  return "function" == typeof n2.type ? S(n2) : null;
-}
-function C(n2) {
-  var l3, u4;
-  if (null != (n2 = n2.__) && null != n2.__c) {
-    for (n2.__e = n2.__c.base = null, l3 = 0; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) {
-      n2.__e = n2.__c.base = u4.__e;
-      break;
-    }
-    return C(n2);
-  }
-}
-function M(n2) {
-  (!n2.__d && (n2.__d = true) && i.push(n2) && !$.__r++ || r != l.debounceRendering) && ((r = l.debounceRendering) || o)($);
-}
-function $() {
-  for (var n2, u4, t3, r3, o3, f4, c3, s3 = 1; i.length; ) i.length > s3 && i.sort(e), n2 = i.shift(), s3 = i.length, n2.__d && (t3 = void 0, r3 = void 0, o3 = (r3 = (u4 = n2).__v).__e, f4 = [], c3 = [], u4.__P && ((t3 = d({}, r3)).__v = r3.__v + 1, l.vnode && l.vnode(t3), O(u4.__P, t3, r3, u4.__n, u4.__P.namespaceURI, 32 & r3.__u ? [o3] : null, f4, null == o3 ? S(r3) : o3, !!(32 & r3.__u), c3), t3.__v = r3.__v, t3.__.__k[t3.__i] = t3, N(f4, t3, c3), r3.__e = r3.__ = null, t3.__e != o3 && C(t3)));
-  $.__r = 0;
-}
-function I(n2, l3, u4, t3, i4, r3, o3, e3, f4, c3, s3) {
-  var a3, h4, y3, w3, d3, g2, _2, m3 = t3 && t3.__k || v, b = l3.length;
-  for (f4 = P(u4, l3, m3, f4, b), a3 = 0; a3 < b; a3++) null != (y3 = u4.__k[a3]) && (h4 = -1 == y3.__i ? p : m3[y3.__i] || p, y3.__i = a3, g2 = O(n2, y3, h4, i4, r3, o3, e3, f4, c3, s3), w3 = y3.__e, y3.ref && h4.ref != y3.ref && (h4.ref && B(h4.ref, null, y3), s3.push(y3.ref, y3.__c || w3, y3)), null == d3 && null != w3 && (d3 = w3), (_2 = !!(4 & y3.__u)) || h4.__k === y3.__k ? f4 = A(y3, f4, n2, _2) : "function" == typeof y3.type && void 0 !== g2 ? f4 = g2 : w3 && (f4 = w3.nextSibling), y3.__u &= -7);
-  return u4.__e = d3, f4;
-}
-function P(n2, l3, u4, t3, i4) {
-  var r3, o3, e3, f4, c3, s3 = u4.length, a3 = s3, h4 = 0;
-  for (n2.__k = new Array(i4), r3 = 0; r3 < i4; r3++) null != (o3 = l3[r3]) && "boolean" != typeof o3 && "function" != typeof o3 ? (f4 = r3 + h4, (o3 = n2.__k[r3] = "string" == typeof o3 || "number" == typeof o3 || "bigint" == typeof o3 || o3.constructor == String ? m(null, o3, null, null, null) : w(o3) ? m(k, { children: o3 }, null, null, null) : null == o3.constructor && o3.__b > 0 ? m(o3.type, o3.props, o3.key, o3.ref ? o3.ref : null, o3.__v) : o3).__ = n2, o3.__b = n2.__b + 1, e3 = null, -1 != (c3 = o3.__i = L(o3, u4, f4, a3)) && (a3--, (e3 = u4[c3]) && (e3.__u |= 2)), null == e3 || null == e3.__v ? (-1 == c3 && (i4 > s3 ? h4-- : i4 < s3 && h4++), "function" != typeof o3.type && (o3.__u |= 4)) : c3 != f4 && (c3 == f4 - 1 ? h4-- : c3 == f4 + 1 ? h4++ : (c3 > f4 ? h4-- : h4++, o3.__u |= 4))) : n2.__k[r3] = null;
-  if (a3) for (r3 = 0; r3 < s3; r3++) null != (e3 = u4[r3]) && 0 == (2 & e3.__u) && (e3.__e == t3 && (t3 = S(e3)), D(e3, e3));
-  return t3;
-}
-function A(n2, l3, u4, t3) {
-  var i4, r3;
-  if ("function" == typeof n2.type) {
-    for (i4 = n2.__k, r3 = 0; i4 && r3 < i4.length; r3++) i4[r3] && (i4[r3].__ = n2, l3 = A(i4[r3], l3, u4, t3));
-    return l3;
-  }
-  n2.__e != l3 && (t3 && (l3 && n2.type && !l3.parentNode && (l3 = S(n2)), u4.insertBefore(n2.__e, l3 || null)), l3 = n2.__e);
-  do {
-    l3 = l3 && l3.nextSibling;
-  } while (null != l3 && 8 == l3.nodeType);
-  return l3;
-}
-function L(n2, l3, u4, t3) {
-  var i4, r3, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], s3 = null != c3 && 0 == (2 & c3.__u);
-  if (null === c3 && null == n2.key || s3 && e3 == c3.key && f4 == c3.type) return u4;
-  if (t3 > (s3 ? 1 : 0)) {
-    for (i4 = u4 - 1, r3 = u4 + 1; i4 >= 0 || r3 < l3.length; ) if (null != (c3 = l3[o3 = i4 >= 0 ? i4-- : r3++]) && 0 == (2 & c3.__u) && e3 == c3.key && f4 == c3.type) return o3;
-  }
-  return -1;
-}
-function T(n2, l3, u4) {
-  "-" == l3[0] ? n2.setProperty(l3, null == u4 ? "" : u4) : n2[l3] = null == u4 ? "" : "number" != typeof u4 || y.test(l3) ? u4 : u4 + "px";
-}
-function j(n2, l3, u4, t3, i4) {
-  var r3, o3;
-  n: if ("style" == l3) if ("string" == typeof u4) n2.style.cssText = u4;
-  else {
-    if ("string" == typeof t3 && (n2.style.cssText = t3 = ""), t3) for (l3 in t3) u4 && l3 in u4 || T(n2.style, l3, "");
-    if (u4) for (l3 in u4) t3 && u4[l3] == t3[l3] || T(n2.style, l3, u4[l3]);
-  }
-  else if ("o" == l3[0] && "n" == l3[1]) r3 = l3 != (l3 = l3.replace(f, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r3] = u4, u4 ? t3 ? u4.u = t3.u : (u4.u = c, n2.addEventListener(l3, r3 ? a : s, r3)) : n2.removeEventListener(l3, r3 ? a : s, r3);
-  else {
-    if ("http://www.w3.org/2000/svg" == i4) l3 = l3.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
-    else if ("width" != l3 && "height" != l3 && "href" != l3 && "list" != l3 && "form" != l3 && "tabIndex" != l3 && "download" != l3 && "rowSpan" != l3 && "colSpan" != l3 && "role" != l3 && "popover" != l3 && l3 in n2) try {
-      n2[l3] = null == u4 ? "" : u4;
-      break n;
-    } catch (n3) {
-    }
-    "function" == typeof u4 || (null == u4 || false === u4 && "-" != l3[4] ? n2.removeAttribute(l3) : n2.setAttribute(l3, "popover" == l3 && 1 == u4 ? "" : u4));
-  }
-}
-function F(n2) {
-  return function(u4) {
-    if (this.l) {
-      var t3 = this.l[u4.type + n2];
-      if (null == u4.t) u4.t = c++;
-      else if (u4.t < t3.u) return;
-      return t3(l.event ? l.event(u4) : u4);
-    }
-  };
-}
-function O(n2, u4, t3, i4, r3, o3, e3, f4, c3, s3) {
-  var a3, h4, p3, v3, y3, _2, m3, b, S2, C3, M2, $2, P2, A3, H, L2, T3, j3 = u4.type;
-  if (null != u4.constructor) return null;
-  128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (a3 = l.__b) && a3(u4);
-  n: if ("function" == typeof j3) try {
-    if (b = u4.props, S2 = "prototype" in j3 && j3.prototype.render, C3 = (a3 = j3.contextType) && i4[a3.__c], M2 = a3 ? C3 ? C3.props.value : a3.__ : i4, t3.__c ? m3 = (h4 = u4.__c = t3.__c).__ = h4.__E : (S2 ? u4.__c = h4 = new j3(b, M2) : (u4.__c = h4 = new x(b, M2), h4.constructor = j3, h4.render = E), C3 && C3.sub(h4), h4.props = b, h4.state || (h4.state = {}), h4.context = M2, h4.__n = i4, p3 = h4.__d = true, h4.__h = [], h4._sb = []), S2 && null == h4.__s && (h4.__s = h4.state), S2 && null != j3.getDerivedStateFromProps && (h4.__s == h4.state && (h4.__s = d({}, h4.__s)), d(h4.__s, j3.getDerivedStateFromProps(b, h4.__s))), v3 = h4.props, y3 = h4.state, h4.__v = u4, p3) S2 && null == j3.getDerivedStateFromProps && null != h4.componentWillMount && h4.componentWillMount(), S2 && null != h4.componentDidMount && h4.__h.push(h4.componentDidMount);
-    else {
-      if (S2 && null == j3.getDerivedStateFromProps && b !== v3 && null != h4.componentWillReceiveProps && h4.componentWillReceiveProps(b, M2), !h4.__e && null != h4.shouldComponentUpdate && false === h4.shouldComponentUpdate(b, h4.__s, M2) || u4.__v == t3.__v) {
-        for (u4.__v != t3.__v && (h4.props = b, h4.state = h4.__s, h4.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
-          n3 && (n3.__ = u4);
-        }), $2 = 0; $2 < h4._sb.length; $2++) h4.__h.push(h4._sb[$2]);
-        h4._sb = [], h4.__h.length && e3.push(h4);
-        break n;
-      }
-      null != h4.componentWillUpdate && h4.componentWillUpdate(b, h4.__s, M2), S2 && null != h4.componentDidUpdate && h4.__h.push(function() {
-        h4.componentDidUpdate(v3, y3, _2);
-      });
-    }
-    if (h4.context = M2, h4.props = b, h4.__P = n2, h4.__e = false, P2 = l.__r, A3 = 0, S2) {
-      for (h4.state = h4.__s, h4.__d = false, P2 && P2(u4), a3 = h4.render(h4.props, h4.state, h4.context), H = 0; H < h4._sb.length; H++) h4.__h.push(h4._sb[H]);
-      h4._sb = [];
-    } else do {
-      h4.__d = false, P2 && P2(u4), a3 = h4.render(h4.props, h4.state, h4.context), h4.state = h4.__s;
-    } while (h4.__d && ++A3 < 25);
-    h4.state = h4.__s, null != h4.getChildContext && (i4 = d(d({}, i4), h4.getChildContext())), S2 && !p3 && null != h4.getSnapshotBeforeUpdate && (_2 = h4.getSnapshotBeforeUpdate(v3, y3)), L2 = a3, null != a3 && a3.type === k && null == a3.key && (L2 = V(a3.props.children)), f4 = I(n2, w(L2) ? L2 : [L2], u4, t3, i4, r3, o3, e3, f4, c3, s3), h4.base = u4.__e, u4.__u &= -161, h4.__h.length && e3.push(h4), m3 && (h4.__E = h4.__ = null);
-  } catch (n3) {
-    if (u4.__v = null, c3 || null != o3) if (n3.then) {
-      for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
-      o3[o3.indexOf(f4)] = null, u4.__e = f4;
-    } else {
-      for (T3 = o3.length; T3--; ) g(o3[T3]);
-      z(u4);
-    }
-    else u4.__e = t3.__e, u4.__k = t3.__k, n3.then || z(u4);
-    l.__e(n3, u4, t3);
-  }
-  else null == o3 && u4.__v == t3.__v ? (u4.__k = t3.__k, u4.__e = t3.__e) : f4 = u4.__e = q(t3.__e, u4, t3, i4, r3, o3, e3, c3, s3);
-  return (a3 = l.diffed) && a3(u4), 128 & u4.__u ? void 0 : f4;
-}
-function z(n2) {
-  n2 && n2.__c && (n2.__c.__e = true), n2 && n2.__k && n2.__k.forEach(z);
-}
-function N(n2, u4, t3) {
-  for (var i4 = 0; i4 < t3.length; i4++) B(t3[i4], t3[++i4], t3[++i4]);
-  l.__c && l.__c(u4, n2), n2.some(function(u5) {
-    try {
-      n2 = u5.__h, u5.__h = [], n2.some(function(n3) {
-        n3.call(u5);
-      });
-    } catch (n3) {
-      l.__e(n3, u5.__v);
-    }
-  });
-}
-function V(n2) {
-  return "object" != typeof n2 || null == n2 || n2.__b && n2.__b > 0 ? n2 : w(n2) ? n2.map(V) : d({}, n2);
-}
-function q(u4, t3, i4, r3, o3, e3, f4, c3, s3) {
-  var a3, h4, v3, y3, d3, _2, m3, b = i4.props, k3 = t3.props, x3 = t3.type;
-  if ("svg" == x3 ? o3 = "http://www.w3.org/2000/svg" : "math" == x3 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
-    for (a3 = 0; a3 < e3.length; a3++) if ((d3 = e3[a3]) && "setAttribute" in d3 == !!x3 && (x3 ? d3.localName == x3 : 3 == d3.nodeType)) {
-      u4 = d3, e3[a3] = null;
-      break;
-    }
-  }
-  if (null == u4) {
-    if (null == x3) return document.createTextNode(k3);
-    u4 = document.createElementNS(o3, x3, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
-  }
-  if (null == x3) b === k3 || c3 && u4.data == k3 || (u4.data = k3);
-  else {
-    if (e3 = e3 && n.call(u4.childNodes), b = i4.props || p, !c3 && null != e3) for (b = {}, a3 = 0; a3 < u4.attributes.length; a3++) b[(d3 = u4.attributes[a3]).name] = d3.value;
-    for (a3 in b) if (d3 = b[a3], "children" == a3) ;
-    else if ("dangerouslySetInnerHTML" == a3) v3 = d3;
-    else if (!(a3 in k3)) {
-      if ("value" == a3 && "defaultValue" in k3 || "checked" == a3 && "defaultChecked" in k3) continue;
-      j(u4, a3, null, d3, o3);
-    }
-    for (a3 in k3) d3 = k3[a3], "children" == a3 ? y3 = d3 : "dangerouslySetInnerHTML" == a3 ? h4 = d3 : "value" == a3 ? _2 = d3 : "checked" == a3 ? m3 = d3 : c3 && "function" != typeof d3 || b[a3] === d3 || j(u4, a3, d3, b[a3], o3);
-    if (h4) c3 || v3 && (h4.__html == v3.__html || h4.__html == u4.innerHTML) || (u4.innerHTML = h4.__html), t3.__k = [];
-    else if (v3 && (u4.innerHTML = ""), I("template" == t3.type ? u4.content : u4, w(y3) ? y3 : [y3], t3, i4, r3, "foreignObject" == x3 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i4.__k && S(i4, 0), c3, s3), null != e3) for (a3 = e3.length; a3--; ) g(e3[a3]);
-    c3 || (a3 = "value", "progress" == x3 && null == _2 ? u4.removeAttribute("value") : null != _2 && (_2 !== u4[a3] || "progress" == x3 && !_2 || "option" == x3 && _2 != b[a3]) && j(u4, a3, _2, b[a3], o3), a3 = "checked", null != m3 && m3 != u4[a3] && j(u4, a3, m3, b[a3], o3));
-  }
-  return u4;
-}
-function B(n2, u4, t3) {
-  try {
-    if ("function" == typeof n2) {
-      var i4 = "function" == typeof n2.__u;
-      i4 && n2.__u(), i4 && null == u4 || (n2.__u = n2(u4));
-    } else n2.current = u4;
-  } catch (n3) {
-    l.__e(n3, t3);
-  }
-}
-function D(n2, u4, t3) {
-  var i4, r3;
-  if (l.unmount && l.unmount(n2), (i4 = n2.ref) && (i4.current && i4.current != n2.__e || B(i4, null, u4)), null != (i4 = n2.__c)) {
-    if (i4.componentWillUnmount) try {
-      i4.componentWillUnmount();
-    } catch (n3) {
-      l.__e(n3, u4);
-    }
-    i4.base = i4.__P = null;
-  }
-  if (i4 = n2.__k) for (r3 = 0; r3 < i4.length; r3++) i4[r3] && D(i4[r3], u4, t3 || "function" != typeof n2.type);
-  t3 || g(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
-}
-function E(n2, l3, u4) {
-  return this.constructor(n2, u4);
-}
-function G(u4, t3, i4) {
-  var r3, o3, e3, f4;
-  t3 == document && (t3 = document.documentElement), l.__ && l.__(u4, t3), o3 = (r3 = "function" == typeof i4) ? null : i4 && i4.__k || t3.__k, e3 = [], f4 = [], O(t3, u4 = (!r3 && i4 || t3).__k = _(k, null, [u4]), o3 || p, p, t3.namespaceURI, !r3 && i4 ? [i4] : o3 ? null : t3.firstChild ? n.call(t3.childNodes) : null, e3, !r3 && i4 ? i4 : o3 ? o3.__e : t3.firstChild, r3, f4), N(e3, u4, f4);
-}
-function Q(n2) {
-  function l3(n3) {
-    var u4, t3;
-    return this.getChildContext || (u4 = /* @__PURE__ */ new Set(), (t3 = {})[l3.__c] = this, this.getChildContext = function() {
-      return t3;
-    }, this.componentWillUnmount = function() {
-      u4 = null;
-    }, this.shouldComponentUpdate = function(n4) {
-      this.props.value != n4.value && u4.forEach(function(n5) {
-        n5.__e = true, M(n5);
-      });
-    }, this.sub = function(n4) {
-      u4.add(n4);
-      var l4 = n4.componentWillUnmount;
-      n4.componentWillUnmount = function() {
-        u4 && u4.delete(n4), l4 && l4.call(n4);
-      };
-    }), n3.children;
-  }
-  return l3.__c = "__cC" + h++, l3.__ = n2, l3.Provider = l3.__l = (l3.Consumer = function(n3, l4) {
-    return n3.children(l4);
-  }).contextType = l3, l3;
-}
-n = v.slice, l = { __e: function(n2, l3, u4, t3) {
-  for (var i4, r3, o3; l3 = l3.__; ) if ((i4 = l3.__c) && !i4.__) try {
-    if ((r3 = i4.constructor) && null != r3.getDerivedStateFromError && (i4.setState(r3.getDerivedStateFromError(n2)), o3 = i4.__d), null != i4.componentDidCatch && (i4.componentDidCatch(n2, t3 || {}), o3 = i4.__d), o3) return i4.__E = i4;
-  } catch (l4) {
-    n2 = l4;
-  }
-  throw n2;
-} }, u = 0, t = function(n2) {
-  return null != n2 && null == n2.constructor;
-}, x.prototype.setState = function(n2, l3) {
-  var u4;
-  u4 = null != this.__s && this.__s != this.state ? this.__s : this.__s = d({}, this.state), "function" == typeof n2 && (n2 = n2(d({}, u4), this.props)), n2 && d(u4, n2), null != n2 && this.__v && (l3 && this._sb.push(l3), M(this));
-}, x.prototype.forceUpdate = function(n2) {
-  this.__v && (this.__e = true, n2 && this.__h.push(n2), M(this));
-}, x.prototype.render = k, i = [], o = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e = function(n2, l3) {
-  return n2.__v.__b - l3.__v.__b;
-}, $.__r = 0, f = /(PointerCapture)$|Capture$/i, c = 0, s = F(false), a = F(true), h = 0;
-
-// src/utils/options.ts
-function parseOptions(src) {
-  const options = {};
-  src.split(/\r?\n/).forEach((line) => {
-    const match = line.match(/^\s*([a-zA-Z_]+)\s*:\s*(.+)\s*$/);
-    if (match) {
-      options[match[1].trim()] = match[2].trim();
-    }
-  });
-  return options;
-}
-
-// src/services/date-service.ts
-var DateService = class {
-  static momentAvailable() {
-    return typeof window.moment !== "undefined";
-  }
-  static getMoment() {
-    return window.moment;
-  }
-  /**
-   * Create a DateWrapper from a date string and format
-   */
-  static parse(dateStr, format) {
-    const m3 = this.getMoment();
-    if (m3) {
-      const parsed = m3(dateStr, format, true);
-      if (parsed.isValid()) {
-        return this.wrapMoment(parsed);
-      }
-    }
-    return this.wrapDate(this.parseNativeDate(dateStr, format));
-  }
-  /**
-   * Create a DateWrapper from multiple possible formats
-   */
-  static parseMultiple(dateStr, formats) {
-    const m3 = this.getMoment();
-    if (m3) {
-      const parsed = m3(dateStr, formats, true);
-      if (parsed.isValid()) {
-        return this.wrapMoment(parsed);
-      }
-    }
-    for (const fmt of formats) {
-      try {
-        const date = this.parseNativeDate(dateStr, fmt);
-        if (!isNaN(date.getTime())) {
-          return this.wrapDate(date);
-        }
-      } catch {
-      }
-    }
-    return this.now();
-  }
-  /**
-   * Get current date/time
-   */
-  static now() {
-    const m3 = this.getMoment();
-    if (m3) {
-      return this.wrapMoment(m3());
-    }
-    return this.wrapDate(/* @__PURE__ */ new Date());
-  }
-  /**
-   * Create DateWrapper from native Date
-   */
-  static fromDate(date) {
-    const m3 = this.getMoment();
-    if (m3) {
-      return this.wrapMoment(m3(date));
-    }
-    return this.wrapDate(new Date(date.getTime()));
-  }
-  /**
-   * Format date to string
-   */
-  static format(date, format) {
-    if (date instanceof Date) {
-      return this.formatNativeDate(date, format);
-    }
-    return date.format(format);
-  }
-  /**
-   * Add days to date
-   */
-  static addDays(date, days) {
-    if (date instanceof Date) {
-      const result = new Date(date);
-      result.setDate(result.getDate() + days);
-      return this.wrapDate(result);
-    }
-    return date.clone().add(days, "days");
-  }
-  /**
-   * Subtract days from date
-   */
-  static subtractDays(date, days) {
-    if (date instanceof Date) {
-      const result = new Date(date);
-      result.setDate(result.getDate() - days);
-      return this.wrapDate(result);
-    }
-    return date.clone().subtract(days, "days");
-  }
-  /**
-   * Check if date is before another date
-   */
-  static isBefore(date, other) {
-    const date1 = date instanceof Date ? this.wrapDate(date) : date;
-    const date2 = other instanceof Date ? this.wrapDate(other) : other;
-    return date1.isBefore(date2);
-  }
-  /**
-   * Check if date is after another date
-   */
-  static isAfter(date, other) {
-    const date1 = date instanceof Date ? this.wrapDate(date) : date;
-    const date2 = other instanceof Date ? this.wrapDate(other) : other;
-    return date1.isAfter(date2);
-  }
-  /**
-   * Start of day
-   */
-  static startOfDay(date) {
-    if (date instanceof Date) {
-      const result = new Date(date);
-      result.setHours(0, 0, 0, 0);
-      return this.wrapDate(result);
-    }
-    return date.clone().startOf("day");
-  }
-  /**
-   * Resolve date string to ISO format
-   */
-  static resolveDateIso(input, fmt) {
-    if (!input || input.toLowerCase() === "today") {
-      return this.format(this.now(), fmt);
-    }
-    const m3 = this.getMoment();
-    if (m3) {
-      const tryParse = m3(input, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"], true);
-      if (tryParse.isValid()) {
-        return tryParse.format(fmt);
-      }
-      return m3().format(fmt);
-    }
-    const today = /* @__PURE__ */ new Date();
-    const parsed = new Date(input);
-    if (isNaN(parsed.getTime())) {
-      return this.formatNativeDate(today, fmt);
-    }
-    return this.formatNativeDate(parsed, fmt);
-  }
-  // Private helper methods
-  static wrapMoment(momentObj) {
-    const m3 = this.getMoment();
-    return {
-      format: (fmt) => momentObj.format(fmt),
-      date: () => momentObj.date(),
-      month: () => momentObj.month() + 1,
-      // moment uses 0-based, we use 1-based
-      year: () => momentObj.year(),
-      getDate: () => momentObj.date(),
-      getMonth: () => momentObj.month(),
-      getFullYear: () => momentObj.year(),
-      getTime: () => momentObj.valueOf(),
-      isBefore: (other) => {
-        if (other instanceof Date) {
-          return momentObj.isBefore(m3 ? m3(other) : other);
-        }
-        return momentObj.isBefore(other.toDate ? other.toDate() : other);
-      },
-      isAfter: (other) => {
-        if (other instanceof Date) {
-          return momentObj.isAfter(m3 ? m3(other) : other);
-        }
-        return momentObj.isAfter(other.toDate ? other.toDate() : other);
-      },
-      isValid: () => momentObj.isValid(),
-      clone: () => this.wrapMoment(momentObj.clone()),
-      add: (amount, unit) => {
-        return this.wrapMoment(momentObj.clone().add(amount, unit));
-      },
-      subtract: (amount, unit) => {
-        return this.wrapMoment(momentObj.clone().subtract(amount, unit));
-      },
-      startOf: (unit) => {
-        return this.wrapMoment(momentObj.clone().startOf(unit));
-      },
-      toDate: () => momentObj.toDate()
-    };
-  }
-  static wrapDate(date) {
-    return {
-      format: (fmt) => this.formatNativeDate(date, fmt),
-      date: () => date.getDate(),
-      month: () => date.getMonth() + 1,
-      year: () => date.getFullYear(),
-      getDate: () => date.getDate(),
-      getMonth: () => date.getMonth(),
-      getFullYear: () => date.getFullYear(),
-      getTime: () => date.getTime(),
-      isBefore: (other) => {
-        const otherDate = other instanceof Date ? other : other.toDate();
-        return date < otherDate;
-      },
-      isAfter: (other) => {
-        const otherDate = other instanceof Date ? other : other.toDate();
-        return date > otherDate;
-      },
-      isValid: () => !isNaN(date.getTime()),
-      clone: () => this.wrapDate(new Date(date.getTime())),
-      add: (amount, unit) => {
-        const result = new Date(date);
-        if (unit === "days") {
-          result.setDate(result.getDate() + amount);
-        } else if (unit === "months") {
-          result.setMonth(result.getMonth() + amount);
-        } else if (unit === "years") {
-          result.setFullYear(result.getFullYear() + amount);
-        }
-        return this.wrapDate(result);
-      },
-      subtract: (amount, unit) => {
-        const result = new Date(date);
-        if (unit === "days") {
-          result.setDate(result.getDate() - amount);
-        } else if (unit === "months") {
-          result.setMonth(result.getMonth() - amount);
-        } else if (unit === "years") {
-          result.setFullYear(result.getFullYear() - amount);
-        }
-        return this.wrapDate(result);
-      },
-      startOf: (unit) => {
-        const result = new Date(date);
-        if (unit === "day") {
-          result.setHours(0, 0, 0, 0);
-        } else if (unit === "month") {
-          result.setDate(1);
-          result.setHours(0, 0, 0, 0);
-        } else if (unit === "year") {
-          result.setMonth(0, 1);
-          result.setHours(0, 0, 0, 0);
-        }
-        return this.wrapDate(result);
-      },
-      toDate: () => new Date(date.getTime())
-    };
-  }
-  static parseNativeDate(dateStr, format) {
-    if (format === "YYYY-MM-DD") {
-      const parts = dateStr.split("-");
-      if (parts.length === 3) {
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const day = parseInt(parts[2], 10);
-        return new Date(year, month, day);
-      }
-    }
-    return new Date(dateStr);
-  }
-  static formatNativeDate(date, format) {
-    if (format === "YYYY-MM-DD") {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    }
-    return date.toISOString().split("T")[0];
-  }
-};
-
-// src/utils/date.ts
-function resolveDateIso(input, fmt) {
-  return DateService.resolveDateIso(input, fmt);
-}
-
-// src/constants/index.ts
-var MOBILE_BREAKPOINT = 768;
-var MAX_DAYS_BACK = 3650;
-var CACHE_TTL_MS = 5 * 60 * 1e3;
-var DEBOUNCE_DELAY_MS = 300;
-var ANIMATION_DURATION_MS = 300;
-var SCROLL_RESTORE_DELAY_2_MS = 100;
-var IMMEDIATE_TIMEOUT_MS = 0;
-var TrackerType = {
-  GOOD_HABIT: "good-habit",
-  BAD_HABIT: "bad-habit",
-  NUMBER: "number",
-  SCALE: "scale",
-  PLUSMINUS: "plusminus",
-  TEXT: "text"
-};
-var ViewMode = {
-  CONTROL: "control",
-  DISPLAY: "display"
-};
-var CSS_CLASSES = {
-  // Main container
-  TRACKER_NOTES: "tracker-notes",
-  TRACKER_NOTES_HEADER: "tracker-notes__header",
-  TRACKER_NOTES_HIERARCHY: "tracker-notes__hierarchy",
-  // Tracker item
-  TRACKER: "tracker-notes__tracker",
-  TRACKER_HEADER: "tracker-notes__tracker-header",
-  TRACKER_TITLE: "tracker-notes__tracker-title",
-  TRACKER_CONTROLS: "tracker-notes__controls",
-  SETTINGS_BTN: "tracker-notes__settings-btn",
-  ORDER_BTN_CONTAINER: "tracker-notes__order-btns",
-  ORDER_BTN_UP: "tracker-notes__order-btn-up",
-  ORDER_BTN_DOWN: "tracker-notes__order-btn-down",
-  // Controls
-  ROW: "tracker-notes__row",
-  VALUE: "tracker-notes__value",
-  VALUE_UPDATED: "updated",
-  // Text input
-  TEXT_INPUT: "tracker-notes__text-input",
-  // Scale/Progress bar
-  PROGRESS_BAR_WRAPPER: "tracker-notes__progress-bar-wrapper",
-  PROGRESS_BAR_INPUT: "tracker-notes__progress-bar-input",
-  PROGRESS_BAR_PROGRESS: "tracker-notes__progress-bar-progress",
-  PROGRESS_BAR_VALUE: "tracker-notes__progress-bar-value",
-  PROGRESS_BAR_LABEL_LEFT: "tracker-notes__progress-bar-label-left",
-  PROGRESS_BAR_LABEL_RIGHT: "tracker-notes__progress-bar-label-right",
-  // Heatmap
-  HEATMAP: "tracker-notes__heatmap",
-  HEATMAP_DAY: "tracker-notes__heatmap-day",
-  HEATMAP_DAY_HAS_VALUE: "has-value",
-  HEATMAP_DAY_START: "start-day",
-  // Calendar
-  CALENDAR: "tracker-notes__calendar",
-  CALENDAR_DAY: "tracker-notes__calendar-day",
-  CALENDAR_DAY_HAS_VALUE: "has-value",
-  CALENDAR_DAY_START: "start-day",
-  // Visualizations
-  CHART: "tracker-notes__chart",
-  STATS: "tracker-notes__stats",
-  // Date picker
-  DATE_PICKER_CONTAINER: "tracker-notes__date-picker-container",
-  DATE_PICKER: "tracker-notes__date-picker",
-  DATE_INPUT: "tracker-notes__date-input",
-  DATE_INPUT_UPDATING: "is-updating",
-  DATE_NAV_BTN: "tracker-notes__date-nav-btn",
-  DATE_NAV_BTN_LEFT: "tracker-notes__date-nav-btn-left",
-  DATE_NAV_BTN_RIGHT: "tracker-notes__date-nav-btn-right",
-  // Loading
-  LOADING: "tracker-notes__loading",
-  LOADING_ACTIVE: "is-active",
-  LOADING_DOT: "tracker-notes__loading-dot",
-  // Folder structure
-  FOLDER_NODE: "tracker-notes__folder-node",
-  FOLDER_HEADER: "tracker-notes__folder-header",
-  TRACKERS_CONTAINER: "tracker-notes__trackers",
-  // Messages
-  ERROR: "tracker-notes__error",
-  SUCCESS: "tracker-notes__success",
-  // Limit indicators
-  LIMIT_ERROR: "tracker-notes__limit-error",
-  LIMIT_SUCCESS: "tracker-notes__limit-success"
-};
-var CSS_VARIABLES = {
-  // Colors
-  INTERACTIVE_ACCENT: "--interactive-accent",
-  COLOR_ACCENT: "--color-accent",
-  ACCENT_COLOR: "--accent-color",
-  TEXT_MUTED: "--text-muted",
-  TEXT_FAINT: "--text-faint",
-  TEXT_NORMAL: "--text-normal",
-  TEXT_ERROR: "--text-error",
-  TEXT_SUCCESS: "--text-success",
-  TEXT_ACCENT: "--text-accent",
-  TEXT_ON_ACCENT: "--text-on-accent",
-  // Backgrounds
-  BACKGROUND_PRIMARY: "--background-primary",
-  BACKGROUND_SECONDARY: "--background-secondary",
-  BACKGROUND_MODIFIER_BORDER: "--background-modifier-border",
-  BACKGROUND_MODIFIER_BORDER_HOVER: "--background-modifier-border-hover",
-  BACKGROUND_MODIFIER_BORDER_FOCUS: "--background-modifier-border-focus",
-  // Interactive
-  INTERACTIVE_NORMAL: "--interactive-normal",
-  INTERACTIVE_HOVER: "--interactive-hover",
-  INTERACTIVE_ACCENT_HOVER: "--interactive-accent-hover",
-  // Fonts
-  FONT_TEXT: "--font-text",
-  FONT_UI_SMALL: "--font-ui-small"
-};
-var FALLBACK_COLORS = {
-  ACCENT: "#7f6df2",
-  TEXT_MUTED: "#999999",
-  TEXT_FAINT: "#666666",
-  TEXT_ERROR: "#c00000",
-  TEXT_SUCCESS: "#00c000",
-  BORDER: "#e0e0e0",
-  BG_PRIMARY: "#ffffff"
-};
-var CHART_CONFIG = {
-  DEFAULT_HEIGHT: 200,
-  CANVAS_HEIGHT: 180,
-  POINT_RADIUS: 3,
-  POINT_BORDER_WIDTH: 2,
-  POINT_HOVER_RADIUS: 5,
-  POINT_HIT_RADIUS: 10,
-  BORDER_WIDTH: 2.5,
-  LINE_TENSION: 0.4,
-  MAX_TICKS_LIMIT: 10,
-  GRID_LINE_WIDTH: 1,
-  FONT_SIZE_SMALL: 11,
-  FUTURE_DAYS_OFFSET: 5,
-  // Show 5 days ahead in chart
-  GRADIENT_HEIGHT: 180,
-  OPACITY_LIGHT: 0.25,
-  OPACITY_DARK: 0.1,
-  OPACITY_MEDIUM: 0.3,
-  PADDING_FACTOR: 0.1,
-  LINE_WIDTH: 2
-};
-var DATE_FORMATS = {
-  ISO: "YYYY-MM-DD",
-  ISO_SLASH: "YYYY/MM/DD",
-  EU: "DD.MM.YYYY",
-  DISPLAY_SHORT: "D MMM"
-};
-var ERROR_MESSAGES = {
-  NO_TRACKERS: "no trackers found in folder",
-  NO_FRONTMATTER: "Frontmatter not found",
-  ENTER_NAME: "Enter name",
-  CREATE_ERROR: "Error creating tracker",
-  UPDATE_ERROR: "Error updating tracker",
-  WRITE_ERROR: "Write error",
-  READ_ERROR: "Read error",
-  RENDER_ERROR: "error processing block"
-};
-var SUCCESS_MESSAGES = {
-  TRACKER_CREATED: "Tracker created",
-  TRACKER_UPDATED: "Tracker updated",
-  TRACKER_DELETED: "Tracker deleted",
-  VALUE_SAVED: "\u2713 Saved"
-};
-var PLACEHOLDERS = {
-  TRACKER_NAME: "e.g., Morning workout",
-  UNIT: "Default: none",
-  TEXT_INPUT: "Enter text...",
-  NUMBER_INPUT: "0",
-  LIMIT_NONE: "Default: none"
-};
-var TRACKER_TYPE_LABELS = {
-  [TrackerType.GOOD_HABIT]: "Good habit",
-  [TrackerType.BAD_HABIT]: "Bad habit",
-  [TrackerType.NUMBER]: "Number",
-  [TrackerType.SCALE]: "Scale",
-  [TrackerType.PLUSMINUS]: "Counter (+/-)",
-  [TrackerType.TEXT]: "Text"
-};
-var MODAL_LABELS = {
-  CREATE_TRACKER: "Create new tracker",
-  EDIT_TRACKER: "Edit tracker",
-  NAME: "Name",
-  PATH: "Path",
-  TYPE: "Type",
-  PARAMETERS: "Parameters",
-  UNIT: "Unit",
-  STEP: "Step",
-  VALUE_FROM: 'Value "from"',
-  VALUE_TO: 'Value "to"',
-  LIMITS: "Success limits",
-  LOWER_LIMIT: "Lower limit",
-  UPPER_LIMIT: "Upper limit",
-  CREATE: "Create",
-  SAVE: "Save",
-  DELETE: "Delete",
-  DELETE_CONFIRM_TITLE: "Delete tracker?",
-  DELETE_CONFIRM_MESSAGE: 'Are you sure you want to delete tracker "{name}"? This action cannot be undone.',
-  CANCEL: "Cancel",
-  HABITS_GROUP: "Habits",
-  METRICS_GROUP: "Metrics",
-  START_DATE: "Tracking start date",
-  LIMITS_DESCRIPTION: "Optionally, you can make the metric limiting and set desired threshold values, they will be displayed on the chart. If the value does not fall within the specified range, you will see a color response.",
-  ROOT_FOLDER: "/ (root folder)",
-  NO_TRACKERS_FOUND: "No trackers found",
-  SELECT_TRACKER: "Select tracker",
-  YESTERDAY: "Yesterday",
-  TOMORROW: "Tomorrow",
-  UPDATING: "Updating\u2026",
-  MOVE_UP: "Move up",
-  MOVE_DOWN: "Move down",
-  TRACKER_SETTINGS: "Tracker settings",
-  UPPER_LIMIT_MUST_BE_GREATER: "Upper limit must be greater than lower limit",
-  ENTER_NAME: "Enter name",
-  TRACKER_UPDATED: "Tracker updated",
-  WARNING_RECORDS_BEFORE_DATE: "Warning: found {count} {records} BEFORE date {date}, which will be deleted when saving.",
-  RECORD_SINGULAR: "record",
-  RECORDS_PLURAL: "records"
-};
-var DEFAULTS = {
-  STEP: 1,
-  MIN_VALUE: 0,
-  MAX_VALUE: 10,
-  TEXT_UNIT: "words"
-};
-var UI_CONSTANTS = {
-  FONT_WEIGHT_BOLD: "600",
-  TRANSITION_OPACITY_DURATION_MS: 200
-};
-var STATS_LABELS = {
-  TOTAL_RECORDS: "Total records",
-  LAST_DAYS: "Sum",
-  CURRENT_STREAK: "Current streak",
-  DAYS_SINGULAR: "day",
-  DAYS_PLURAL_2_4: "days",
-  DAYS_PLURAL_5_PLUS: "days",
-  AVERAGE: "Average",
-  MIN: "Min",
-  MAX: "Max",
-  MEDIAN: "Median",
-  COMPLETION_RATE: "Completed",
-  ACTIVE_DAYS: "Active days",
-  BEST_STREAK: "Best streak"
-};
-
-// node_modules/preact/hooks/dist/hooks.module.js
-var t2;
-var r2;
-var u2;
-var i2;
-var o2 = 0;
-var f2 = [];
-var c2 = l;
-var e2 = c2.__b;
-var a2 = c2.__r;
-var v2 = c2.diffed;
-var l2 = c2.__c;
-var m2 = c2.unmount;
-var s2 = c2.__;
-function p2(n2, t3) {
-  c2.__h && c2.__h(r2, n2, o2 || t3), o2 = 0;
-  var u4 = r2.__H || (r2.__H = { __: [], __h: [] });
-  return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
-}
-function d2(n2) {
-  return o2 = 1, h3(D2, n2);
-}
-function h3(n2, u4, i4) {
-  var o3 = p2(t2++, 2);
-  if (o3.t = n2, !o3.__c && (o3.__ = [i4 ? i4(u4) : D2(void 0, u4), function(n3) {
-    var t3 = o3.__N ? o3.__N[0] : o3.__[0], r3 = o3.t(t3, n3);
-    t3 !== r3 && (o3.__N = [r3, o3.__[1]], o3.__c.setState({}));
-  }], o3.__c = r2, !r2.__f)) {
-    var f4 = function(n3, t3, r3) {
-      if (!o3.__c.__H) return true;
-      var u5 = o3.__c.__H.__.filter(function(n4) {
-        return !!n4.__c;
-      });
-      if (u5.every(function(n4) {
-        return !n4.__N;
-      })) return !c3 || c3.call(this, n3, t3, r3);
-      var i5 = o3.__c.props !== n3;
-      return u5.forEach(function(n4) {
-        if (n4.__N) {
-          var t4 = n4.__[0];
-          n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i5 = true);
-        }
-      }), c3 && c3.call(this, n3, t3, r3) || i5;
-    };
-    r2.__f = true;
-    var c3 = r2.shouldComponentUpdate, e3 = r2.componentWillUpdate;
-    r2.componentWillUpdate = function(n3, t3, r3) {
-      if (this.__e) {
-        var u5 = c3;
-        c3 = void 0, f4(n3, t3, r3), c3 = u5;
-      }
-      e3 && e3.call(this, n3, t3, r3);
-    }, r2.shouldComponentUpdate = f4;
-  }
-  return o3.__N || o3.__;
-}
-function y2(n2, u4) {
-  var i4 = p2(t2++, 3);
-  !c2.__s && C2(i4.__H, u4) && (i4.__ = n2, i4.u = u4, r2.__H.__h.push(i4));
-}
-function A2(n2) {
-  return o2 = 5, T2(function() {
-    return { current: n2 };
-  }, []);
-}
-function T2(n2, r3) {
-  var u4 = p2(t2++, 7);
-  return C2(u4.__H, r3) && (u4.__ = n2(), u4.__H = r3, u4.__h = n2), u4.__;
-}
-function q2(n2, t3) {
-  return o2 = 8, T2(function() {
-    return n2;
-  }, t3);
-}
-function x2(n2) {
-  var u4 = r2.context[n2.__c], i4 = p2(t2++, 9);
-  return i4.c = n2, u4 ? (null == i4.__ && (i4.__ = true, u4.sub(r2)), u4.props.value) : n2.__;
-}
-function j2() {
-  for (var n2; n2 = f2.shift(); ) if (n2.__P && n2.__H) try {
-    n2.__H.__h.forEach(z2), n2.__H.__h.forEach(B2), n2.__H.__h = [];
-  } catch (t3) {
-    n2.__H.__h = [], c2.__e(t3, n2.__v);
-  }
-}
-c2.__b = function(n2) {
-  r2 = null, e2 && e2(n2);
-}, c2.__ = function(n2, t3) {
-  n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), s2 && s2(n2, t3);
-}, c2.__r = function(n2) {
-  a2 && a2(n2), t2 = 0;
-  var i4 = (r2 = n2.__c).__H;
-  i4 && (u2 === r2 ? (i4.__h = [], r2.__h = [], i4.__.forEach(function(n3) {
-    n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
-  })) : (i4.__h.forEach(z2), i4.__h.forEach(B2), i4.__h = [], t2 = 0)), u2 = r2;
-}, c2.diffed = function(n2) {
-  v2 && v2(n2);
-  var t3 = n2.__c;
-  t3 && t3.__H && (t3.__H.__h.length && (1 !== f2.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.forEach(function(n3) {
-    n3.u && (n3.__H = n3.u), n3.u = void 0;
-  })), u2 = r2 = null;
-}, c2.__c = function(n2, t3) {
-  t3.some(function(n3) {
-    try {
-      n3.__h.forEach(z2), n3.__h = n3.__h.filter(function(n4) {
-        return !n4.__ || B2(n4);
-      });
-    } catch (r3) {
-      t3.some(function(n4) {
-        n4.__h && (n4.__h = []);
-      }), t3 = [], c2.__e(r3, n3.__v);
-    }
-  }), l2 && l2(n2, t3);
-}, c2.unmount = function(n2) {
-  m2 && m2(n2);
-  var t3, r3 = n2.__c;
-  r3 && r3.__H && (r3.__H.__.forEach(function(n3) {
-    try {
-      z2(n3);
-    } catch (n4) {
-      t3 = n4;
-    }
-  }), r3.__H = void 0, t3 && c2.__e(t3, r3.__v));
-};
-var k2 = "function" == typeof requestAnimationFrame;
-function w2(n2) {
-  var t3, r3 = function() {
-    clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
-  }, u4 = setTimeout(r3, 35);
-  k2 && (t3 = requestAnimationFrame(r3));
-}
-function z2(n2) {
-  var t3 = r2, u4 = n2.__c;
-  "function" == typeof u4 && (n2.__c = void 0, u4()), r2 = t3;
-}
-function B2(n2) {
-  var t3 = r2;
-  n2.__c = n2.__(), r2 = t3;
-}
-function C2(n2, t3) {
-  return !n2 || n2.length !== t3.length || t3.some(function(t4, r3) {
-    return t4 !== n2[r3];
-  });
-}
-function D2(n2, t3) {
-  return "function" == typeof t3 ? t3(n2) : t3;
-}
-
-// src/components/TrackerContext.tsx
-var TrackerContext = Q(null);
-function useTrackerContext() {
-  const context = x2(TrackerContext);
-  if (!context) {
-    throw new Error("useTrackerContext must be used within TrackerContext.Provider");
-  }
-  return context;
-}
-
-// node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
-var f3 = 0;
-var i3 = Array.isArray;
-function u3(e3, t3, n2, o3, i4, u4) {
-  t3 || (t3 = {});
-  var a3, c3, p3 = t3;
-  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
-  var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i4, __self: u4 };
-  if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
-  return l.vnode && l.vnode(l3), l3;
-}
-
-// src/components/TrackerBlock/DatePicker.tsx
-function DatePicker({ dateIso, onDateChange, onNavigate, isUpdating }) {
-  const handleInputChange = q2((e3) => {
-    const target = e3.target;
-    onDateChange(target.value);
-  }, [onDateChange]);
-  const handlePrevDay = q2(() => {
-    onNavigate(-1);
-  }, [onNavigate]);
-  const handleNextDay = q2(() => {
-    onNavigate(1);
-  }, [onNavigate]);
-  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.DATE_PICKER_CONTAINER, children: /* @__PURE__ */ u3("div", { class: CSS_CLASSES.DATE_PICKER, children: [
-    /* @__PURE__ */ u3(
-      "button",
-      {
-        type: "button",
-        class: `${CSS_CLASSES.DATE_NAV_BTN} ${CSS_CLASSES.DATE_NAV_BTN_LEFT}`,
-        onClick: handlePrevDay,
-        disabled: isUpdating,
-        title: MODAL_LABELS.YESTERDAY,
-        children: "\u25C0"
-      }
-    ),
-    /* @__PURE__ */ u3(
-      "input",
-      {
-        type: "date",
-        class: `${CSS_CLASSES.DATE_INPUT}${isUpdating ? ` ${CSS_CLASSES.DATE_INPUT_UPDATING}` : ""}`,
-        value: dateIso,
-        onChange: handleInputChange,
-        disabled: isUpdating
-      }
-    ),
-    /* @__PURE__ */ u3(
-      "button",
-      {
-        type: "button",
-        class: `${CSS_CLASSES.DATE_NAV_BTN} ${CSS_CLASSES.DATE_NAV_BTN_RIGHT}`,
-        onClick: handleNextDay,
-        disabled: isUpdating,
-        title: MODAL_LABELS.TOMORROW,
-        children: "\u25B6"
-      }
-    )
-  ] }) });
-}
-
-// src/components/TrackerBlock/LoadingIndicator.tsx
-function LoadingIndicator({ isActive }) {
-  return /* @__PURE__ */ u3("div", { class: `${CSS_CLASSES.LOADING}${isActive ? ` ${CSS_CLASSES.LOADING_ACTIVE}` : ""}`, children: [
-    /* @__PURE__ */ u3("div", { class: CSS_CLASSES.LOADING_DOT }),
-    /* @__PURE__ */ u3("span", { children: MODAL_LABELS.UPDATING })
-  ] });
-}
-
-// src/utils/path.ts
-function normalizePath(path) {
-  if (!path) return "";
-  return path.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
-}
-
-// src/components/TrackerItem/TrackerHeader.tsx
-function TrackerHeader({
-  file,
-  displayName,
-  plugin,
-  onEdit,
-  onMoveUp,
-  onMoveDown,
-  limitProgress
-}) {
-  const headerRef = A2(null);
-  const iconContainerRef = A2(null);
-  y2(() => {
-    if (iconContainerRef.current) {
-      const trackerIcon = plugin.getIconForPath(file.path, true);
-      if (trackerIcon) {
-        iconContainerRef.current.innerHTML = "";
-        plugin.renderIcon(trackerIcon, iconContainerRef.current);
-      }
-    }
-  }, [plugin, file.path]);
-  y2(() => {
-    if (headerRef.current) {
-      if (limitProgress) {
-        headerRef.current.style.setProperty("--limit-progress-width", limitProgress.width);
-        headerRef.current.style.setProperty("--limit-progress-color", limitProgress.color);
-      } else {
-        headerRef.current.style.setProperty("--limit-progress-width", "0%");
-        headerRef.current.style.setProperty("--limit-progress-color", "transparent");
-      }
-    }
-  }, [limitProgress]);
-  const handleTitleClick = q2((e3) => {
-    e3.preventDefault();
-    e3.stopPropagation();
-    plugin.app.workspace.openLinkText(file.path, "", false);
-  }, [plugin, file.path]);
-  return /* @__PURE__ */ u3("div", { ref: headerRef, class: CSS_CLASSES.TRACKER_HEADER, children: [
-    /* @__PURE__ */ u3("div", { class: CSS_CLASSES.TRACKER_TITLE, children: [
-      /* @__PURE__ */ u3("span", { ref: iconContainerRef, class: "tracker-notes__tracker-icon" }),
-      /* @__PURE__ */ u3(
-        "a",
-        {
-          class: "internal-link",
-          href: file.path,
-          "data-href": file.path,
-          onClick: handleTitleClick,
-          children: displayName
-        }
-      )
-    ] }),
-    (onMoveUp || onMoveDown) && /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ORDER_BTN_CONTAINER, children: [
-      onMoveUp && /* @__PURE__ */ u3(
-        "button",
-        {
-          type: "button",
-          class: CSS_CLASSES.ORDER_BTN_UP,
-          onClick: onMoveUp,
-          title: MODAL_LABELS.MOVE_UP,
-          children: "\u2191"
-        }
-      ),
-      onMoveDown && /* @__PURE__ */ u3(
-        "button",
-        {
-          type: "button",
-          class: CSS_CLASSES.ORDER_BTN_DOWN,
-          onClick: onMoveDown,
-          title: MODAL_LABELS.MOVE_DOWN,
-          children: "\u2193"
-        }
-      )
-    ] }),
-    onEdit && /* @__PURE__ */ u3(
-      "button",
-      {
-        type: "button",
-        class: CSS_CLASSES.SETTINGS_BTN,
-        onClick: onEdit,
-        title: MODAL_LABELS.TRACKER_SETTINGS,
-        children: "\u2699\uFE0F"
-      }
-    )
-  ] });
-}
-
-// src/components/controls/NumberControl.tsx
-function NumberControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
-  const currentValue = entries.get(dateIso);
-  const initialValue = currentValue != null && !isNaN(Number(currentValue)) ? String(currentValue) : "";
-  const [inputValue, setInputValue] = d2(initialValue);
-  const inputRef = A2(null);
-  const debounceRef = A2(null);
-  y2(() => {
-    const newValue = entries.get(dateIso);
-    const newInputValue = newValue != null && !isNaN(Number(newValue)) ? String(newValue) : "";
-    setInputValue(newInputValue);
-  }, [entries, dateIso]);
-  const writeValue = q2(async (value, immediate = false) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
-    const val = value === "" ? "0" : value;
-    const numVal = Number(val);
-    if (isNaN(numVal)) return;
-    const doWrite = async () => {
-      try {
-        await plugin.writeLogLine(file, dateIso, String(numVal));
-        await onValueChange();
-      } catch (err) {
-        console.error("NumberControl: write error", err);
-      }
-    };
-    if (immediate) {
-      await doWrite();
-    } else {
-      debounceRef.current = setTimeout(doWrite, DEBOUNCE_DELAY_MS);
-    }
-  }, [plugin, file, dateIso, onValueChange]);
-  const handleChange = q2((e3) => {
-    const target = e3.target;
-    setInputValue(target.value);
-    writeValue(target.value, false);
-    if (inputRef.current) {
-      inputRef.current.style.transform = "scale(0.98)";
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.style.transform = "";
-        }
-      }, ANIMATION_DURATION_MS);
-    }
-  }, [writeValue]);
-  const handleKeyPress = q2((e3) => {
-    if (e3.key === "Enter") {
-      writeValue(inputValue, true);
-    }
-  }, [inputValue, writeValue]);
-  const handleBlur = q2(() => {
-    writeValue(inputValue, true);
-  }, [inputValue, writeValue]);
-  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ROW, children: /* @__PURE__ */ u3(
-    "input",
-    {
-      ref: inputRef,
-      type: "number",
-      placeholder: "0",
-      value: inputValue,
-      onInput: handleChange,
-      onKeyPress: handleKeyPress,
-      onBlur: handleBlur
-    }
-  ) });
-}
-
-// src/components/controls/PlusMinusControl.tsx
-function PlusMinusControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
-  const step = parseFloat(fileOptions.step || String(DEFAULTS.STEP)) || DEFAULTS.STEP;
-  const currentValue = entries.get(dateIso);
-  const initialValue = currentValue != null && !isNaN(Number(currentValue)) ? Number(currentValue) : 0;
-  const [value, setValue] = d2(initialValue);
-  const [isUpdated, setIsUpdated] = d2(false);
-  const valueRef = A2(null);
-  y2(() => {
-    const newValue = entries.get(dateIso);
-    const newNumValue = newValue != null && !isNaN(Number(newValue)) ? Number(newValue) : 0;
-    setValue(newNumValue);
-  }, [entries, dateIso]);
-  const writeValue = q2(async (newValue) => {
-    try {
-      await plugin.writeLogLine(file, dateIso, String(newValue));
-      await onValueChange();
-    } catch (err) {
-      console.error("PlusMinusControl: write error", err);
-    }
-  }, [plugin, file, dateIso, onValueChange]);
-  const handleMinus = q2(async () => {
-    const newValue = (Number.isFinite(value) ? value : 0) - step;
-    setValue(newValue);
-    setIsUpdated(true);
-    await writeValue(newValue);
-    setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
-  }, [value, step, writeValue]);
-  const handlePlus = q2(async () => {
-    const newValue = (Number.isFinite(value) ? value : 0) + step;
-    setValue(newValue);
-    setIsUpdated(true);
-    await writeValue(newValue);
-    setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
-  }, [value, step, writeValue]);
-  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ROW, children: [
-    /* @__PURE__ */ u3("button", { type: "button", onClick: handleMinus, children: "\u2212" }),
-    /* @__PURE__ */ u3(
-      "span",
-      {
-        ref: valueRef,
-        class: `${CSS_CLASSES.VALUE}${isUpdated ? ` ${CSS_CLASSES.VALUE_UPDATED}` : ""}`,
-        children: value
-      }
-    ),
-    /* @__PURE__ */ u3("button", { type: "button", onClick: handlePlus, children: "+" })
-  ] });
-}
-
-// src/components/controls/TextControl.tsx
-function TextControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
-  const currentValue = entries.get(dateIso);
-  const initialValue = currentValue != null && typeof currentValue === "string" ? currentValue : "";
-  const [inputValue, setInputValue] = d2(initialValue);
-  const buttonRef = A2(null);
-  y2(() => {
-    const newValue = entries.get(dateIso);
-    const newInputValue = newValue != null && typeof newValue === "string" ? newValue : "";
-    setInputValue(newInputValue);
-  }, [entries, dateIso]);
-  const handleChange = q2((e3) => {
-    const target = e3.target;
-    setInputValue(target.value);
-  }, []);
-  const handleSave = q2(async () => {
-    try {
-      const val = inputValue.trim();
-      await plugin.writeLogLine(file, dateIso, val);
-      await onValueChange();
-      if (buttonRef.current) {
-        buttonRef.current.style.transform = "scale(0.95)";
-        setTimeout(() => {
-          if (buttonRef.current) {
-            buttonRef.current.style.transform = "";
-          }
-        }, ANIMATION_DURATION_MS);
-      }
-    } catch (err) {
-      console.error("TextControl: write error", err);
-    }
-  }, [plugin, file, dateIso, inputValue, onValueChange]);
-  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.ROW, children: [
-    /* @__PURE__ */ u3(
-      "textarea",
-      {
-        class: CSS_CLASSES.TEXT_INPUT,
-        placeholder: PLACEHOLDERS.TEXT_INPUT,
-        value: inputValue,
-        onInput: handleChange
-      }
-    ),
-    /* @__PURE__ */ u3("button", { ref: buttonRef, type: "button", onClick: handleSave, children: MODAL_LABELS.SAVE })
-  ] });
-}
-
-// src/components/controls/ScaleControl.tsx
-function ScaleControl({ file, dateIso, plugin, fileOptions, entries, onValueChange }) {
-  const minValue = parseFloat(fileOptions.minValue || String(DEFAULTS.MIN_VALUE)) || DEFAULTS.MIN_VALUE;
-  const maxValue = parseFloat(fileOptions.maxValue || String(DEFAULTS.MAX_VALUE)) || DEFAULTS.MAX_VALUE;
-  const step = parseFloat(fileOptions.step || String(DEFAULTS.STEP)) || DEFAULTS.STEP;
-  const currentValue = entries.get(dateIso);
-  let initialValue = minValue;
-  if (currentValue != null && !isNaN(Number(currentValue))) {
-    initialValue = Math.max(minValue, Math.min(maxValue, Number(currentValue)));
-  }
-  const [value, setValue] = d2(initialValue);
-  const [isDragging, setIsDragging] = d2(false);
-  const progressBarRef = A2(null);
-  const hasMoved = A2(false);
-  y2(() => {
-    const newValue = entries.get(dateIso);
-    if (newValue != null && !isNaN(Number(newValue))) {
-      const numVal = Math.max(minValue, Math.min(maxValue, Number(newValue)));
-      setValue(numVal);
-    }
-  }, [entries, dateIso, minValue, maxValue]);
-  const calculateValue = q2((clientX) => {
-    if (!progressBarRef.current) return minValue;
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const clickX = clientX - rect.left;
-    const percentage2 = Math.max(0, Math.min(1, clickX / rect.width));
-    const rawValue = minValue + (maxValue - minValue) * percentage2;
-    const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
-    return Math.max(minValue, Math.min(maxValue, steppedValue));
-  }, [minValue, maxValue, step]);
-  const writeValue = q2(async (newValue) => {
-    try {
-      await plugin.writeLogLine(file, dateIso, String(newValue));
-      await onValueChange();
-    } catch (err) {
-      console.error("ScaleControl: write error", err);
-    }
-  }, [plugin, file, dateIso, onValueChange]);
-  const handleMouseDown = q2((e3) => {
-    if (e3.button !== 0) return;
-    setIsDragging(true);
-    hasMoved.current = false;
-    const newValue = calculateValue(e3.clientX);
-    setValue(newValue);
-    e3.preventDefault();
-  }, [calculateValue]);
-  const handleMouseMove = q2((e3) => {
-    if (!isDragging) return;
-    hasMoved.current = true;
-    const newValue = calculateValue(e3.clientX);
-    setValue(newValue);
-  }, [isDragging, calculateValue]);
-  const handleMouseUp = q2(async () => {
-    if (isDragging) {
-      setIsDragging(false);
-      if (hasMoved.current) {
-        await writeValue(value);
-      }
-    }
-  }, [isDragging, value, writeValue]);
-  const handleClick = q2(async (e3) => {
-    if (hasMoved.current) {
-      hasMoved.current = false;
-      return;
-    }
-    const target = e3.target;
-    if (target.classList.contains(CSS_CLASSES.PROGRESS_BAR_PROGRESS) || target.classList.contains(CSS_CLASSES.PROGRESS_BAR_VALUE) || target.classList.contains(CSS_CLASSES.PROGRESS_BAR_LABEL_LEFT) || target.classList.contains(CSS_CLASSES.PROGRESS_BAR_LABEL_RIGHT)) {
-      return;
-    }
-    const newValue = calculateValue(e3.clientX);
-    setValue(newValue);
-    await writeValue(newValue);
-  }, [calculateValue, writeValue]);
-  const handleKeyDown = q2((e3) => {
-    let newValue = value;
-    if (e3.key === "ArrowLeft" || e3.key === "ArrowDown") {
-      e3.preventDefault();
-      newValue = Math.max(minValue, value - step);
-    } else if (e3.key === "ArrowRight" || e3.key === "ArrowUp") {
-      e3.preventDefault();
-      newValue = Math.min(maxValue, value + step);
-    } else if (e3.key === "Home") {
-      e3.preventDefault();
-      newValue = minValue;
-    } else if (e3.key === "End") {
-      e3.preventDefault();
-      newValue = maxValue;
-    } else {
-      return;
-    }
-    setValue(newValue);
-  }, [value, minValue, maxValue, step]);
-  const handleKeyUp = q2(async (e3) => {
-    if (["ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp", "Home", "End"].includes(e3.key)) {
-      await writeValue(value);
-    }
-  }, [value, writeValue]);
-  y2(() => {
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-  const percentage = (value - minValue) / (maxValue - minValue) * 100;
-  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.PROGRESS_BAR_WRAPPER, "data-internal-value": value, children: /* @__PURE__ */ u3(
-    "div",
-    {
-      ref: progressBarRef,
-      class: CSS_CLASSES.PROGRESS_BAR_INPUT,
-      tabIndex: 0,
-      role: "button",
-      "aria-label": String(value),
-      "aria-valuemin": minValue,
-      "aria-valuemax": maxValue,
-      "aria-valuenow": value,
-      onClick: handleClick,
-      onMouseDown: handleMouseDown,
-      onKeyDown: handleKeyDown,
-      onKeyUp: handleKeyUp,
-      style: { cursor: isDragging ? "col-resize" : void 0 },
-      children: [
-        /* @__PURE__ */ u3(
-          "div",
-          {
-            class: CSS_CLASSES.PROGRESS_BAR_PROGRESS,
-            role: "slider",
-            tabIndex: 0,
-            "aria-valuemin": minValue,
-            "aria-valuemax": maxValue,
-            "aria-valuenow": value,
-            style: { width: `${percentage}%` }
-          }
-        ),
-        /* @__PURE__ */ u3("span", { class: CSS_CLASSES.PROGRESS_BAR_VALUE, children: value }),
-        /* @__PURE__ */ u3("span", { class: CSS_CLASSES.PROGRESS_BAR_LABEL_LEFT, children: minValue }),
-        /* @__PURE__ */ u3("span", { class: CSS_CLASSES.PROGRESS_BAR_LABEL_RIGHT, children: maxValue })
-      ]
-    }
-  ) });
-}
-
-// src/utils/validation.ts
-function sanitizeFileName(name) {
-  return name.replace(/[<>:"/\\|?*]/g, "_");
-}
-function isTrackerValueTrue(value) {
-  if (value === null || value === void 0) {
-    return false;
-  }
-  if (typeof value === "number") {
-    return value !== 0;
-  }
-  const str = String(value);
-  return str === "1" || str === "true" || str.trim() !== "";
-}
-
-// src/components/controls/Heatmap.tsx
-function Heatmap({
-  file,
-  dateIso,
-  plugin,
-  fileOptions,
-  entries,
-  onValueChange,
-  daysToShow,
-  trackerType,
-  startTrackingDate
-}) {
-  const heatmapRef = A2(null);
-  const touchStartRef = A2({ x: 0, y: 0, isScrolling: false });
-  const days = T2(() => {
-    const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
-    const today = DateService.now();
-    const todayStart = DateService.startOfDay(today);
-    const todayStr = DateService.format(todayStart, plugin.settings.dateFormat);
-    const result = [];
-    for (let i4 = 0; i4 < daysToShow; i4++) {
-      const date = endDate.clone().subtract(i4, "days");
-      const dateStr = DateService.format(date, plugin.settings.dateFormat);
-      const dayNum = date.getDate();
-      const value = entries.get(dateStr);
-      const hasValue = isTrackerValueTrue(value);
-      const isStartDay = dateStr === startTrackingDate;
-      let isBeforeStart = false;
-      let isAfterToday = false;
-      if (DateService.isAfter(date, todayStart)) {
-        isAfterToday = true;
-      } else if (startTrackingDate) {
-        try {
-          const startDateObj = DateService.parseMultiple(startTrackingDate, [
-            plugin.settings.dateFormat,
-            "YYYY-MM-DD",
-            "DD.MM.YYYY",
-            "MM/DD/YYYY"
-          ]);
-          if (DateService.isBefore(date, startDateObj)) {
-            isBeforeStart = true;
-          }
-        } catch (e3) {
-        }
-      }
-      result.push({
-        dateStr,
-        dayNum,
-        hasValue,
-        isStartDay,
-        isBeforeStart,
-        isAfterToday
-      });
-    }
-    return result;
-  }, [dateIso, daysToShow, entries, plugin.settings.dateFormat, startTrackingDate]);
-  const handleDayClick = q2(async (day) => {
-    if (day.isAfterToday || day.isBeforeStart) {
-      return;
-    }
-    const isChecked = day.hasValue;
-    const newValue = isChecked ? 0 : 1;
-    try {
-      await plugin.writeLogLine(file, day.dateStr, String(newValue));
-      await onValueChange();
-    } catch (err) {
-      console.error("Heatmap: write error", err);
-    }
-  }, [plugin, file, onValueChange]);
-  const handleTouchStart = q2((e3) => {
-    if (e3.touches.length === 1) {
-      touchStartRef.current = {
-        x: e3.touches[0].clientX,
-        y: e3.touches[0].clientY,
-        isScrolling: false
-      };
-    }
-  }, []);
-  const handleTouchMove = q2((e3) => {
-    if (e3.touches.length === 1 && touchStartRef.current.x !== 0) {
-      const deltaX = Math.abs(e3.touches[0].clientX - touchStartRef.current.x);
-      const deltaY = Math.abs(e3.touches[0].clientY - touchStartRef.current.y);
-      if (deltaX > deltaY * 1.5 && deltaX > 10) {
-        touchStartRef.current.isScrolling = true;
-        e3.stopPropagation();
-      } else {
-        touchStartRef.current.isScrolling = false;
-      }
-    }
-  }, []);
-  const handleTouchEnd = q2((e3) => {
-    if (touchStartRef.current.isScrolling) {
-      e3.stopPropagation();
-    }
-    touchStartRef.current = { x: 0, y: 0, isScrolling: false };
-  }, []);
-  const getDayClassName = q2((day) => {
-    const classes = [CSS_CLASSES.HEATMAP_DAY, trackerType];
-    if (day.hasValue) classes.push("has-value");
-    if (day.isStartDay) classes.push("start-day");
-    if (day.isBeforeStart) classes.push("before-start");
-    if (day.isAfterToday) classes.push("after-today");
-    return classes.join(" ");
-  }, [trackerType]);
-  return /* @__PURE__ */ u3(
-    "div",
-    {
-      ref: heatmapRef,
-      class: CSS_CLASSES.HEATMAP,
-      onTouchStart: handleTouchStart,
-      onTouchMove: handleTouchMove,
-      onTouchEnd: handleTouchEnd,
-      children: days.map((day) => /* @__PURE__ */ u3(
-        "div",
-        {
-          class: getDayClassName(day),
-          "data-date-str": day.dateStr,
-          onClick: () => handleDayClick(day),
-          children: day.dayNum
-        },
-        day.dateStr
-      ))
-    }
-  );
-}
-
-// src/utils/misc.ts
-function parseMaybeNumber(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : value;
-}
-function countWords(text) {
-  const trimmed = text.trim();
-  if (trimmed === "") return 0;
-  return trimmed.split(/\s+/).filter((word) => word.length > 0).length;
-}
-
-// src/services/statistics-service.ts
-var StatisticsService = class {
-  /**
-   * Gets entry value by date, trying multiple date formats
-   */
-  getEntryValueByDate(entries, date, settings) {
-    const formats = [
-      settings.dateFormat,
-      "YYYY-MM-DD",
-      "DD.MM.YYYY",
-      "MM/DD/YYYY"
-    ];
-    const triedFormats = [];
-    for (const format of formats) {
-      const dateStr = DateService.format(date, format);
-      triedFormats.push(`${format}:${dateStr}`);
-      const val = entries.get(dateStr);
-      if (val !== void 0) {
-        return val;
-      }
-    }
-    return void 0;
-  }
-  /**
-   * Determines the start tracking date with priorities:
-   * 1. trackingStartDate from frontmatter
-   * 2. File creation date
-   * 3. First date from entries
-   * 4. Fallback: 365 days ago from current date
-   */
-  determineStartTrackingDate(startTrackingDateStr, file, entries, settings, currentDate) {
-    let startTrackingDate = null;
-    if (startTrackingDateStr) {
-      startTrackingDate = DateService.parseMultiple(startTrackingDateStr, [
-        "YYYY-MM-DD",
-        settings.dateFormat,
-        "DD.MM.YYYY",
-        "MM/DD/YYYY"
-      ]);
-      if (startTrackingDate.isValid()) {
-        startTrackingDate = DateService.startOfDay(startTrackingDate);
-      } else {
-        startTrackingDate = null;
-      }
-    }
-    if (!startTrackingDate && file?.stat?.ctime) {
-      startTrackingDate = DateService.startOfDay(DateService.fromDate(new Date(file.stat.ctime)));
-    }
-    if (entries.size > 0) {
-      const sortedDates = Array.from(entries.keys()).sort();
-      const firstDateStr = sortedDates[0];
-      const firstDate = DateService.parseMultiple(firstDateStr, [
-        settings.dateFormat,
-        "YYYY-MM-DD",
-        "DD.MM.YYYY",
-        "MM/DD/YYYY"
-      ]);
-      if (firstDate.isValid()) {
-        const firstDateNormalized = DateService.startOfDay(firstDate);
-        if (!startTrackingDate || DateService.isBefore(firstDateNormalized, startTrackingDate)) {
-          startTrackingDate = firstDateNormalized;
-        }
-      }
-    }
-    if (!startTrackingDate) {
-      startTrackingDate = DateService.startOfDay(DateService.subtractDays(currentDate, 365));
-    }
-    return startTrackingDate;
-  }
-  /**
-   * Calculates statistics for habits (good-habit and bad-habit)
-   */
-  calculateHabitStatistics(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
-    const endDate = DateService.parse(dateIso, settings.dateFormat);
-    const startDate = endDate.clone().subtract(daysToShow - 1, "days");
-    let actualStartDate = startDate;
-    if (startTrackingDateStr) {
-      const trackingStartDate = DateService.parseMultiple(startTrackingDateStr, [
-        settings.dateFormat,
-        "YYYY-MM-DD",
-        "YYYY/MM/DD",
-        "DD.MM.YYYY"
-      ]);
-      if (trackingStartDate.isValid() && DateService.isAfter(trackingStartDate, startDate)) {
-        actualStartDate = trackingStartDate;
-      }
-    }
-    const periodDays = [];
-    const metricType = trackerType.toLowerCase();
-    const isBadHabit = metricType === TrackerType.BAD_HABIT;
-    let actualDaysCount = 0;
-    let currentDate = actualStartDate.clone();
-    while (!DateService.isAfter(currentDate, endDate)) {
-      const dateStr = DateService.format(currentDate, settings.dateFormat);
-      const val = entries.get(dateStr);
-      let numVal = 0;
-      if (val != null) {
-        if (typeof val === "number") {
-          numVal = val;
-        } else if (val === "1" || String(val) === "true") {
-          numVal = 1;
-        } else {
-          numVal = Number(val) || 0;
-        }
-      }
-      if (isBadHabit) {
-        numVal = numVal === 0 || val == null ? 1 : 0;
-      } else {
-        numVal = val != null && numVal > 0 ? 1 : 0;
-      }
-      periodDays.push(numVal);
-      actualDaysCount++;
-      currentDate = currentDate.add(1, "days");
-    }
-    const sum = periodDays.reduce((a3, b) => a3 + b, 0);
-    const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
-    const totalRecords = entries.size;
-    const activeDays = periodDays.filter((v3) => v3 > 0).length;
-    const completionRate = actualDaysCount > 0 ? activeDays / actualDaysCount * 100 : 0;
-    return {
-      totalRecords,
-      periodDays,
-      actualDaysCount,
-      completionRate,
-      activeDays,
-      sum,
-      avg
-    };
-  }
-  /**
-   * Calculates statistics for metrics (number, scale, plusminus, text)
-   */
-  calculateMetricStatistics(entries, settings, dateIso, daysToShow, trackerType, startTrackingDateStr) {
-    const endDate = DateService.parse(dateIso, settings.dateFormat);
-    const startDate = endDate.clone().subtract(daysToShow - 1, "days");
-    let actualStartDate = startDate;
-    if (startTrackingDateStr) {
-      const trackingStartDate = DateService.parseMultiple(startTrackingDateStr, [
-        settings.dateFormat,
-        "YYYY-MM-DD",
-        "YYYY/MM/DD",
-        "DD.MM.YYYY"
-      ]);
-      if (trackingStartDate.isValid() && DateService.isAfter(trackingStartDate, startDate)) {
-        actualStartDate = trackingStartDate;
-      }
-    }
-    const periodDays = [];
-    const metricType = trackerType.toLowerCase();
-    let actualDaysCount = 0;
-    let currentDate = actualStartDate.clone();
-    while (!DateService.isAfter(currentDate, endDate)) {
-      const dateStr = DateService.format(currentDate, settings.dateFormat);
-      const val = entries.get(dateStr);
-      let numVal = 0;
-      if (val != null) {
-        if (metricType === TrackerType.TEXT) {
-          numVal = countWords(String(val));
-        } else if (typeof val === "number") {
-          numVal = val;
-        } else if (val === "1" || String(val) === "true") {
-          numVal = 1;
-        } else {
-          numVal = Number(val) || 0;
-        }
-      }
-      periodDays.push(numVal);
-      actualDaysCount++;
-      currentDate = currentDate.add(1, "days");
-    }
-    const sum = periodDays.reduce((a3, b) => a3 + b, 0);
-    const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
-    const totalRecords = entries.size;
-    let min = null;
-    let max = null;
-    let median = null;
-    const nonZeroValues = periodDays.filter((v3) => v3 > 0);
-    if (periodDays.length > 0) {
-      const sortedValues = [...periodDays].sort((a3, b) => a3 - b);
-      min = sortedValues[0];
-      max = sortedValues[sortedValues.length - 1];
-      const mid = Math.floor(sortedValues.length / 2);
-      if (sortedValues.length % 2 === 0) {
-        median = (sortedValues[mid - 1] + sortedValues[mid]) / 2;
-      } else {
-        median = sortedValues[mid];
-      }
-    }
-    const activeDays = nonZeroValues.length;
-    return {
-      totalRecords,
-      periodDays,
-      actualDaysCount,
-      sum,
-      avg,
-      min,
-      max,
-      median,
-      activeDays
-    };
-  }
-  /**
-   * Calculates streak information (current and best streak)
-   */
-  calculateStreaks(entries, settings, endDate, trackerType, file, startTrackingDateStr) {
-    const metricType = trackerType.toLowerCase();
-    const isBadHabit = metricType === TrackerType.BAD_HABIT;
-    let currentDate;
-    if (endDate instanceof Date) {
-      currentDate = DateService.fromDate(endDate);
-    } else if (endDate && typeof endDate.isValid === "function" && typeof endDate.clone === "function") {
-      currentDate = endDate.clone();
-    } else {
-      currentDate = DateService.fromDate(new Date(endDate));
-    }
-    if (!currentDate || !currentDate.isValid || !currentDate.isValid()) {
-      return { current: 0, best: 0 };
-    }
-    currentDate = DateService.startOfDay(currentDate);
-    const startTrackingDate = this.determineStartTrackingDate(
-      startTrackingDateStr,
-      file,
-      entries,
-      settings,
-      currentDate
-    );
-    if (!startTrackingDate || !startTrackingDate.isValid()) {
-      return { current: 0, best: 0 };
-    }
-    let currentStreak = 0;
-    let daysChecked = 0;
-    let checkDate = currentDate.clone();
-    while (daysChecked < MAX_DAYS_BACK) {
-      if (DateService.isBefore(checkDate, startTrackingDate)) {
-        break;
-      }
-      const val = this.getEntryValueByDate(entries, checkDate, settings);
-      let isSuccess = false;
-      if (isBadHabit) {
-        if (val == null || val === void 0) {
-          isSuccess = true;
-        } else {
-          const hasValue = isTrackerValueTrue(val);
-          isSuccess = !hasValue;
-        }
-      } else {
-        if (val != null && val !== void 0) {
-          isSuccess = isTrackerValueTrue(val);
-        }
-      }
-      if (isSuccess) {
-        currentStreak++;
-      } else {
-        break;
-      }
-      checkDate = checkDate.subtract(1, "days");
-      daysChecked++;
-    }
-    let bestStreak = 0;
-    let bestCurrentStreak = 0;
-    daysChecked = 0;
-    let bestCheckDate = currentDate.clone();
-    while (!DateService.isBefore(bestCheckDate, startTrackingDate) && daysChecked < MAX_DAYS_BACK) {
-      const val = this.getEntryValueByDate(entries, bestCheckDate, settings);
-      let isSuccess = false;
-      if (isBadHabit) {
-        if (val == null || val === void 0) {
-          isSuccess = true;
-        } else {
-          const hasValue = isTrackerValueTrue(val);
-          isSuccess = !hasValue;
-        }
-      } else {
-        if (val != null && val !== void 0) {
-          isSuccess = isTrackerValueTrue(val);
-        }
-      }
-      if (isSuccess) {
-        bestCurrentStreak++;
-        bestStreak = Math.max(bestStreak, bestCurrentStreak);
-      } else {
-        bestCurrentStreak = 0;
-      }
-      bestCheckDate = bestCheckDate.subtract(1, "days");
-      daysChecked++;
-    }
-    return {
-      current: currentStreak,
-      best: bestStreak
-    };
-  }
-  /**
-   * Calculates complete statistics for a tracker
-   */
-  calculateStatistics(entries, settings, dateIso, daysToShow, trackerType, endDate, file, startTrackingDateStr) {
-    const metricType = trackerType.toLowerCase();
-    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
-    const streaks = this.calculateStreaks(
-      entries,
-      settings,
-      endDate,
-      trackerType,
-      file,
-      startTrackingDateStr
-    );
-    let habit = null;
-    let metric = null;
-    let base;
-    if (isHabit) {
-      habit = this.calculateHabitStatistics(
-        entries,
-        settings,
-        dateIso,
-        daysToShow,
-        trackerType,
-        startTrackingDateStr
-      );
-      base = {
-        totalRecords: habit.totalRecords,
-        periodDays: habit.periodDays,
-        actualDaysCount: habit.actualDaysCount
-      };
-    } else {
-      metric = this.calculateMetricStatistics(
-        entries,
-        settings,
-        dateIso,
-        daysToShow,
-        trackerType,
-        startTrackingDateStr
-      );
-      base = {
-        totalRecords: metric.totalRecords,
-        periodDays: metric.periodDays,
-        actualDaysCount: metric.actualDaysCount
-      };
-    }
-    return {
-      base,
-      habit,
-      metric,
-      streaks,
-      trackerType
-    };
-  }
-};
-
-// src/components/Statistics/Statistics.tsx
-function getCompletionColorClass(rate) {
-  if (rate >= 80) return "tracker-notes__stats-value--success";
-  if (rate >= 50) return "tracker-notes__stats-value--warning";
-  return "tracker-notes__stats-value--error";
-}
-function formatValue(value, decimals = 1, unit = "") {
-  const formatted = value.toFixed(decimals);
-  return unit ? `${formatted} ${unit}` : formatted;
-}
-function getDaysLabel(count) {
-  if (count === 1) return STATS_LABELS.DAYS_SINGULAR;
-  if (count < 5) return STATS_LABELS.DAYS_PLURAL_2_4;
-  return STATS_LABELS.DAYS_PLURAL_5_PLUS;
-}
-function Section({ title, children }) {
-  return /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-section tracker-notes__stats-card", children: [
-    title && /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-section-title", children: /* @__PURE__ */ u3("span", { children: title }) }),
-    children
-  ] });
-}
-function MetricItem({ label, value, valueClass, icon }) {
-  return /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-metric", children: [
-    icon && /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon", children: icon }),
-    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
-      label,
-      ": "
-    ] }),
-    /* @__PURE__ */ u3("span", { class: `tracker-notes__stats-value ${valueClass || ""}`.trim(), children: value })
-  ] });
-}
-function CompletionRate({ rate, activeDays, totalDays, label }) {
-  const rateValue = Math.round(rate);
-  const colorClass = getCompletionColorClass(rateValue);
-  return /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-metric tracker-notes__stats-metric--completion", children: [
-    /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-completion-header", children: [
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon", children: "\u2705" }),
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
-        label,
-        ": "
-      ] }),
-      /* @__PURE__ */ u3("span", { class: `tracker-notes__stats-value ${colorClass}`, children: [
-        rateValue,
-        "%"
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value-sub", children: [
-        " (",
-        activeDays,
-        "/",
-        totalDays,
-        ")"
-      ] })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-progress-bar", children: /* @__PURE__ */ u3(
-      "div",
-      {
-        class: `tracker-notes__stats-progress-fill ${colorClass}`,
-        style: { width: `${rate}%` }
-      }
-    ) })
-  ] });
-}
-function Streak({ streak, label, isCurrent = false }) {
-  const icon = isCurrent ? "\u{1F525}" : "\u2B50";
-  const daysLabel = getDaysLabel(streak);
-  return /* @__PURE__ */ u3("div", { class: `tracker-notes__stats-metric tracker-notes__stats-metric--streak ${isCurrent ? "tracker-notes__stats-metric--current" : ""}`, children: [
-    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon tracker-notes__stats-icon--streak", children: icon }),
-    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
-      label,
-      ": "
-    ] }),
-    /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value", children: [
-      streak,
-      " ",
-      daysLabel
-    ] })
-  ] });
-}
-function HabitStats({ result }) {
-  if (!result.habit) return null;
-  const stats = result.habit;
-  const isBadHabit = result.trackerType.toLowerCase() === TrackerType.BAD_HABIT;
-  const completionLabel = isBadHabit ? "Days without" : STATS_LABELS.COMPLETION_RATE;
-  return /* @__PURE__ */ u3(k, { children: [
-    /* @__PURE__ */ u3(Section, { title: "PERIOD", children: /* @__PURE__ */ u3(
-      CompletionRate,
-      {
-        rate: stats.completionRate,
-        activeDays: stats.activeDays,
-        totalDays: stats.actualDaysCount,
-        label: completionLabel
-      }
-    ) }),
-    /* @__PURE__ */ u3(Section, { title: "STREAKS", children: [
-      /* @__PURE__ */ u3(
-        Streak,
-        {
-          streak: result.streaks.current,
-          label: STATS_LABELS.CURRENT_STREAK,
-          isCurrent: true
-        }
-      ),
-      /* @__PURE__ */ u3(
-        Streak,
-        {
-          streak: result.streaks.best,
-          label: STATS_LABELS.BEST_STREAK
-        }
-      )
-    ] })
-  ] });
-}
-function MetricStats({ result, unit }) {
-  if (!result.metric) return null;
-  const stats = result.metric;
-  return /* @__PURE__ */ u3(Section, { title: "PERIOD", children: [
-    /* @__PURE__ */ u3(
-      MetricItem,
-      {
-        label: STATS_LABELS.ACTIVE_DAYS,
-        value: `${stats.activeDays}/${stats.actualDaysCount}`,
-        icon: "\u{1F4C5}"
-      }
-    ),
-    /* @__PURE__ */ u3(
-      MetricItem,
-      {
-        label: STATS_LABELS.LAST_DAYS,
-        value: formatValue(stats.sum, 1, unit),
-        icon: "\u{1F4C8}"
-      }
-    ),
-    /* @__PURE__ */ u3(
-      MetricItem,
-      {
-        label: STATS_LABELS.AVERAGE,
-        value: formatValue(stats.avg, 1, unit),
-        icon: "\u{1F4CA}"
-      }
-    ),
-    stats.min !== null && stats.max !== null && /* @__PURE__ */ u3("div", { class: "tracker-notes__stats-metric tracker-notes__stats-metric--minmax", children: [
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-icon", children: "\u{1F4C9}" }),
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
-        STATS_LABELS.MIN,
-        ": "
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value", children: formatValue(stats.min, 1, unit) }),
-      /* @__PURE__ */ u3("span", { children: " | " }),
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-label", children: [
-        STATS_LABELS.MAX,
-        ": "
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "tracker-notes__stats-value", children: formatValue(stats.max, 1, unit) })
-    ] }),
-    stats.median !== null && /* @__PURE__ */ u3(
-      MetricItem,
-      {
-        label: STATS_LABELS.MEDIAN,
-        value: formatValue(stats.median, 1, unit),
-        icon: "\u{1F4CA}"
-      }
-    )
-  ] });
-}
-function Statistics({
-  file,
-  plugin,
-  dateIso,
-  daysToShow,
-  trackerType,
-  entries,
-  fileOptions
-}) {
-  const statisticsResult = T2(() => {
-    try {
-      const statisticsService = new StatisticsService();
-      const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
-      const startTrackingDateStr = plugin.getStartTrackingDate(entries, fileOptions);
-      return statisticsService.calculateStatistics(
-        entries,
-        plugin.settings,
-        dateIso,
-        daysToShow,
-        trackerType,
-        endDate,
-        file,
-        startTrackingDateStr
-      );
-    } catch (error) {
-      console.error("Statistics: error calculating statistics", error);
-      return null;
-    }
-  }, [file, plugin, dateIso, daysToShow, trackerType, entries, fileOptions]);
-  if (!statisticsResult) return null;
-  const isHabit = trackerType === TrackerType.GOOD_HABIT || trackerType === TrackerType.BAD_HABIT;
-  const unit = fileOptions?.unit || "";
-  return /* @__PURE__ */ u3("div", { class: CSS_CLASSES.STATS, children: isHabit ? /* @__PURE__ */ u3(HabitStats, { result: statisticsResult }) : /* @__PURE__ */ u3(MetricStats, { result: statisticsResult, unit }) });
-}
 
 // src/utils/theme.ts
 function getCSSVar(varName, fallback = "#000000") {
@@ -20705,1053 +20711,6 @@ var tracker_default = `/* ============================================\r
 }\r
 `;
 
-// src/services/heatmap-service.ts
-var HeatmapService = class {
-  constructor(settings, readAllEntries, writeLogLine, getStartTrackingDate, getFileTypeFromFrontmatter, updateChart, updateStats) {
-    this.settings = settings;
-    this.readAllEntries = readAllEntries;
-    this.writeLogLine = writeLogLine;
-    this.getStartTrackingDate = getStartTrackingDate;
-    this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
-    this.updateChart = updateChart;
-    this.updateStats = updateStats;
-  }
-  /**
-   * Updates existing heatmap with new data
-   */
-  async updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType) {
-    const endDate = DateService.parse(dateIso, this.settings.dateFormat);
-    const startDate = endDate.clone().subtract(daysToShow - 1, "days");
-    const entries = await this.readAllEntries(file);
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const startTrackingDateStr = this.getStartTrackingDate(entries, fileOpts);
-    const trackerItem = heatmapDiv.closest(`.${CSS_CLASSES.TRACKER}`);
-    const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
-    const updateHeatmapDay = (dateStr, dayDiv) => {
-      const value = entries.get(dateStr);
-      const hasValue = isTrackerValueTrue(value);
-      if (hasValue) {
-        dayDiv.addClass("has-value");
-      } else {
-        dayDiv.removeClass("has-value");
-      }
-    };
-    const updateAllStartDays = () => {
-      const currentStartDateStr = this.getStartTrackingDate(entries, fileOpts);
-      const allDayElements = Array.from(heatmapDiv.children);
-      for (const dayDiv of allDayElements) {
-        const dayDateStr = dayDiv.dataset?.dateStr;
-        if (dayDateStr) {
-          if (dayDateStr === currentStartDateStr) {
-            dayDiv.addClass("start-day");
-          } else {
-            dayDiv.removeClass("start-day");
-          }
-        }
-      }
-    };
-    const dayElements = Array.from(heatmapDiv.children);
-    const fragment = document.createDocumentFragment();
-    for (let i4 = 0; i4 < daysToShow; i4++) {
-      const date = endDate.clone().subtract(i4, "days");
-      const dateStr = DateService.format(date, this.settings.dateFormat);
-      const dayNum = date.getDate();
-      let dayDiv;
-      if (i4 < dayElements.length) {
-        dayDiv = dayElements[i4];
-        dayDiv.setText(dayNum.toString());
-        dayDiv.removeClass("good-habit");
-        dayDiv.removeClass("bad-habit");
-        dayDiv.addClass(trackerType);
-      } else {
-        dayDiv = document.createElement("div");
-        dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY);
-        dayDiv.setText(dayNum.toString());
-        dayDiv.addClass(trackerType);
-        fragment.appendChild(dayDiv);
-      }
-      dayDiv.dataset.dateStr = dateStr;
-      updateHeatmapDay(dateStr, dayDiv);
-      if (dateStr === startTrackingDateStr) {
-        dayDiv.addClass("start-day");
-      } else {
-        dayDiv.removeClass("start-day");
-      }
-      if (trackerType === "bad-habit" || trackerType === "good-habit") {
-        try {
-          const dayDateObj = DateService.parseMultiple(dateStr, [
-            this.settings.dateFormat,
-            "YYYY-MM-DD",
-            "DD.MM.YYYY",
-            "MM/DD/YYYY"
-          ]);
-          const today = DateService.now();
-          const todayStart = DateService.startOfDay(today);
-          if (DateService.isAfter(dayDateObj, todayStart)) {
-            dayDiv.addClass("after-today");
-            dayDiv.removeClass("before-start");
-          } else if (startTrackingDateStr) {
-            const startTrackingDateObj = DateService.parseMultiple(startTrackingDateStr, [
-              this.settings.dateFormat,
-              "YYYY-MM-DD",
-              "DD.MM.YYYY",
-              "MM/DD/YYYY"
-            ]);
-            if (DateService.isBefore(dayDateObj, startTrackingDateObj)) {
-              dayDiv.addClass("before-start");
-            } else {
-              dayDiv.removeClass("before-start");
-            }
-            dayDiv.removeClass("after-today");
-          } else {
-            dayDiv.removeClass("before-start");
-            dayDiv.removeClass("after-today");
-          }
-        } catch (e3) {
-          dayDiv.removeClass("before-start");
-          dayDiv.removeClass("after-today");
-        }
-      } else {
-        dayDiv.removeClass("before-start");
-        dayDiv.removeClass("after-today");
-      }
-    }
-    if (fragment.childNodes.length > 0) {
-      heatmapDiv.appendChild(fragment);
-    }
-    while (dayElements.length > daysToShow) {
-      dayElements[dayElements.length - 1].remove();
-      dayElements.pop();
-    }
-  }
-  /**
-   * Renders a new heatmap or updates existing one
-   */
-  async renderTrackerHeatmap(container, file, dateIso, daysToShow, trackerType) {
-    let heatmapDiv = container.querySelector(`.${CSS_CLASSES.HEATMAP}`);
-    if (!heatmapDiv) {
-      heatmapDiv = container.createDiv({ cls: CSS_CLASSES.HEATMAP });
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let isScrolling = false;
-      heatmapDiv.addEventListener("touchstart", (e3) => {
-        if (e3.touches.length === 1) {
-          touchStartX = e3.touches[0].clientX;
-          touchStartY = e3.touches[0].clientY;
-          isScrolling = false;
-        }
-      }, { passive: true });
-      heatmapDiv.addEventListener("touchmove", (e3) => {
-        if (e3.touches.length === 1 && touchStartX !== 0) {
-          const deltaX = Math.abs(e3.touches[0].clientX - touchStartX);
-          const deltaY = Math.abs(e3.touches[0].clientY - touchStartY);
-          if (deltaX > deltaY * 1.5 && deltaX > 10) {
-            isScrolling = true;
-            e3.stopPropagation();
-          } else {
-            isScrolling = false;
-          }
-        }
-      }, { passive: true });
-      heatmapDiv.addEventListener("touchend", (e3) => {
-        if (isScrolling) {
-          e3.stopPropagation();
-        }
-        touchStartX = 0;
-        touchStartY = 0;
-        isScrolling = false;
-      }, { passive: true });
-      heatmapDiv.addEventListener("click", async (e3) => {
-        const dayDiv = e3.target.closest(`.${CSS_CLASSES.HEATMAP_DAY}`);
-        if (!dayDiv) return;
-        const dateStr = dayDiv.dataset.dateStr;
-        if (!dateStr) return;
-        const entries = await this.readAllEntries(file);
-        const fileOptsForClick = await this.getFileTypeFromFrontmatter(file);
-        const startTrackingDateStr = this.getStartTrackingDate(entries, fileOptsForClick);
-        const today = DateService.now();
-        const todayStart = DateService.startOfDay(today);
-        try {
-          const dayDateObj = DateService.parseMultiple(dateStr, [
-            this.settings.dateFormat,
-            "YYYY-MM-DD",
-            "DD.MM.YYYY",
-            "MM/DD/YYYY"
-          ]);
-          if (DateService.isAfter(dayDateObj, todayStart)) {
-            return;
-          }
-          if (startTrackingDateStr) {
-            const startTrackingDateObj = DateService.parseMultiple(startTrackingDateStr, [
-              this.settings.dateFormat,
-              "YYYY-MM-DD",
-              "DD.MM.YYYY",
-              "MM/DD/YYYY"
-            ]);
-            if (DateService.isBefore(dayDateObj, startTrackingDateObj)) {
-              return;
-            }
-          }
-        } catch (e4) {
-        }
-        const currentValue = entries.get(dateStr);
-        const isChecked = isTrackerValueTrue(currentValue);
-        const newValue = isChecked ? 0 : 1;
-        await this.writeLogLine(file, dateStr, String(newValue)).catch((err) => console.error("Tracker: write error", err));
-        const updatedEntries = await this.readAllEntries(file);
-        if (newValue === 1) {
-          dayDiv.addClass("has-value");
-        } else {
-          dayDiv.removeClass("has-value");
-        }
-        const updatedStartTrackingDateStr = this.getStartTrackingDate(updatedEntries, fileOptsForClick);
-        const allDayElements = Array.from(heatmapDiv.children);
-        for (const dayEl of allDayElements) {
-          const dayDateStr = dayEl.dataset.dateStr;
-          if (dayDateStr) {
-            if (dayDateStr === updatedStartTrackingDateStr) {
-              dayEl.addClass("start-day");
-            } else {
-              dayEl.removeClass("start-day");
-            }
-            if (trackerType === "bad-habit" || trackerType === "good-habit") {
-              try {
-                const dayDateObj = DateService.parseMultiple(dayDateStr, [
-                  this.settings.dateFormat,
-                  "YYYY-MM-DD",
-                  "DD.MM.YYYY",
-                  "MM/DD/YYYY"
-                ]);
-                if (DateService.isAfter(dayDateObj, todayStart)) {
-                  dayEl.addClass("after-today");
-                  dayEl.removeClass("before-start");
-                } else if (startTrackingDateStr) {
-                  const startTrackingDateObj = DateService.parseMultiple(startTrackingDateStr, [
-                    this.settings.dateFormat,
-                    "YYYY-MM-DD",
-                    "DD.MM.YYYY",
-                    "MM/DD/YYYY"
-                  ]);
-                  if (DateService.isBefore(dayDateObj, startTrackingDateObj)) {
-                    dayEl.addClass("before-start");
-                  } else {
-                    dayEl.removeClass("before-start");
-                  }
-                  dayEl.removeClass("after-today");
-                } else {
-                  dayEl.removeClass("before-start");
-                  dayEl.removeClass("after-today");
-                }
-              } catch (e4) {
-                dayEl.removeClass("before-start");
-                dayEl.removeClass("after-today");
-              }
-            } else {
-              dayEl.removeClass("before-start");
-              dayEl.removeClass("after-today");
-            }
-          }
-        }
-        const trackerItem = heatmapDiv.closest(`.${CSS_CLASSES.TRACKER}`);
-        const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
-        if (trackerItem) {
-          const currentDateIso = mainContainer?.querySelector(`.${CSS_CLASSES.DATE_INPUT}`)?.value || dateIso;
-          if (this.updateChart) {
-            const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
-            if (chartDiv) {
-              await this.updateChart(chartDiv, file, currentDateIso, daysToShow, updatedEntries);
-            }
-          }
-          if (this.updateStats) {
-            const statsDiv = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
-            if (statsDiv) {
-              await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType, updatedEntries);
-            }
-          }
-        }
-      });
-    }
-    await this.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, trackerType);
-  }
-};
-
-// src/services/controls-renderer.ts
-var ControlsRenderer = class {
-  constructor(settings, getFileTypeFromFrontmatter, readValueForDate, readAllEntries, writeLogLine, heatmapService, updateChart, updateStats) {
-    this.settings = settings;
-    this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
-    this.readValueForDate = readValueForDate;
-    this.readAllEntries = readAllEntries;
-    this.writeLogLine = writeLogLine;
-    this.heatmapService = heatmapService;
-    this.updateChart = updateChart;
-    this.updateStats = updateStats;
-  }
-  /**
-   * Renders controls for a specific date
-   */
-  async renderControlsForDate(container, file, dateIso, opts) {
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const mode = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
-    const currentMode = container.dataset.trackerMode;
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    if (currentMode === mode && (mode === TrackerType.GOOD_HABIT || mode === TrackerType.BAD_HABIT)) {
-      const heatmapDiv = container.querySelector(`.${CSS_CLASSES.HEATMAP}`);
-      if (heatmapDiv && this.heatmapService) {
-        await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, dateIso, daysToShow, mode);
-        return;
-      }
-    }
-    container.empty();
-    container.dataset.trackerMode = mode;
-    const trackerItem = container.closest(`.${CSS_CLASSES.TRACKER}`);
-    const mainContainer = trackerItem?.closest(`.${CSS_CLASSES.TRACKER_NOTES}`);
-    const trackerType = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
-    const updateVisualizations = async () => {
-      if (!trackerItem) return;
-      const entries = await this.readAllEntries(file);
-      const currentDateIso = mainContainer?.querySelector(`.${CSS_CLASSES.DATE_INPUT}`)?.value || dateIso;
-      const chartDiv = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
-      if (chartDiv && this.updateChart) {
-        await this.updateChart(chartDiv, file, currentDateIso, daysToShow, entries);
-      }
-      if (this.updateStats) {
-        const statsDiv = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
-        if (statsDiv) {
-          await this.updateStats(statsDiv, file, currentDateIso, daysToShow, trackerType, entries);
-        }
-      }
-    };
-    if (mode === TrackerType.GOOD_HABIT || mode === TrackerType.BAD_HABIT) {
-      if (this.heatmapService) {
-        await this.heatmapService.renderTrackerHeatmap(container, file, dateIso, daysToShow, mode);
-      }
-    } else if (mode === TrackerType.NUMBER) {
-      await this.renderNumber(container, file, dateIso, fileOpts, updateVisualizations);
-    } else if (mode === TrackerType.PLUSMINUS) {
-      await this.renderPlusMinus(container, file, dateIso, fileOpts, updateVisualizations);
-    } else if (mode === TrackerType.TEXT) {
-      await this.renderText(container, file, dateIso, fileOpts, updateVisualizations);
-    } else if (mode === TrackerType.SCALE) {
-      await this.renderScale(container, file, dateIso, opts, fileOpts, updateVisualizations);
-    } else {
-      container.createEl("div", {
-        text: `Unknown mode: ${mode}. Available: ${TrackerType.GOOD_HABIT}, ${TrackerType.BAD_HABIT}, ${TrackerType.NUMBER}, ${TrackerType.PLUSMINUS}, ${TrackerType.TEXT}, ${TrackerType.SCALE}`
-      });
-    }
-  }
-  /**
-   * Updates limit indicator classes on tracker header
-   * @param container - The controls container
-   * @param value - Current value (can be null/undefined/NaN)
-   * @param minLimit - Minimum limit
-   * @param maxLimit - Maximum limit
-   */
-  updateLimitIndicators(container, value, minLimit, maxLimit) {
-    const trackerItem = container.closest(`.${CSS_CLASSES.TRACKER}`);
-    if (!trackerItem) return;
-    const header = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_HEADER}`);
-    if (!header) return;
-    header.classList.remove(CSS_CLASSES.LIMIT_ERROR, CSS_CLASSES.LIMIT_SUCCESS);
-    if (minLimit === null && maxLimit === null || value === null || value === void 0 || isNaN(value) || this.settings.disableLimitReaction) {
-      header.style.setProperty("--limit-progress-width", "0%");
-      header.style.setProperty("--limit-progress-color", "transparent");
-      return;
-    }
-    let progressPercent = 0;
-    let isExceedingMax = false;
-    if (minLimit !== null && maxLimit !== null) {
-      if (value >= minLimit && value <= maxLimit) {
-        progressPercent = 100;
-      } else if (value < minLimit) {
-        progressPercent = Math.max(0, 100 * (value / minLimit));
-      } else {
-        progressPercent = 100;
-        isExceedingMax = true;
-      }
-    } else if (maxLimit !== null) {
-      if (value <= maxLimit) {
-        progressPercent = 100;
-      } else {
-        progressPercent = 100;
-        isExceedingMax = true;
-      }
-    } else if (minLimit !== null) {
-      progressPercent = Math.min(100, Math.max(0, 100 * (value / minLimit)));
-    }
-    let hue2;
-    if (isExceedingMax) {
-      hue2 = 0;
-    } else {
-      hue2 = 120 * (progressPercent / 100);
-    }
-    const saturation = 70;
-    const lightness = 50;
-    const progressColor = `hsl(${hue2}, ${saturation}%, ${lightness}%)`;
-    header.style.setProperty("--limit-progress-width", `${progressPercent}%`);
-    header.style.setProperty("--limit-progress-color", progressColor);
-  }
-  async renderNumber(container, file, dateIso, fileOpts, updateVisualizations) {
-    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
-    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
-    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
-    const input = wrap.createEl("input", { type: "number", placeholder: "0" });
-    const current = await this.readValueForDate(file, dateIso);
-    if (current != null && !isNaN(Number(current))) {
-      input.value = String(current);
-    }
-    if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-      this.updateLimitIndicators(container, current != null ? Number(current) : null, minLimit, maxLimit);
-    }
-    let debounceTimer = null;
-    const updateVisualState = async (val) => {
-      input.value = String(val);
-      if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        this.updateLimitIndicators(container, val, minLimit, maxLimit);
-      }
-      input.style.transform = "scale(0.98)";
-      setTimeout(() => input.style.transform = "", ANIMATION_DURATION_MS);
-    };
-    const writeToFile = async (val, immediate = false) => {
-      if (immediate) {
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-          debounceTimer = null;
-        }
-        await this.writeLogLine(file, dateIso, String(val)).catch((err) => console.error("Tracker: write error", err));
-        await updateVisualizations();
-      } else {
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-        }
-        debounceTimer = setTimeout(async () => {
-          await this.writeLogLine(file, dateIso, String(val)).catch((err) => console.error("Tracker: write error", err));
-          await updateVisualizations();
-          debounceTimer = null;
-        }, DEBOUNCE_DELAY_MS);
-      }
-    };
-    const updateValue = async (immediate = false) => {
-      if (input.value === "") {
-        if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-          this.updateLimitIndicators(container, null, minLimit, maxLimit);
-        }
-        await writeToFile(0, immediate);
-        return;
-      }
-      const val = Number(input.value);
-      if (isNaN(val)) return;
-      await updateVisualState(val);
-      await writeToFile(val, immediate);
-    };
-    input.oninput = () => {
-      if (input.value === "") {
-        if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-          this.updateLimitIndicators(container, null, minLimit, maxLimit);
-        }
-        void updateValue(false);
-        return;
-      }
-      const val = Number(input.value);
-      if (isNaN(val)) return;
-      void updateValue(false);
-    };
-    input.onkeypress = async (e3) => {
-      if (e3.key === "Enter") {
-        await updateValue(true);
-      }
-    };
-    input.onblur = async () => {
-      if (input.value === "") {
-        if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-          this.updateLimitIndicators(container, null, minLimit, maxLimit);
-        }
-        await updateValue(true);
-        return;
-      }
-      const val = Number(input.value);
-      if (!isNaN(val)) {
-        await updateValue(true);
-      }
-    };
-  }
-  async renderPlusMinus(container, file, dateIso, fileOpts, updateVisualizations) {
-    const step = parseFloat(fileOpts.step || "1") || 1;
-    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
-    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
-    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
-    const minus = wrap.createEl("button", { text: "\u2212" });
-    const valEl = wrap.createEl("span", { text: "0", cls: CSS_CLASSES.VALUE });
-    const plus = wrap.createEl("button", { text: "+" });
-    let current = Number(await this.readValueForDate(file, dateIso) ?? 0);
-    if (!isNaN(current)) {
-      valEl.setText(String(current));
-    }
-    if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-      this.updateLimitIndicators(container, isNaN(current) ? null : current, minLimit, maxLimit);
-    }
-    const updateValueAndLimits = (newValue) => {
-      valEl.setText(String(newValue));
-      valEl.classList.add(CSS_CLASSES.VALUE_UPDATED);
-      if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        this.updateLimitIndicators(container, newValue, minLimit, maxLimit);
-      }
-    };
-    minus.onclick = async () => {
-      current = (Number.isFinite(current) ? current : 0) - step;
-      updateValueAndLimits(current);
-      await this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: write error", err));
-      setTimeout(() => valEl.classList.remove(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
-      await updateVisualizations();
-    };
-    plus.onclick = async () => {
-      current = (Number.isFinite(current) ? current : 0) + step;
-      updateValueAndLimits(current);
-      await this.writeLogLine(file, dateIso, String(current)).catch((err) => console.error("Tracker: write error", err));
-      setTimeout(() => valEl.classList.remove(CSS_CLASSES.VALUE_UPDATED), ANIMATION_DURATION_MS);
-      await updateVisualizations();
-    };
-  }
-  async renderText(container, file, dateIso, fileOpts, updateVisualizations) {
-    const wrap = container.createDiv({ cls: CSS_CLASSES.ROW });
-    const input = wrap.createEl("textarea", {
-      cls: CSS_CLASSES.TEXT_INPUT,
-      placeholder: PLACEHOLDERS.TEXT_INPUT
-    });
-    const current = await this.readValueForDate(file, dateIso);
-    if (current != null && typeof current === "string") input.value = current;
-    const btn = wrap.createEl("button", { text: MODAL_LABELS.SAVE });
-    btn.onclick = async () => {
-      const val = input.value.trim();
-      await this.writeLogLine(file, dateIso, val).catch((err) => console.error("Tracker: write error", err));
-      btn.style.transform = "scale(0.95)";
-      setTimeout(() => btn.style.transform = "", ANIMATION_DURATION_MS);
-      await updateVisualizations();
-    };
-  }
-  async renderScale(container, file, dateIso, opts, fileOpts, updateVisualizations) {
-    const minValue = parseFloat(opts.minValue || fileOpts.minValue || "0");
-    const maxValue = parseFloat(opts.maxValue || fileOpts.maxValue || "10");
-    const step = parseFloat(opts.step || fileOpts.step || "1");
-    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
-    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
-    const current = await this.readValueForDate(file, dateIso);
-    let currentValue = minValue;
-    if (current != null && !isNaN(Number(current))) {
-      const numVal = Number(current);
-      currentValue = Math.max(minValue, Math.min(maxValue, numVal));
-    }
-    const wrapper = container.createDiv({ cls: CSS_CLASSES.PROGRESS_BAR_WRAPPER });
-    wrapper.setAttribute("data-internal-value", String(currentValue));
-    const progressBarInput = wrapper.createDiv({ cls: CSS_CLASSES.PROGRESS_BAR_INPUT });
-    progressBarInput.setAttribute("tabindex", "0");
-    progressBarInput.setAttribute("role", "button");
-    progressBarInput.setAttribute("aria-label", String(currentValue));
-    progressBarInput.setAttribute("aria-valuemin", String(minValue));
-    progressBarInput.setAttribute("aria-valuemax", String(maxValue));
-    progressBarInput.setAttribute("aria-valuenow", String(currentValue));
-    const progressBar = progressBarInput.createDiv({ cls: CSS_CLASSES.PROGRESS_BAR_PROGRESS });
-    progressBar.setAttribute("role", "slider");
-    progressBar.setAttribute("tabindex", "0");
-    progressBar.setAttribute("aria-valuemin", String(minValue));
-    progressBar.setAttribute("aria-valuemax", String(maxValue));
-    progressBar.setAttribute("aria-valuenow", String(currentValue));
-    const valueDisplay = progressBarInput.createEl("span", {
-      text: String(currentValue),
-      cls: CSS_CLASSES.PROGRESS_BAR_VALUE
-    });
-    const labelLeft = progressBarInput.createEl("span", {
-      text: String(minValue),
-      cls: CSS_CLASSES.PROGRESS_BAR_LABEL_LEFT
-    });
-    const labelRight = progressBarInput.createEl("span", {
-      text: String(maxValue),
-      cls: CSS_CLASSES.PROGRESS_BAR_LABEL_RIGHT
-    });
-    const calculateValueFromPosition = (clientX) => {
-      const rect = progressBarInput.getBoundingClientRect();
-      const clickX = clientX - rect.left;
-      const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-      const rawValue = minValue + (maxValue - minValue) * percentage;
-      const steppedValue = Math.round((rawValue - minValue) / step) * step + minValue;
-      return Math.max(minValue, Math.min(maxValue, steppedValue));
-    };
-    const updateProgressBar = (value) => {
-      const percentage = (value - minValue) / (maxValue - minValue) * 100;
-      progressBar.style.width = `${percentage}%`;
-      valueDisplay.setText(String(value));
-      progressBarInput.setAttribute("aria-valuenow", String(value));
-      progressBarInput.setAttribute("aria-label", String(value));
-      progressBar.setAttribute("aria-valuenow", String(value));
-      wrapper.setAttribute("data-internal-value", String(value));
-      if ((minLimit !== null || maxLimit !== null) && !this.settings.disableLimitReaction) {
-        this.updateLimitIndicators(container, value, minLimit, maxLimit);
-      }
-    };
-    updateProgressBar(currentValue);
-    let isDragging = false;
-    let hasMoved = false;
-    const handleMouseDown = (e3) => {
-      if (e3.button !== 0) return;
-      isDragging = true;
-      hasMoved = false;
-      progressBarInput.style.cursor = "col-resize";
-      const newValue = calculateValueFromPosition(e3.clientX);
-      currentValue = newValue;
-      updateProgressBar(currentValue);
-      e3.preventDefault();
-    };
-    const handleMouseMove = (e3) => {
-      if (!isDragging) return;
-      hasMoved = true;
-      const newValue = calculateValueFromPosition(e3.clientX);
-      currentValue = newValue;
-      updateProgressBar(currentValue);
-    };
-    const handleMouseUp = async () => {
-      if (isDragging) {
-        isDragging = false;
-        progressBarInput.style.cursor = "";
-        if (hasMoved) {
-          await this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
-          await updateVisualizations();
-        }
-      }
-    };
-    const handleClick = async (e3) => {
-      if (hasMoved) {
-        hasMoved = false;
-        return;
-      }
-      if (e3.target === progressBar || e3.target === valueDisplay || e3.target === labelLeft || e3.target === labelRight) {
-        return;
-      }
-      const newValue = calculateValueFromPosition(e3.clientX);
-      currentValue = newValue;
-      updateProgressBar(currentValue);
-      await this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
-      await updateVisualizations();
-    };
-    const handleKeyDown = (e3) => {
-      let newValue = currentValue;
-      if (e3.key === "ArrowLeft" || e3.key === "ArrowDown") {
-        e3.preventDefault();
-        newValue = Math.max(minValue, currentValue - step);
-      } else if (e3.key === "ArrowRight" || e3.key === "ArrowUp") {
-        e3.preventDefault();
-        newValue = Math.min(maxValue, currentValue + step);
-      } else if (e3.key === "Home") {
-        e3.preventDefault();
-        newValue = minValue;
-      } else if (e3.key === "End") {
-        e3.preventDefault();
-        newValue = maxValue;
-      } else {
-        return;
-      }
-      currentValue = newValue;
-      updateProgressBar(currentValue);
-    };
-    const handleKeyUp = async (e3) => {
-      if (e3.key === "ArrowLeft" || e3.key === "ArrowDown" || e3.key === "ArrowRight" || e3.key === "ArrowUp" || e3.key === "Home" || e3.key === "End") {
-        await this.writeLogLine(file, dateIso, String(currentValue)).catch((err) => console.error("Tracker: write error", err));
-        await updateVisualizations();
-      }
-    };
-    progressBarInput.addEventListener("click", handleClick);
-    progressBarInput.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    progressBarInput.addEventListener("keydown", handleKeyDown);
-    progressBarInput.addEventListener("keyup", handleKeyUp);
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.removedNodes.forEach((node) => {
-          if (node === wrapper || node instanceof Node && wrapper.contains(node)) {
-            document.removeEventListener("mousemove", handleMouseMove);
-            document.removeEventListener("mouseup", handleMouseUp);
-            observer.disconnect();
-          }
-        });
-      });
-    });
-    if (wrapper.parentNode) {
-      observer.observe(wrapper.parentNode, { childList: true, subtree: true });
-    }
-  }
-};
-
-// src/services/tracker-renderer.ts
-var TrackerRenderer = class {
-  constructor(settings, getFileTypeFromFrontmatter, readValueForDate, controlsRenderer, renderChart, renderStats, isMobileDevice, onEditTracker, onMoveTrackerUp, onMoveTrackerDown, getIconForPath, renderIcon) {
-    this.settings = settings;
-    this.getFileTypeFromFrontmatter = getFileTypeFromFrontmatter;
-    this.readValueForDate = readValueForDate;
-    this.controlsRenderer = controlsRenderer;
-    this.renderChart = renderChart;
-    this.renderStats = renderStats;
-    this.isMobileDevice = isMobileDevice;
-    this.onEditTracker = onEditTracker;
-    this.onMoveTrackerUp = onMoveTrackerUp;
-    this.onMoveTrackerDown = onMoveTrackerDown;
-    this.getIconForPath = getIconForPath;
-    this.renderIcon = renderIcon;
-  }
-  /**
-   * Renders a tracker item
-   */
-  async renderTracker(parentEl, file, dateIso, view, opts, existingTracker) {
-    let trackerItem;
-    let isNewTracker = false;
-    if (existingTracker) {
-      trackerItem = existingTracker;
-      const header2 = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_HEADER}`);
-      const controls = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_CONTROLS}`);
-      const chart = trackerItem.querySelector(`.${CSS_CLASSES.CHART}`);
-      const stats = trackerItem.querySelector(`.${CSS_CLASSES.STATS}`);
-      header2?.remove();
-      controls?.remove();
-      chart?.remove();
-      stats?.remove();
-    } else {
-      trackerItem = document.createElement("div");
-      isNewTracker = true;
-    }
-    trackerItem.classList.add(CSS_CLASSES.TRACKER);
-    trackerItem.dataset.filePath = file.path;
-    const header = trackerItem.createDiv({ cls: CSS_CLASSES.TRACKER_HEADER });
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const baseName = file.basename;
-    const unit = fileOpts.unit || "";
-    const displayName = unit ? `${baseName} (${unit})` : baseName;
-    const titleContainer = header.createDiv({ cls: CSS_CLASSES.TRACKER_TITLE });
-    const trackerIcon = this.getIconForPath?.(file.path, true);
-    if (trackerIcon && this.renderIcon) {
-      this.renderIcon(trackerIcon, titleContainer);
-    }
-    const titleLink = titleContainer.createEl("a", {
-      text: displayName,
-      cls: "internal-link",
-      href: file.path
-    });
-    titleLink.setAttribute("data-href", file.path);
-    if (this.onMoveTrackerUp || this.onMoveTrackerDown) {
-      const orderBtnsContainer = header.createDiv({ cls: CSS_CLASSES.ORDER_BTN_CONTAINER });
-      if (this.onMoveTrackerUp) {
-        const upButton = orderBtnsContainer.createEl("button", {
-          text: "\u2191",
-          cls: CSS_CLASSES.ORDER_BTN_UP
-        });
-        upButton.title = MODAL_LABELS.MOVE_UP;
-        upButton.onclick = async (e3) => {
-          e3.stopPropagation();
-          await this.onMoveTrackerUp(file);
-        };
-      }
-      if (this.onMoveTrackerDown) {
-        const downButton = orderBtnsContainer.createEl("button", {
-          text: "\u2193",
-          cls: CSS_CLASSES.ORDER_BTN_DOWN
-        });
-        downButton.title = MODAL_LABELS.MOVE_DOWN;
-        downButton.onclick = async (e3) => {
-          e3.stopPropagation();
-          await this.onMoveTrackerDown(file);
-        };
-      }
-    }
-    if (this.onEditTracker) {
-      const settingsButton = header.createEl("button", {
-        text: "\u2699\uFE0F",
-        cls: CSS_CLASSES.SETTINGS_BTN
-      });
-      settingsButton.title = MODAL_LABELS.TRACKER_SETTINGS;
-      settingsButton.onclick = () => {
-        this.onEditTracker(file);
-      };
-    }
-    const controlsContainer = trackerItem.createDiv({ cls: CSS_CLASSES.TRACKER_CONTROLS });
-    if (view === ViewMode.DISPLAY) {
-      const value = await this.readValueForDate(file, dateIso);
-      trackerItem.createEl("div", { text: `${dateIso}: ${value ?? "\u2014"}` });
-      const daysToShow2 = parseInt(opts.days) || this.settings.daysToShow;
-      const trackerType2 = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
-      const shouldShowChart2 = (opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault) && !(this.isMobileDevice?.() && this.settings.hideChartOnMobile);
-      const shouldShowStats2 = (opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault) && !(this.isMobileDevice?.() && this.settings.hideStatsOnMobile);
-      if (shouldShowChart2 && this.renderChart) {
-        await this.renderChart(trackerItem, file, dateIso, daysToShow2);
-      }
-      if (shouldShowStats2 && this.renderStats) {
-        await this.renderStats(trackerItem, file, dateIso, daysToShow2, trackerType2);
-      }
-      return;
-    }
-    const { mode, ...optsWithoutMode } = opts;
-    const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-    await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    const trackerType = (fileOpts.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
-    const shouldShowChart = (opts.showChart === "true" || opts.showChart === void 0 && this.settings.showChartByDefault) && !(this.isMobileDevice?.() && this.settings.hideChartOnMobile);
-    const shouldShowStats = (opts.showStats === "true" || opts.showStats === void 0 && this.settings.showStatsByDefault) && !(this.isMobileDevice?.() && this.settings.hideStatsOnMobile);
-    if (shouldShowChart && this.renderChart) {
-      await this.renderChart(trackerItem, file, dateIso, daysToShow);
-    }
-    if (shouldShowStats && this.renderStats) {
-      await this.renderStats(trackerItem, file, dateIso, daysToShow, trackerType);
-    }
-    if (isNewTracker) {
-      parentEl.appendChild(trackerItem);
-    }
-  }
-};
-
-// src/services/visualization-service.ts
-var VisualizationService = class {
-  /**
-   * Updates heatmap day visual state
-   */
-  updateHeatmapDayState(dayDiv, dateStr, entries, startTrackingDateStr, trackerType) {
-    const value = entries.get(dateStr);
-    const hasValue = value === 1 || value === "1" || String(value) === "true";
-    if (hasValue) {
-      dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY_HAS_VALUE);
-    } else {
-      dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_HAS_VALUE);
-    }
-    dayDiv.removeClass(TrackerType.GOOD_HABIT);
-    dayDiv.removeClass(TrackerType.BAD_HABIT);
-    dayDiv.addClass(trackerType);
-    if (dateStr === startTrackingDateStr) {
-      dayDiv.addClass(CSS_CLASSES.HEATMAP_DAY_START);
-    } else {
-      dayDiv.removeClass(CSS_CLASSES.HEATMAP_DAY_START);
-    }
-  }
-};
-
-// src/services/statistics-renderer.ts
-var StatisticsRenderer = class {
-  /**
-   * Helper to get completion rate color class
-   */
-  getCompletionColorClass(rate) {
-    if (rate >= 80) return "tracker-notes__stats-value--success";
-    if (rate >= 50) return "tracker-notes__stats-value--warning";
-    return "tracker-notes__stats-value--error";
-  }
-  /**
-   * Helper to format value with unit
-   */
-  formatValue(value, decimals = 1, unit = "") {
-    const formatted = value.toFixed(decimals);
-    return unit ? `${formatted} ${unit}` : formatted;
-  }
-  /**
-   * Helper to get days label (singular/plural)
-   */
-  getDaysLabel(count) {
-    if (count === 1) return STATS_LABELS.DAYS_SINGULAR;
-    if (count < 5) return STATS_LABELS.DAYS_PLURAL_2_4;
-    return STATS_LABELS.DAYS_PLURAL_5_PLUS;
-  }
-  /**
-   * Creates a metric item (label + value) with optional icon
-   */
-  createMetricItem(container, label, value, valueClass, icon) {
-    const item = container.createDiv({ cls: "tracker-notes__stats-metric" });
-    if (icon) {
-      const iconEl = item.createSpan({
-        text: icon,
-        cls: "tracker-notes__stats-icon"
-      });
-    }
-    const labelEl = item.createSpan({
-      text: label,
-      cls: "tracker-notes__stats-label"
-    });
-    labelEl.createSpan({ text: ": " });
-    const valueEl = item.createSpan({
-      text: value,
-      cls: `tracker-notes__stats-value ${valueClass || ""}`.trim()
-    });
-    return item;
-  }
-  /**
-   * Creates a section with title (card style)
-   */
-  createSection(container, title) {
-    const section = container.createDiv({ cls: "tracker-notes__stats-section tracker-notes__stats-card" });
-    if (title) {
-      const titleEl = section.createDiv({
-        cls: "tracker-notes__stats-section-title"
-      });
-      titleEl.createSpan({ text: title });
-    }
-    return section;
-  }
-  /**
-   * Renders completion rate with progress bar
-   */
-  renderCompletionRate(container, rate, activeDays, totalDays, label) {
-    const item = container.createDiv({ cls: "tracker-notes__stats-metric tracker-notes__stats-metric--completion" });
-    const header = item.createDiv({ cls: "tracker-notes__stats-completion-header" });
-    header.createSpan({
-      text: "\u2705",
-      cls: "tracker-notes__stats-icon"
-    });
-    const labelEl = header.createSpan({
-      text: label,
-      cls: "tracker-notes__stats-label"
-    });
-    labelEl.createSpan({ text: ": " });
-    const rateValue = Math.round(rate);
-    const valueEl = header.createSpan({
-      text: `${rateValue}%`,
-      cls: `tracker-notes__stats-value ${this.getCompletionColorClass(rateValue)}`
-    });
-    header.createSpan({
-      text: ` (${activeDays}/${totalDays})`,
-      cls: "tracker-notes__stats-value-sub"
-    });
-    const progressBar = item.createDiv({ cls: "tracker-notes__stats-progress-bar" });
-    const progressFill = progressBar.createDiv({
-      cls: "tracker-notes__stats-progress-fill"
-    });
-    progressFill.style.width = `${rate}%`;
-    progressFill.classList.add(this.getCompletionColorClass(rateValue));
-  }
-  /**
-   * Renders streak information
-   */
-  renderStreak(container, streak, label, isCurrent = false) {
-    const item = container.createDiv({
-      cls: `tracker-notes__stats-metric tracker-notes__stats-metric--streak ${isCurrent ? "tracker-notes__stats-metric--current" : ""}`
-    });
-    const icon = isCurrent ? "\u{1F525}" : "\u2B50";
-    item.createSpan({
-      text: icon,
-      cls: "tracker-notes__stats-icon tracker-notes__stats-icon--streak"
-    });
-    const labelEl = item.createSpan({
-      text: label,
-      cls: "tracker-notes__stats-label"
-    });
-    labelEl.createSpan({ text: ": " });
-    const daysLabel = this.getDaysLabel(streak);
-    const valueEl = item.createSpan({
-      text: `${streak} ${daysLabel}`,
-      cls: "tracker-notes__stats-value"
-    });
-  }
-  /**
-   * Renders statistics for habits
-   */
-  renderHabitStats(statsDiv, result, fileOpts) {
-    statsDiv.empty();
-    if (!result.habit) return;
-    const stats = result.habit;
-    const isBadHabit = result.trackerType.toLowerCase() === TrackerType.BAD_HABIT;
-    const periodSection = this.createSection(statsDiv, "PERIOD");
-    const completionLabel = isBadHabit ? "Days without" : STATS_LABELS.COMPLETION_RATE;
-    this.renderCompletionRate(
-      periodSection,
-      stats.completionRate,
-      stats.activeDays,
-      stats.actualDaysCount,
-      completionLabel
-    );
-    const streaksSection = this.createSection(statsDiv, "STREAKS");
-    this.renderStreak(
-      streaksSection,
-      result.streaks.current,
-      STATS_LABELS.CURRENT_STREAK,
-      true
-    );
-    this.renderStreak(
-      streaksSection,
-      result.streaks.best,
-      STATS_LABELS.BEST_STREAK,
-      false
-    );
-  }
-  /**
-   * Renders statistics for metrics
-   */
-  renderMetricStats(statsDiv, result, fileOpts) {
-    statsDiv.empty();
-    if (!result.metric) return;
-    const stats = result.metric;
-    const unit = fileOpts?.unit || "";
-    const periodSection = this.createSection(statsDiv, "PERIOD");
-    this.createMetricItem(
-      periodSection,
-      STATS_LABELS.ACTIVE_DAYS,
-      `${stats.activeDays}/${stats.actualDaysCount}`,
-      void 0,
-      "\u{1F4C5}"
-    );
-    this.createMetricItem(
-      periodSection,
-      STATS_LABELS.LAST_DAYS,
-      this.formatValue(stats.sum, 1, unit),
-      void 0,
-      "\u{1F4C8}"
-    );
-    this.createMetricItem(
-      periodSection,
-      STATS_LABELS.AVERAGE,
-      this.formatValue(stats.avg, 1, unit),
-      void 0,
-      "\u{1F4CA}"
-    );
-    if (stats.min !== null && stats.max !== null) {
-      const minMaxItem = periodSection.createDiv({ cls: "tracker-notes__stats-metric tracker-notes__stats-metric--minmax" });
-      minMaxItem.createSpan({
-        text: "\u{1F4C9}",
-        cls: "tracker-notes__stats-icon"
-      });
-      minMaxItem.createSpan({
-        text: `${STATS_LABELS.MIN}: `,
-        cls: "tracker-notes__stats-label"
-      });
-      minMaxItem.createSpan({
-        text: this.formatValue(stats.min, 1, unit),
-        cls: "tracker-notes__stats-value"
-      });
-      minMaxItem.createSpan({ text: " | " });
-      minMaxItem.createSpan({
-        text: `${STATS_LABELS.MAX}: `,
-        cls: "tracker-notes__stats-label"
-      });
-      minMaxItem.createSpan({
-        text: this.formatValue(stats.max, 1, unit),
-        cls: "tracker-notes__stats-value"
-      });
-    }
-    if (stats.median !== null) {
-      this.createMetricItem(
-        periodSection,
-        STATS_LABELS.MEDIAN,
-        this.formatValue(stats.median, 1, unit),
-        void 0,
-        "\u{1F4CA}"
-      );
-    }
-  }
-  /**
-   * Renders statistics based on tracker type
-   */
-  renderStats(statsDiv, result, fileOpts) {
-    const metricType = result.trackerType.toLowerCase();
-    const isHabit = metricType === TrackerType.GOOD_HABIT || metricType === TrackerType.BAD_HABIT;
-    if (isHabit) {
-      this.renderHabitStats(statsDiv, result, fileOpts);
-    } else {
-      this.renderMetricStats(statsDiv, result, fileOpts);
-    }
-  }
-};
-
 // src/utils/filename-parser.ts
 function parseFilename(basename) {
   const match = basename.match(/^(\d+)[-.\s]+(.+)$/);
@@ -21959,7 +20918,6 @@ var IconizeService = class {
 };
 
 // src/core/tracker-plugin.ts
-Chart.register(...registerables);
 var TrackerPlugin = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
@@ -21980,50 +20938,13 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.folderTreeService = new FolderTreeService(this.app);
     this.folderTreeService.updateSettings(this.settings);
     this.trackerFileService = new TrackerFileService(this.app);
-    this.visualizationService = new VisualizationService();
     this.statisticsService = new StatisticsService();
-    this.statisticsRenderer = new StatisticsRenderer();
     this.trackerOrderService = new TrackerOrderService(this.app);
     this.iconizeService = new IconizeService(this.app);
     this.iconizeService.loadIconizeData().then(() => {
       this.iconizeService.startWatching();
     }).catch(() => {
     });
-    this.heatmapService = new HeatmapService(
-      this.settings,
-      (file) => this.readAllEntries(file),
-      (file, dateIso, value) => this.writeLogLine(file, dateIso, value),
-      (entries, fileOpts) => {
-        return this.trackerFileService.getStartTrackingDate(entries, this.settings, fileOpts);
-      },
-      (file) => this.getFileTypeFromFrontmatter(file),
-      (chartDiv, file, dateIso, daysToShow, entries) => this.updateChart(chartDiv, file, dateIso, daysToShow, entries),
-      (statsDiv, file, dateIso, daysToShow, trackerType, entries) => this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries)
-    );
-    this.controlsRenderer = new ControlsRenderer(
-      this.settings,
-      (file) => this.getFileTypeFromFrontmatter(file),
-      (file, dateIso) => this.readValueForDate(file, dateIso),
-      (file) => this.readAllEntries(file),
-      (file, dateIso, value) => this.writeLogLine(file, dateIso, value),
-      this.heatmapService,
-      (chartDiv, file, dateIso, daysToShow, entries) => this.updateChart(chartDiv, file, dateIso, daysToShow, entries),
-      (statsDiv, file, dateIso, daysToShow, trackerType, entries) => this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries)
-    );
-    this.trackerRenderer = new TrackerRenderer(
-      this.settings,
-      (file) => this.getFileTypeFromFrontmatter(file),
-      (file, dateIso) => this.readValueForDate(file, dateIso),
-      this.controlsRenderer,
-      (container, file, dateIso, daysToShow, entries) => this.renderChart(container, file, dateIso, daysToShow, entries),
-      (container, file, dateIso, daysToShow, trackerType, entries) => this.renderStats(container, file, dateIso, daysToShow, trackerType, entries),
-      () => this.isMobileDevice(),
-      (file) => this.editTracker(file),
-      (file) => this.moveTrackerUp(file),
-      (file) => this.moveTrackerDown(file),
-      (path, isFile) => this.getIconForPath(path, isFile),
-      (icon, container) => this.renderIcon(icon, container)
-    );
     this.addStyleSheet();
     this.addSettingTab(new TrackerSettingsTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor("tracker", this.processTrackerBlock.bind(this));
@@ -22279,113 +21200,23 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
       }
     }
   }
+  /**
+   * Refresh trackers for a specific file by re-rendering affected blocks
+   * Simplified for Preact - just invalidate cache and re-render
+   */
   async refreshTrackersForFile(file) {
-    const refreshPromises = [];
+    this.invalidateCacheForFile(file);
+    const renderPromises = [];
     for (const block of Array.from(this.activeBlocks)) {
-      const trackers = block.containerEl.querySelectorAll(
+      const hasTracker = block.containerEl.querySelector(
         `.tracker-notes__tracker[data-file-path="${file.path}"]`
       );
-      if (trackers.length === 0) continue;
-      const opts = block.getOptions();
-      const view = (opts.view ?? "control").toLowerCase();
-      const dateInput = block.containerEl.querySelector(".tracker-notes__date-input");
-      const activeDateIso = dateInput?.value || resolveDateIso(opts.date, this.settings.dateFormat);
-      trackers.forEach((trackerItem) => {
-        const parent = trackerItem.parentElement;
-        if (!parent) return;
-        refreshPromises.push(
-          (async () => {
-            const fileOpts = await this.getFileTypeFromFrontmatter(file);
-            const baseName = file.basename;
-            const unit = fileOpts.unit || "";
-            const displayName = unit ? `${baseName} (${unit})` : baseName;
-            const oldPath = trackerItem.dataset.filePath;
-            const pathChanged = oldPath && oldPath !== file.path;
-            const titleContainer = trackerItem.querySelector(`.${CSS_CLASSES.TRACKER_TITLE}`);
-            if (titleContainer) {
-              if (pathChanged) {
-                const oldIcon = titleContainer.querySelector('.iconize-icon, span[style*="margin-right"]');
-                if (oldIcon) {
-                  oldIcon.remove();
-                }
-                const trackerIcon = this.getIconForPath(file.path, true);
-                if (trackerIcon && this.renderIcon) {
-                  this.renderIcon(trackerIcon, titleContainer);
-                }
-              }
-              const titleLink = titleContainer.querySelector("a.internal-link");
-              if (titleLink) {
-                titleLink.textContent = displayName;
-                titleLink.setAttribute("href", file.path);
-                titleLink.setAttribute("data-href", file.path);
-              } else {
-                const link = titleContainer.createEl("a", {
-                  text: displayName,
-                  cls: "internal-link",
-                  href: file.path
-                });
-                link.setAttribute("data-href", file.path);
-              }
-            }
-            trackerItem.dataset.filePath = file.path;
-            const entries = await this.readAllEntries(file);
-            const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-            const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
-            const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-            if (chartDiv) {
-              await this.updateChart(chartDiv, file, activeDateIso, daysToShow, entries);
-            }
-            const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-            if (statsDiv) {
-              await this.updateStats(statsDiv, file, activeDateIso, daysToShow, trackerType, entries);
-            }
-            if (trackerType === "good-habit" || trackerType === "bad-habit") {
-              const heatmapDiv = trackerItem.querySelector(".tracker-notes__heatmap");
-              if (heatmapDiv) {
-                await this.heatmapService.updateTrackerHeatmap(heatmapDiv, file, activeDateIso, daysToShow, trackerType);
-                const controlsContainer = trackerItem.querySelector(".tracker-notes__controls");
-                if (controlsContainer) {
-                  controlsContainer.dataset.trackerMode = trackerType;
-                }
-              }
-            } else if (view === "control") {
-              const controlsContainer = trackerItem.querySelector(".tracker-notes__controls");
-              if (controlsContainer) {
-                const { mode, ...optsWithoutMode } = opts;
-                const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-                await this.controlsRenderer.renderControlsForDate(controlsContainer, file, activeDateIso, mergedOpts);
-              }
-            }
-            const newBasename = file.basename;
-            if (newBasename !== baseName) {
-              const allTrackers = Array.from(parent.children).filter(
-                (el) => el.classList.contains("tracker-notes__tracker")
-              );
-              let correctInsertBefore = null;
-              for (const tracker of allTrackers) {
-                if (tracker === trackerItem) continue;
-                const trackerPath = tracker.dataset.filePath;
-                if (!trackerPath) continue;
-                const trackerFile = this.app.vault.getAbstractFileByPath(trackerPath);
-                if (trackerFile instanceof import_obsidian10.TFile) {
-                  if (trackerFile.basename.localeCompare(newBasename, void 0, { sensitivity: "base" }) > 0) {
-                    correctInsertBefore = tracker;
-                    break;
-                  }
-                }
-              }
-              if (correctInsertBefore && correctInsertBefore !== trackerItem) {
-                parent.insertBefore(trackerItem, correctInsertBefore);
-              } else if (!correctInsertBefore) {
-                parent.appendChild(trackerItem);
-              }
-            }
-          })()
-        );
-      });
+      if (hasTracker) {
+        renderPromises.push(block.render());
+      }
     }
-    if (refreshPromises.length > 0) {
-      await Promise.allSettled(refreshPromises);
+    if (renderPromises.length > 0) {
+      await Promise.allSettled(renderPromises);
     }
   }
   async refreshAllBlocks() {
@@ -22470,612 +21301,7 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     const state = await this.ensureTrackerState(file);
     return state.fileOpts;
   }
-  async updateTrackerDate(trackerItem, file, dateIso, opts) {
-    const controlsContainerEl = trackerItem.querySelector(".tracker-notes__controls");
-    const controlsContainer = controlsContainerEl || trackerItem;
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const trackerType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    const daysToShow = parseInt(opts.days) || this.settings.daysToShow;
-    const entries = await this.readAllEntries(file);
-    const existingHeatmap = controlsContainer.querySelector(".tracker-notes__heatmap");
-    if (trackerType === "good-habit" || trackerType === "bad-habit") {
-      if (existingHeatmap) {
-        await this.heatmapService.updateTrackerHeatmap(existingHeatmap, file, dateIso, daysToShow, trackerType);
-      } else {
-        controlsContainer.empty();
-        const { mode, ...optsWithoutMode } = opts;
-        const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-        await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
-      }
-    } else {
-      controlsContainer.empty();
-      const { mode, ...optsWithoutMode } = opts;
-      const mergedOpts = { ...optsWithoutMode, ...fileOpts };
-      await this.controlsRenderer.renderControlsForDate(controlsContainer, file, dateIso, mergedOpts);
-    }
-    const chartDiv = trackerItem.querySelector(".tracker-notes__chart");
-    if (chartDiv) {
-      await this.updateChart(chartDiv, file, dateIso, daysToShow, entries);
-    }
-    const statsDiv = trackerItem.querySelector(".tracker-notes__stats");
-    if (statsDiv) {
-      await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries);
-    }
-  }
-  // ---- Visualization ---------------------------------------------------------
-  async renderChart(container, file, dateIso, daysToShow, entries) {
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const metricType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    const unit = fileOpts.unit || "";
-    if (metricType === "good-habit" || metricType === "bad-habit") {
-      const endDate2 = dateIso || resolveDateIso("today", this.settings.dateFormat);
-      const days2 = daysToShow || this.settings.daysToShow;
-      await this.heatmapService.renderTrackerHeatmap(container, file, endDate2, days2, metricType);
-      return;
-    }
-    const existingChart = container.querySelector(".tracker-notes__chart");
-    if (existingChart) {
-      const chartInstance = existingChart.chartInstance;
-      if (chartInstance) {
-        chartInstance.destroy();
-      }
-      existingChart.remove();
-    }
-    const chartDiv = container.createDiv({ cls: "tracker-notes__chart" });
-    const canvas = chartDiv.createEl("canvas");
-    const colors2 = getThemeColors();
-    const today = DateService.now();
-    const todayStr = DateService.format(today, this.settings.dateFormat);
-    const activeDate = dateIso ? DateService.parse(dateIso, "YYYY-MM-DD") : today;
-    const activeDateStr = DateService.format(activeDate, this.settings.dateFormat);
-    const endDate = activeDate.clone().add(5, "days");
-    const days = daysToShow || this.settings.daysToShow;
-    const startDate = endDate.clone().subtract(days - 1, "days");
-    const entriesMap = entries ?? await this.readAllEntries(file);
-    const startTrackingDateStr = this.trackerFileService.getStartTrackingDate(entriesMap, this.settings, fileOpts);
-    let startTrackingIndex = null;
-    let activeDateIndex = null;
-    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
-    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
-    const scaleMinValue = metricType === "scale" && fileOpts.minValue ? parseFloat(fileOpts.minValue) : null;
-    const scaleMaxValue = metricType === "scale" && fileOpts.maxValue ? parseFloat(fileOpts.maxValue) : null;
-    const labels = [];
-    const values = [];
-    const pointBackgroundColors = [];
-    const pointBorderColors = [];
-    const dateStrings = [];
-    let maxValue = 0;
-    for (let i4 = 0; i4 < days; i4++) {
-      const date = startDate.clone().add(i4, "days");
-      const dateStr = DateService.format(date, this.settings.dateFormat);
-      if (dateStr === startTrackingDateStr) {
-        startTrackingIndex = i4;
-      }
-      if (dateStr === activeDateStr) {
-        activeDateIndex = i4;
-      }
-      let label = "";
-      const m3 = window.moment;
-      if (m3) {
-        label = m3(date.toDate()).format("D MMM");
-      } else {
-        const day = date.getDate();
-        const month = date.toDate().toLocaleDateString("en", { month: "short" });
-        label = `${day} ${month}`;
-      }
-      labels.push(label);
-      dateStrings.push(dateStr);
-      const val = entriesMap.get(dateStr);
-      let numVal = 0;
-      if (val != null) {
-        if (metricType === "text") {
-          numVal = countWords(String(val));
-        } else if (typeof val === "number") {
-          numVal = val;
-        } else if (val === "1" || String(val) === "true") {
-          numVal = 1;
-        } else {
-          numVal = Number(val) || 0;
-        }
-      }
-      values.push(numVal);
-      maxValue = Math.max(maxValue, numVal);
-      let pointColor = colors2.accentColor;
-      let pointBorder = colors2.accentColor;
-      const isAfterToday = dateStr > todayStr;
-      const hasLimits = minLimit !== null || maxLimit !== null;
-      if (!isAfterToday && startTrackingIndex !== null && i4 >= startTrackingIndex && hasLimits) {
-        const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
-        if (isInRange) {
-          pointColor = colors2.successColor;
-          pointBorder = colors2.successColor;
-        } else {
-          pointColor = colors2.errorColor;
-          pointBorder = colors2.errorColor;
-        }
-      }
-      pointBackgroundColors.push(pointColor);
-      pointBorderColors.push(pointBorder);
-    }
-    const pointRadii = [];
-    const pointBorderWidths = [];
-    for (let i4 = 0; i4 < days; i4++) {
-      pointRadii.push(CHART_CONFIG.POINT_RADIUS);
-      pointBorderWidths.push(CHART_CONFIG.POINT_BORDER_WIDTH);
-    }
-    let yAxisMin = 0;
-    let yAxisMax = maxValue;
-    const allMinValues = [];
-    if (minLimit !== null) allMinValues.push(minLimit);
-    if (scaleMinValue !== null) allMinValues.push(scaleMinValue);
-    if (allMinValues.length > 0) {
-      const minFromAll = Math.min(...allMinValues);
-      yAxisMin = Math.min(yAxisMin, minFromAll);
-    }
-    const allMaxValues = [maxValue];
-    if (maxLimit !== null) allMaxValues.push(maxLimit);
-    if (minLimit !== null && maxLimit === null) {
-      allMaxValues.push(minLimit * 2);
-    } else if (minLimit !== null) {
-      allMaxValues.push(minLimit);
-    }
-    if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
-    if (scaleMinValue !== null) allMaxValues.push(scaleMinValue);
-    if (allMaxValues.length > 0) {
-      const maxFromAll = Math.max(...allMaxValues);
-      yAxisMax = Math.max(yAxisMax, maxFromAll);
-    }
-    if (yAxisMax === 0 && minLimit === null && maxLimit === null && scaleMinValue === null && scaleMaxValue === null) {
-      yAxisMax = 1;
-    }
-    if (yAxisMax <= yAxisMin) {
-      const padding = Math.max(1, Math.abs(yAxisMin) * CHART_CONFIG.PADDING_FACTOR || 1);
-      yAxisMax = yAxisMin + padding;
-    }
-    const ctx = canvas.getContext("2d");
-    let gradient = null;
-    if (ctx) {
-      gradient = ctx.createLinearGradient(0, 0, 0, CHART_CONFIG.GRADIENT_HEIGHT);
-      gradient.addColorStop(0, colorToRgba(colors2.accentColor, CHART_CONFIG.OPACITY_LIGHT));
-      gradient.addColorStop(1, colorToRgba(colors2.accentColor, 0));
-    }
-    let chartLabel;
-    if (unit) {
-      chartLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
-    } else {
-      chartLabel = metricType === "text" ? "Word count" : "Value";
-    }
-    const startLineColor = colors2.startLineColor;
-    const drawStartLine = (chart, index2, color2) => {
-      const ctx2 = chart.ctx;
-      const chartArea = chart.chartArea;
-      if (!chartArea) return;
-      const xScale = chart.scales.x;
-      const xPos = xScale.getPixelForValue(index2);
-      if (xPos < chartArea.left || xPos > chartArea.right) return;
-      ctx2.save();
-      ctx2.strokeStyle = colorToRgba(color2, 0.6);
-      ctx2.lineWidth = CHART_CONFIG.LINE_WIDTH;
-      ctx2.setLineDash([5, 5]);
-      ctx2.beginPath();
-      ctx2.moveTo(xPos, chartArea.top);
-      ctx2.lineTo(xPos, chartArea.bottom);
-      ctx2.stroke();
-      ctx2.restore();
-    };
-    const drawActiveDateLine = (chart, index2, color2) => {
-      const ctx2 = chart.ctx;
-      const chartArea = chart.chartArea;
-      if (!chartArea) return;
-      const xScale = chart.scales.x;
-      const xPos = xScale.getPixelForValue(index2);
-      if (xPos < chartArea.left || xPos > chartArea.right) return;
-      ctx2.save();
-      ctx2.strokeStyle = colorToRgba(color2, 0.6);
-      ctx2.lineWidth = CHART_CONFIG.LINE_WIDTH;
-      ctx2.setLineDash([]);
-      ctx2.beginPath();
-      ctx2.moveTo(xPos, chartArea.top);
-      ctx2.lineTo(xPos, chartArea.bottom);
-      ctx2.stroke();
-      ctx2.restore();
-    };
-    const hasInvalidValues = values.some((v3) => !isFinite(v3) || isNaN(v3));
-    if (hasInvalidValues) {
-      console.error("Tracker: Invalid values in chart data", { values, labels, dateStrings });
-      const validValues = values.map((v3) => isFinite(v3) && !isNaN(v3) ? v3 : 0);
-      values.length = 0;
-      values.push(...validValues);
-    }
-    if (labels.length !== values.length || values.length !== dateStrings.length) {
-      console.error("Tracker: Mismatched array lengths", {
-        labels: labels.length,
-        values: values.length,
-        dateStrings: dateStrings.length
-      });
-    }
-    const chartConfig = {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: chartLabel,
-          data: values,
-          borderColor: colors2.accentColor,
-          backgroundColor: gradient || colorToRgba(colors2.accentColor, CHART_CONFIG.OPACITY_DARK),
-          borderWidth: CHART_CONFIG.BORDER_WIDTH,
-          fill: false,
-          tension: 0.4,
-          pointRadius: pointRadii,
-          pointBackgroundColor: pointBackgroundColors,
-          pointBorderColor: pointBorderColors,
-          pointBorderWidth: pointBorderWidths,
-          pointHoverRadius: 5,
-          pointHitRadius: 10,
-          // Явно отключаем изменение цветов при наведении - используем функции, которые возвращают те же цвета
-          pointHoverBackgroundColor: (ctx2) => {
-            const index2 = ctx2.dataIndex;
-            return pointBackgroundColors[index2] || pointBackgroundColors[0] || colors2.accentColor;
-          },
-          pointHoverBorderColor: (ctx2) => {
-            const index2 = ctx2.dataIndex;
-            return pointBorderColors[index2] || pointBorderColors[0] || colors2.accentColor;
-          },
-          pointHoverBorderWidth: (ctx2) => {
-            const index2 = ctx2.dataIndex;
-            return pointBorderWidths[index2] || pointBorderWidths[0] || CHART_CONFIG.POINT_BORDER_WIDTH;
-          }
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            enabled: true,
-            backgroundColor: colors2.bgPrimary,
-            titleColor: colors2.textMuted,
-            bodyColor: colors2.textMuted,
-            borderColor: colors2.borderColor,
-            borderWidth: 1,
-            padding: 8,
-            displayColors: false,
-            callbacks: {
-              label: (context) => {
-                const value = context.parsed.y;
-                if (unit) {
-                  const capitalizedUnit = unit.charAt(0).toUpperCase() + unit.slice(1);
-                  return `${capitalizedUnit}: ${value}`;
-                }
-                return `${chartLabel}: ${value}`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: {
-              display: true,
-              color: colorToRgba(colors2.borderColor, CHART_CONFIG.OPACITY_MEDIUM),
-              lineWidth: 1,
-              drawBorder: false
-            },
-            ticks: {
-              color: colors2.textFaint,
-              font: {
-                family: "var(--font-text)",
-                size: 11
-              },
-              maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: 10
-            }
-          },
-          y: {
-            grid: {
-              display: true,
-              color: colorToRgba(colors2.borderColor, CHART_CONFIG.OPACITY_MEDIUM),
-              lineWidth: 1,
-              drawBorder: false
-            },
-            ticks: {
-              color: colors2.textFaint,
-              font: {
-                family: "var(--font-text)",
-                size: 11
-              }
-            },
-            beginAtZero: !minLimit && !maxLimit && !scaleMinValue && !scaleMaxValue,
-            // Начинать с нуля только если нет лимитов и scale значений
-            min: minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMin : void 0,
-            max: minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMax : void 0
-          }
-        },
-        interaction: {
-          intersect: false,
-          mode: "index"
-        },
-        elements: {
-          point: {
-            hoverBackgroundColor: void 0,
-            // Отключаем дефолтный hover цвет
-            hoverBorderColor: void 0,
-            // Отключаем дефолтный hover цвет
-            hoverRadius: 5,
-            hoverBorderWidth: void 0
-            // Отключаем дефолтный hover border width
-          }
-        },
-        onClick: (event, elements2, chart) => {
-          if (elements2 && elements2.length > 0) {
-            const element = elements2[0];
-            const pointIndex = element.index;
-            const dateStrings2 = chart.dateStrings;
-            if (!dateStrings2) return;
-            if (pointIndex >= 0 && pointIndex < dateStrings2.length) {
-              const clickedDateStr = dateStrings2[pointIndex];
-              const mainContainer = container.closest(".tracker-notes");
-              const blockContainer = mainContainer?.parentElement;
-              const dateInput = blockContainer?.querySelector(".tracker-notes__date-input");
-              if (dateInput) {
-                let dateIsoValue;
-                try {
-                  const dateObj = DateService.parse(clickedDateStr, this.settings.dateFormat);
-                  if (dateObj.isValid()) {
-                    dateIsoValue = DateService.format(dateObj, "YYYY-MM-DD");
-                  } else {
-                    return;
-                  }
-                  if (dateIsoValue) {
-                    dateInput.value = dateIsoValue;
-                    dateInput.dispatchEvent(new Event("change", { bubbles: true }));
-                  }
-                } catch (error) {
-                  console.error("Tracker: Error converting date", clickedDateStr, error);
-                }
-              }
-            }
-          }
-        },
-        onResize: (chart) => {
-          const startIndex = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
-          const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : colors2.startLineColor;
-          const activeIdx = chart.activeDateIndex !== void 0 ? chart.activeDateIndex : activeDateIndex;
-          if (startIndex !== null && startIndex !== void 0 && startIndex !== activeIdx) {
-            drawStartLine(chart, startIndex, lineColor);
-          }
-          if (activeIdx !== null && activeIdx !== void 0) {
-            drawActiveDateLine(chart, activeIdx, lineColor);
-          }
-          const minLimitValue = chart.minLimit !== void 0 ? chart.minLimit : minLimit;
-          const maxLimitValue = chart.maxLimit !== void 0 ? chart.maxLimit : maxLimit;
-          if (minLimitValue !== null && minLimitValue !== void 0) {
-            drawLimitLine(chart, minLimitValue, lineColor);
-          }
-          if (maxLimitValue !== null && maxLimitValue !== void 0) {
-            drawLimitLine(chart, maxLimitValue, lineColor);
-          }
-        }
-      },
-      plugins: [{
-        id: "startLinePlugin",
-        beforeDraw: (chart) => {
-          const startIdx = chart.startTrackingIndex !== void 0 ? chart.startTrackingIndex : startTrackingIndex;
-          const lineColor = chart.startLineColor !== void 0 ? chart.startLineColor : colors2.startLineColor;
-          const activeIdx = chart.activeDateIndex !== void 0 ? chart.activeDateIndex : activeDateIndex;
-          if (startIdx !== null && startIdx !== void 0 && startIdx !== activeIdx) {
-            drawStartLine(chart, startIdx, lineColor);
-          }
-          if (activeIdx !== null && activeIdx !== void 0) {
-            drawActiveDateLine(chart, activeIdx, lineColor);
-          }
-          const minLimitValue = chart.minLimit !== void 0 ? chart.minLimit : minLimit;
-          const maxLimitValue = chart.maxLimit !== void 0 ? chart.maxLimit : maxLimit;
-          if (minLimitValue !== null && minLimitValue !== void 0) {
-            drawLimitLine(chart, minLimitValue, lineColor);
-          }
-          if (maxLimitValue !== null && maxLimitValue !== void 0) {
-            drawLimitLine(chart, maxLimitValue, lineColor);
-          }
-        }
-      }]
-    };
-    const drawLimitLine = (chart, value, color2) => {
-      const ctx2 = chart.ctx;
-      const chartArea = chart.chartArea;
-      if (!chartArea) return;
-      const yScale = chart.scales.y;
-      const yPos = yScale.getPixelForValue(value);
-      if (yPos < chartArea.top || yPos > chartArea.bottom) return;
-      ctx2.save();
-      ctx2.strokeStyle = colorToRgba(color2, 0.6);
-      ctx2.lineWidth = CHART_CONFIG.LINE_WIDTH;
-      ctx2.setLineDash([5, 5]);
-      ctx2.beginPath();
-      ctx2.moveTo(chartArea.left, yPos);
-      ctx2.lineTo(chartArea.right, yPos);
-      ctx2.stroke();
-      ctx2.restore();
-    };
-    try {
-      const chartInstance = new Chart(canvas, chartConfig);
-      chartDiv.chartInstance = chartInstance;
-      chartInstance.startTrackingIndex = startTrackingIndex;
-      chartInstance.startLineColor = colors2.startLineColor;
-      chartInstance.dateStrings = dateStrings;
-      chartInstance.minLimit = minLimit;
-      chartInstance.maxLimit = maxLimit;
-    } catch (error) {
-      console.error("Tracker: error creating chart", error);
-      chartDiv.setText("Chart display error");
-    }
-  }
-  async updateChart(chartDiv, file, dateIso, daysToShow, entries) {
-    const chartInstance = chartDiv.chartInstance;
-    if (!chartInstance) {
-      await this.renderChart(chartDiv.parentElement, file, dateIso, daysToShow, entries);
-      return;
-    }
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const metricType = (fileOpts.mode ?? "good-habit").toLowerCase();
-    if (metricType === "good-habit" || metricType === "bad-habit") {
-      return;
-    }
-    const today = DateService.now();
-    const todayStr = DateService.format(today, this.settings.dateFormat);
-    const activeDate = dateIso ? DateService.parse(dateIso, "YYYY-MM-DD") : today;
-    const activeDateStr = DateService.format(activeDate, this.settings.dateFormat);
-    const endDate = activeDate.clone().add(5, "days");
-    const days = daysToShow || this.settings.daysToShow;
-    const startDate = endDate.clone().subtract(days - 1, "days");
-    const entriesToUse = entries ?? await this.readAllEntries(file);
-    const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
-    let startTrackingIndex = null;
-    let activeDateIndex = null;
-    const minLimit = fileOpts.minLimit ? parseFloat(fileOpts.minLimit) : null;
-    const maxLimit = fileOpts.maxLimit ? parseFloat(fileOpts.maxLimit) : null;
-    const scaleMinValue = metricType === "scale" && fileOpts.minValue ? parseFloat(fileOpts.minValue) : null;
-    const scaleMaxValue = metricType === "scale" && fileOpts.maxValue ? parseFloat(fileOpts.maxValue) : null;
-    const colors2 = getThemeColors();
-    const labels = [];
-    const values = [];
-    const pointBackgroundColors = [];
-    const pointBorderColors = [];
-    const dateStrings = [];
-    let maxValue = 0;
-    for (let i4 = 0; i4 < days; i4++) {
-      const date = startDate.clone().add(i4, "days");
-      const dateStr = DateService.format(date, this.settings.dateFormat);
-      if (dateStr === startTrackingDateStr) {
-        startTrackingIndex = i4;
-      }
-      if (dateStr === activeDateStr) {
-        activeDateIndex = i4;
-      }
-      let label = "";
-      const m3 = window.moment;
-      if (m3) {
-        label = m3(date.toDate()).format("D MMM");
-      } else {
-        const day = date.getDate();
-        const month = date.toDate().toLocaleDateString("en", { month: "short" });
-        label = `${day} ${month}`;
-      }
-      labels.push(label);
-      dateStrings.push(dateStr);
-      const val = entriesToUse.get(dateStr);
-      let numVal = 0;
-      if (val != null) {
-        if (metricType === "text") {
-          numVal = countWords(String(val));
-        } else if (typeof val === "number") {
-          numVal = val;
-        } else if (val === "1" || String(val) === "true") {
-          numVal = 1;
-        } else {
-          numVal = Number(val) || 0;
-        }
-      }
-      values.push(numVal);
-      maxValue = Math.max(maxValue, numVal);
-      let pointColor = colors2.accentColor;
-      let pointBorder = colors2.accentColor;
-      const isAfterToday = dateStr > todayStr;
-      const hasLimits = minLimit !== null || maxLimit !== null;
-      if (!isAfterToday && startTrackingIndex !== null && i4 >= startTrackingIndex && hasLimits) {
-        const isInRange = (minLimit === null || numVal >= minLimit) && (maxLimit === null || numVal <= maxLimit);
-        if (isInRange) {
-          pointColor = colors2.successColor;
-          pointBorder = colors2.successColor;
-        } else {
-          pointColor = colors2.errorColor;
-          pointBorder = colors2.errorColor;
-        }
-      }
-      pointBackgroundColors.push(pointColor);
-      pointBorderColors.push(pointBorder);
-    }
-    const pointRadii = [];
-    const pointBorderWidths = [];
-    for (let i4 = 0; i4 < days; i4++) {
-      pointRadii.push(CHART_CONFIG.POINT_RADIUS);
-      pointBorderWidths.push(CHART_CONFIG.POINT_BORDER_WIDTH);
-    }
-    let yAxisMin = 0;
-    let yAxisMax = maxValue;
-    const allMinValues = [];
-    if (minLimit !== null) allMinValues.push(minLimit);
-    if (scaleMinValue !== null) allMinValues.push(scaleMinValue);
-    if (allMinValues.length > 0) {
-      const minFromAll = Math.min(...allMinValues);
-      yAxisMin = Math.min(yAxisMin, minFromAll);
-    }
-    const allMaxValues = [maxValue];
-    if (maxLimit !== null) allMaxValues.push(maxLimit);
-    if (minLimit !== null && maxLimit === null) {
-      allMaxValues.push(minLimit * 2);
-    } else if (minLimit !== null) {
-      allMaxValues.push(minLimit);
-    }
-    if (scaleMaxValue !== null) allMaxValues.push(scaleMaxValue);
-    if (scaleMinValue !== null) allMaxValues.push(scaleMinValue);
-    if (allMaxValues.length > 0) {
-      const maxFromAll = Math.max(...allMaxValues);
-      yAxisMax = Math.max(yAxisMax, maxFromAll);
-    }
-    if (yAxisMax === 0 && minLimit === null && maxLimit === null && scaleMinValue === null && scaleMaxValue === null) {
-      yAxisMax = 1;
-    }
-    if (yAxisMax <= yAxisMin) {
-      const padding = Math.max(1, Math.abs(yAxisMin) * CHART_CONFIG.PADDING_FACTOR || 1);
-      yAxisMax = yAxisMin + padding;
-    }
-    chartInstance.startTrackingIndex = startTrackingIndex;
-    chartInstance.startLineColor = colors2.startLineColor;
-    chartInstance.dateStrings = dateStrings;
-    chartInstance.minLimit = minLimit;
-    chartInstance.maxLimit = maxLimit;
-    chartInstance.activeDateIndex = activeDateIndex;
-    chartInstance.data.labels = labels;
-    chartInstance.data.datasets[0].data = values;
-    chartInstance.data.datasets[0].pointBackgroundColor = pointBackgroundColors;
-    chartInstance.data.datasets[0].pointBorderColor = pointBorderColors;
-    chartInstance.data.datasets[0].pointRadius = pointRadii;
-    chartInstance.data.datasets[0].pointBorderWidth = pointBorderWidths;
-    if (chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
-      chartInstance.options.scales.y.beginAtZero = !minLimit && !maxLimit && !scaleMinValue && !scaleMaxValue;
-      chartInstance.options.scales.y.min = minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMin : void 0;
-      chartInstance.options.scales.y.max = minLimit !== null || maxLimit !== null || scaleMinValue !== null || scaleMaxValue !== null ? yAxisMax : void 0;
-    }
-    chartInstance.update("none");
-  }
-  async updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries) {
-    const entriesToUse = entries ?? await this.readAllEntries(file);
-    const fileOpts = await this.getFileTypeFromFrontmatter(file);
-    const metricType = trackerType || (fileOpts.mode ?? "good-habit").toLowerCase();
-    const endDate = dateIso ? DateService.parse(dateIso, "YYYY-MM-DD") : DateService.now();
-    const days = daysToShow || this.settings.daysToShow;
-    const dateIsoFormatted = DateService.format(endDate, this.settings.dateFormat);
-    const startTrackingDateStr = await this.getStartTrackingDate(entriesToUse, file);
-    const result = this.statisticsService.calculateStatistics(
-      entriesToUse,
-      this.settings,
-      dateIsoFormatted,
-      days,
-      metricType,
-      endDate,
-      file,
-      startTrackingDateStr
-    );
-    this.statisticsRenderer.renderStats(statsDiv, result, fileOpts);
-  }
-  async renderStats(container, file, dateIso, daysToShow, trackerType, entries) {
-    const statsDiv = container.createDiv({ cls: "tracker-notes__stats" });
-    await this.updateStats(statsDiv, file, dateIso, daysToShow, trackerType, entries);
-  }
+  // ---- Data Access (used by Preact components) ---------------------------------------------------------
   async ensureTrackerState(file) {
     const existing = this.trackerState.get(file.path);
     if (existing) {
