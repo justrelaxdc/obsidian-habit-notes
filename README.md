@@ -1,8 +1,8 @@
 # 📊 Tracker: Habits and Metrics
 
-> **Note‑based habit & metrics tracker for Obsidian with heatmaps, charts, smart statistics, and local data storage.**
+> **Note‑based habit & metrics tracker for Obsidian with heatmaps, charts, smart statistics, and clean local data storage.**
 
-Transform your Obsidian vault into a powerful tracking system. Track everything from simple daily habits to complex numeric metrics — all stored inside your vault. No external databases, no cloud, no telemetry.
+Transform your Obsidian vault into a powerful tracking system. Track everything from simple daily habits to complex numeric metrics — all stored as human‑readable Markdown inside your vault. No external databases, no cloud, no telemetry.
 
 ---
 
@@ -105,27 +105,14 @@ Access via **Settings → Tracker: Habits and Metrics**
 
 Most users can start without changing anything. These options let you fine‑tune defaults.
 
-### General
-- **Trackers folder** — default folder for new tracker files  
-- **Number of days** — default number for how many past days will be displayed in the graph and hitmaps
-
-### Display
-- **Show chart by default**  
-- **Show stats by default**  
-- **Hide chart on mobile**  
-- **Hide statistics on mobile**
-
-### Advanced
-- **Disable limit reaction** — turn off animated feedback
-
-<!-- 🖼 Screenshot: plugin settings panel -->
+![Dashboard Preview](assets/settings.png)
 
 ---
 
 ## 📁 Tracker File Structure
 
 You normally don’t need to edit trackers manually — they are managed automatically.  
-Advanced users (or Dataview integrations) can customize using YAML:
+Advanced users can use Dataview to extract data from trackers:
 
 ```markdown
 ---
@@ -141,10 +128,8 @@ maxLimit: 100             # optional, a limit you don't want to cross
 
 unit: "kg"                # optional, will appear next to the title and in the chart
 
-data:
-  "2025-01-01": 1
-  "2025-01-02": 1
-  "2025-01-03": 0
+data:{"2025-01-01":1,"2025-01-02":1,"2025-01-03":0}
+  
 ---
 ```
 
@@ -206,10 +191,9 @@ Available in **Ctrl+P / Cmd+P**:
 ## 🎯 Roadmap
 
 - [ ] Reminders & notifications  
-- [ ] Goal tracking (define target values)  
 - [ ] Period comparison (week-over-week, month-over-month)  
-- [ ] Data export/import  
-- [ ] Additional chart types  
+- [ ] Data export/import
+- [ ] Additional chart types
 - [ ] Cross‑tracker analytics (correlations, trends)  
 
 ---

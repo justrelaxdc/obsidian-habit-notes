@@ -180,10 +180,8 @@ export default class TrackerPlugin extends Plugin {
     this.invalidateCacheForFile(file);
     
     // Reload data and update store (signals will trigger re-renders)
-    const [entriesData, fileOpts] = await Promise.all([
-      this.trackerFileService.readAllEntries(file),
-      this.trackerFileService.getFileTypeFromFrontmatter(file)
-    ]);
+    // Use readTrackerFile for efficient single-file read
+    const { entries: entriesData, fileOpts } = await this.trackerFileService.readTrackerFile(file);
     
     trackerStore.setTrackerState(file.path, {
       entries: entriesData,
@@ -245,6 +243,13 @@ export default class TrackerPlugin extends Plugin {
   async readAllEntries(file: TFile): Promise<Map<string, string | number>> {
     const state = await this.stateManager.ensureTrackerState(file);
     return new Map(state.entries);
+  }
+
+  async readTrackerFile(file: TFile): Promise<{
+    entries: Map<string, string | number>;
+    fileOpts: TrackerFileOptions;
+  }> {
+    return this.trackerFileService.readTrackerFile(file);
   }
 
   // ---- Tracker CRUD ----------------------------------------------------------
@@ -310,7 +315,8 @@ export default class TrackerPlugin extends Plugin {
       // Update global store for reactive updates
       trackerStore.updateSingleEntry(file.path, dateIso, normalizedValue);
       
-      await this.trackerFileService.writeLogLine(file, dateIso, value);
+      // Use writeLogLineFromState to avoid re-reading the file
+      await this.trackerFileService.writeLogLineFromState(file, state, dateIso, normalizedValue);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new Notice(`${ERROR_MESSAGES.WRITE_ERROR}: ${errorMsg}`);
@@ -327,7 +333,8 @@ export default class TrackerPlugin extends Plugin {
       // Update global store for reactive updates
       trackerStore.deleteEntry(file.path, dateIso);
       
-      await this.trackerFileService.deleteEntry(file, dateIso);
+      // Use deleteEntryFromState to avoid re-reading the file
+      await this.trackerFileService.deleteEntryFromState(file, state, dateIso);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new Notice(`${ERROR_MESSAGES.WRITE_ERROR}: ${errorMsg}`);

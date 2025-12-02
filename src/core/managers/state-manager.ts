@@ -53,10 +53,8 @@ export class StateManager {
     // Evict LRU entry if cache is full - O(1)
     this.evictIfNeeded();
     
-    const [entries, fileOpts] = await Promise.all([
-      this.trackerFileService.readAllEntries(file),
-      this.trackerFileService.getFileTypeFromFrontmatter(file)
-    ]);
+    // Read both entries and fileOpts in a single file read operation
+    const { entries, fileOpts } = await this.trackerFileService.readTrackerFile(file);
     const state = { entries, fileOpts };
     // New entries are added at the end (most recently used)
     this.trackerState.set(file.path, state);

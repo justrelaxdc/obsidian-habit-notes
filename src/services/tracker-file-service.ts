@@ -159,29 +159,161 @@ export class TrackerFileService {
     return `data: ${jsonString}\n`;
   }
 
-  async readAllEntries(file: TFile): Promise<Map<string, string | number>> {
-    const entries = new Map<string, string | number>();
-    try {
-      const raw = await this.getFileContent(file);
-      const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
-      if (!frontmatterMatch) return entries;
-
-      const frontmatter = frontmatterMatch[1];
-      const data = this.parseFrontmatterData(frontmatter);
-
-      Object.entries(data).forEach(([date, value]) => {
-        entries.set(date, value);
-      });
-    } catch (error) {
-      logError("Tracker: error reading all entries", error);
+  /**
+   * Replace data section in frontmatter with new JSON data
+   * Returns updated frontmatter string
+   */
+  replaceDataInFrontmatter(frontmatter: string, newDataJson: string): string {
+    let newFrontmatter = frontmatter.trim();
+    const dataIndex = newFrontmatter.indexOf('data:');
+    
+    if (dataIndex !== -1) {
+      // Find the JSON object after "data:"
+      let jsonStart = dataIndex + 5;
+      while (jsonStart < newFrontmatter.length && /\s/.test(newFrontmatter[jsonStart])) {
+        jsonStart++;
+      }
+      
+      if (jsonStart < newFrontmatter.length && newFrontmatter[jsonStart] === '{') {
+        // Find matching closing brace
+        let braceCount = 0;
+        let inString = false;
+        let escapeNext = false;
+        let jsonEnd = jsonStart;
+        
+        for (let i = jsonStart; i < newFrontmatter.length; i++) {
+          const char = newFrontmatter[i];
+          
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+          
+          if (!inString) {
+            if (char === '{') {
+              braceCount++;
+            } else if (char === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                jsonEnd = i + 1;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Replace the data section
+        const dataJsonTrimmed = newDataJson.trim();
+        newFrontmatter = newFrontmatter.substring(0, dataIndex) + dataJsonTrimmed + newFrontmatter.substring(jsonEnd);
+      } else {
+        // data: exists but no JSON object, append it
+        newFrontmatter = newFrontmatter + "\n" + newDataJson.trim();
+      }
+    } else {
+      // No data: section, append it
+      newFrontmatter = newFrontmatter + "\n" + newDataJson.trim();
     }
 
+    if (!newFrontmatter.endsWith("\n")) {
+      newFrontmatter += "\n";
+    }
+    
+    return newFrontmatter;
+  }
+
+  /**
+   * Read both entries and file options from tracker file in a single read operation
+   * This is more efficient than calling readAllEntries() and getFileTypeFromFrontmatter() separately
+   */
+  async readTrackerFile(file: TFile): Promise<{
+    entries: Map<string, string | number>;
+    fileOpts: TrackerFileOptions;
+  }> {
+    try {
+      const content = await this.getFileContent(file);
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      
+      if (!frontmatterMatch) {
+        return {
+          entries: new Map(),
+          fileOpts: { mode: TrackerType.GOOD_HABIT }
+        };
+      }
+      
+      const frontmatter = frontmatterMatch[1];
+      const entriesData = this.parseFrontmatterData(frontmatter);
+      const fileOpts = this.parseFileOptions(frontmatter);
+      
+      const entries = new Map<string, string | number>();
+      Object.entries(entriesData).forEach(([date, value]) => {
+        entries.set(date, value);
+      });
+      
+      return { entries, fileOpts };
+    } catch (error) {
+      logError("Tracker: error reading tracker file", error);
+      return {
+        entries: new Map(),
+        fileOpts: { mode: TrackerType.GOOD_HABIT }
+      };
+    }
+  }
+
+  async readAllEntries(file: TFile): Promise<Map<string, string | number>> {
+    const { entries } = await this.readTrackerFile(file);
     return entries;
   }
 
   async readValueForDate(file: TFile, dateIso: string): Promise<string | number | null> {
     const entries = await this.readAllEntries(file);
     return entries.get(dateIso) ?? null;
+  }
+
+  /**
+   * Write entry using state data (avoids re-reading file)
+   * State entries should already be updated before calling this method
+   */
+  async writeLogLineFromState(
+    file: TFile,
+    state: { entries: Map<string, string | number> },
+    dateIso: string,
+    value: string | number
+  ): Promise<void> {
+    try {
+      // Read file only to get body and current frontmatter structure
+      const content = await this.getFileContent(file);
+      // Invalidate cache after write
+      this.invalidateFileCache(file.path);
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+      if (!frontmatterMatch) {
+        throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
+      }
+
+      const frontmatter = frontmatterMatch[1];
+      const body = content.slice(frontmatterMatch[0].length);
+
+      // Use data from state (already updated)
+      const dataJson = this.formatDataToJson(Object.fromEntries(state.entries));
+      const newFrontmatter = this.replaceDataInFrontmatter(frontmatter, dataJson.trim());
+
+      const newContent = `---\n${newFrontmatter}---${body}`;
+      await this.app.vault.modify(file, newContent);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logError("Tracker: write error", error);
+      throw new Error(errorMsg);
+    }
   }
 
   async writeLogLine(file: TFile, dateIso: string, value: string) {
@@ -202,77 +334,49 @@ export class TrackerFileService {
       data[dateIso] = parseMaybeNumber(value);
 
       const dataJson = this.formatDataToJson(data);
-
-      let newFrontmatter = frontmatter.trim();
-      // Find data: section and replace with new JSON
-      // Use a helper function to find the JSON object boundaries
-      const dataIndex = newFrontmatter.indexOf('data:');
-      if (dataIndex !== -1) {
-        // Find the JSON object after "data:"
-        let jsonStart = dataIndex + 5;
-        while (jsonStart < newFrontmatter.length && /\s/.test(newFrontmatter[jsonStart])) {
-          jsonStart++;
-        }
-        
-        if (jsonStart < newFrontmatter.length && newFrontmatter[jsonStart] === '{') {
-          // Find matching closing brace
-          let braceCount = 0;
-          let inString = false;
-          let escapeNext = false;
-          let jsonEnd = jsonStart;
-          
-          for (let i = jsonStart; i < newFrontmatter.length; i++) {
-            const char = newFrontmatter[i];
-            
-            if (escapeNext) {
-              escapeNext = false;
-              continue;
-            }
-            
-            if (char === '\\') {
-              escapeNext = true;
-              continue;
-            }
-            
-            if (char === '"') {
-              inString = !inString;
-              continue;
-            }
-            
-            if (!inString) {
-              if (char === '{') {
-                braceCount++;
-              } else if (char === '}') {
-                braceCount--;
-                if (braceCount === 0) {
-                  jsonEnd = i + 1;
-                  break;
-                }
-              }
-            }
-          }
-          
-          // Replace the data section
-          const dataJsonTrimmed = dataJson.trim();
-          newFrontmatter = newFrontmatter.substring(0, dataIndex) + dataJsonTrimmed + newFrontmatter.substring(jsonEnd);
-        } else {
-          // data: exists but no JSON object, append it
-          newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
-        }
-      } else {
-        // No data: section, append it
-        newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
-      }
-
-      if (!newFrontmatter.endsWith("\n")) {
-        newFrontmatter += "\n";
-      }
+      const newFrontmatter = this.replaceDataInFrontmatter(frontmatter, dataJson.trim());
 
       const newContent = `---\n${newFrontmatter}---${body}`;
       await this.app.vault.modify(file, newContent);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logError("Tracker: write error", error);
+      throw new Error(errorMsg);
+    }
+  }
+
+  /**
+   * Delete entry using state data (avoids re-reading file)
+   * State entries should already be updated (entry deleted) before calling this method
+   */
+  async deleteEntryFromState(
+    file: TFile,
+    state: { entries: Map<string, string | number> },
+    dateIso: string
+  ): Promise<void> {
+    try {
+      // Read file only to get body and current frontmatter structure
+      const content = await this.getFileContent(file);
+      // Invalidate cache after delete
+      this.invalidateFileCache(file.path);
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+      if (!frontmatterMatch) {
+        throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
+      }
+
+      const frontmatter = frontmatterMatch[1];
+      const body = content.slice(frontmatterMatch[0].length);
+
+      // Use data from state (entry already deleted)
+      const dataJson = this.formatDataToJson(Object.fromEntries(state.entries));
+      const newFrontmatter = this.replaceDataInFrontmatter(frontmatter, dataJson.trim());
+
+      const newContent = `---\n${newFrontmatter}---${body}`;
+      await this.app.vault.modify(file, newContent);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logError("Tracker: delete entry error", error);
       throw new Error(errorMsg);
     }
   }
@@ -300,71 +404,7 @@ export class TrackerFileService {
       delete data[dateIso];
 
       const dataJson = this.formatDataToJson(data);
-
-      let newFrontmatter = frontmatter.trim();
-      // Find data: section and replace with new JSON
-      // Use a helper function to find the JSON object boundaries
-      const dataIndex = newFrontmatter.indexOf('data:');
-      if (dataIndex !== -1) {
-        // Find the JSON object after "data:"
-        let jsonStart = dataIndex + 5;
-        while (jsonStart < newFrontmatter.length && /\s/.test(newFrontmatter[jsonStart])) {
-          jsonStart++;
-        }
-        
-        if (jsonStart < newFrontmatter.length && newFrontmatter[jsonStart] === '{') {
-          // Find matching closing brace
-          let braceCount = 0;
-          let inString = false;
-          let escapeNext = false;
-          let jsonEnd = jsonStart;
-          
-          for (let i = jsonStart; i < newFrontmatter.length; i++) {
-            const char = newFrontmatter[i];
-            
-            if (escapeNext) {
-              escapeNext = false;
-              continue;
-            }
-            
-            if (char === '\\') {
-              escapeNext = true;
-              continue;
-            }
-            
-            if (char === '"') {
-              inString = !inString;
-              continue;
-            }
-            
-            if (!inString) {
-              if (char === '{') {
-                braceCount++;
-              } else if (char === '}') {
-                braceCount--;
-                if (braceCount === 0) {
-                  jsonEnd = i + 1;
-                  break;
-                }
-              }
-            }
-          }
-          
-          // Replace the data section
-          const dataJsonTrimmed = dataJson.trim();
-          newFrontmatter = newFrontmatter.substring(0, dataIndex) + dataJsonTrimmed + newFrontmatter.substring(jsonEnd);
-        } else {
-          // data: exists but no JSON object, append it
-          newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
-        }
-      } else {
-        // No data: section, append it
-        newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
-      }
-
-      if (!newFrontmatter.endsWith("\n")) {
-        newFrontmatter += "\n";
-      }
+      const newFrontmatter = this.replaceDataInFrontmatter(frontmatter, dataJson.trim());
 
       const newContent = `---\n${newFrontmatter}---${body}`;
       await this.app.vault.modify(file, newContent);
@@ -375,40 +415,42 @@ export class TrackerFileService {
     }
   }
 
-  async getFileTypeFromFrontmatter(file: TFile): Promise<TrackerFileOptions> {
+  /**
+   * Parse file options from frontmatter string
+   * Can be used without reading the file if frontmatter is already available
+   */
+  parseFileOptions(frontmatter: string): TrackerFileOptions {
     const fileOpts: TrackerFileOptions = {};
     try {
-      const fileContent = await this.getFileContent(file);
-      const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
-      if (frontmatterMatch) {
-        const frontmatter = frontmatterMatch[1];
-        const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
-        fileOpts.mode = (typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT) as any;
-        const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
-        if (minValueMatch) fileOpts.minValue = minValueMatch[1];
-        const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);
-        if (maxValueMatch) fileOpts.maxValue = maxValueMatch[1];
-        const stepMatch = frontmatter.match(/^step:\s*([\d.]+)/m);
-        if (stepMatch) fileOpts.step = stepMatch[1];
-        const minLimitMatch = frontmatter.match(/^minLimit:\s*([\d.]+)/m);
-        if (minLimitMatch) fileOpts.minLimit = minLimitMatch[1];
-        const maxLimitMatch = frontmatter.match(/^maxLimit:\s*([\d.]+)/m);
-        if (maxLimitMatch) fileOpts.maxLimit = maxLimitMatch[1];
-        const unitMatch = frontmatter.match(/^unit:\s*["']?([^"'\n]+)["']?/m);
-        if (unitMatch && unitMatch[1]) {
-          fileOpts.unit = unitMatch[1].trim();
-        }
-        const trackingStartDateMatch = frontmatter.match(/^trackingStartDate:\s*["']?([^"'\s\n]+)["']?/m);
-        if (trackingStartDateMatch && trackingStartDateMatch[1]) {
-          fileOpts.trackingStartDate = trackingStartDateMatch[1].trim();
-        }
-      } else {
-        fileOpts.mode = TrackerType.GOOD_HABIT;
+      const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
+      fileOpts.mode = (typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT) as any;
+      const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
+      if (minValueMatch) fileOpts.minValue = minValueMatch[1];
+      const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);
+      if (maxValueMatch) fileOpts.maxValue = maxValueMatch[1];
+      const stepMatch = frontmatter.match(/^step:\s*([\d.]+)/m);
+      if (stepMatch) fileOpts.step = stepMatch[1];
+      const minLimitMatch = frontmatter.match(/^minLimit:\s*([\d.]+)/m);
+      if (minLimitMatch) fileOpts.minLimit = minLimitMatch[1];
+      const maxLimitMatch = frontmatter.match(/^maxLimit:\s*([\d.]+)/m);
+      if (maxLimitMatch) fileOpts.maxLimit = maxLimitMatch[1];
+      const unitMatch = frontmatter.match(/^unit:\s*["']?([^"'\n]+)["']?/m);
+      if (unitMatch && unitMatch[1]) {
+        fileOpts.unit = unitMatch[1].trim();
+      }
+      const trackingStartDateMatch = frontmatter.match(/^trackingStartDate:\s*["']?([^"'\s\n]+)["']?/m);
+      if (trackingStartDateMatch && trackingStartDateMatch[1]) {
+        fileOpts.trackingStartDate = trackingStartDateMatch[1].trim();
       }
     } catch (error) {
-      logError("Tracker: error reading frontmatter", error);
+      logError("Tracker: error parsing frontmatter options", error);
       fileOpts.mode = TrackerType.GOOD_HABIT;
     }
+    return fileOpts;
+  }
+
+  async getFileTypeFromFrontmatter(file: TFile): Promise<TrackerFileOptions> {
+    const { fileOpts } = await this.readTrackerFile(file);
     return fileOpts;
   }
 

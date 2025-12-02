@@ -53,10 +53,8 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
           return;
         }
 
-        const [options, entriesData] = await Promise.all([
-          plugin.getFileTypeFromFrontmatter(file),
-          plugin.readAllEntries(file),
-        ]);
+        // Use readTrackerFile for efficient single-file read
+        const { entries: entriesData, fileOpts: options } = await plugin.readTrackerFile(file);
 
         trackerStore.setTrackerState(file.path, {
           entries: entriesData,
