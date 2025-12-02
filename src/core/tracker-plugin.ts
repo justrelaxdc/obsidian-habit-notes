@@ -447,6 +447,9 @@ export default class TrackerPlugin extends Plugin {
       ) as TFolder[];
     }
 
+    // Ignore folders containing "archive" in name (case-insensitive)
+    folders = folders.filter(f => !f.name.toLowerCase().includes("archive"));
+
     const sortedFolders = this.sortOrderManager.sortItemsByOrder(
       folders, parentFolderPath || '', (p) => normalizePath(p)
     );
@@ -481,6 +484,9 @@ export default class TrackerPlugin extends Plugin {
         f => f instanceof TFolder
       ) as TFolder[];
     }
+
+    // Ignore folders containing "archive" in name (case-insensitive)
+    folders = folders.filter(f => !f.name.toLowerCase().includes("archive"));
 
     const sortedFolders = this.sortOrderManager.sortItemsByOrder(
       folders, parentFolderPath || '', (p) => normalizePath(p)

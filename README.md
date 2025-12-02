@@ -1,8 +1,8 @@
 # 📊 Tracker: Habits and Metrics
 
-> **Note‑based habit & metrics tracker for Obsidian with heatmaps, charts, smart statistics, and clean local data storage.**
+> **Note‑based habit & metrics tracker for Obsidian with heatmaps, charts, smart statistics, and local data storage.**
 
-Transform your Obsidian vault into a powerful tracking system. Track everything from simple daily habits to complex numeric metrics — all stored as human‑readable Markdown inside your vault. No external databases, no cloud, no telemetry.
+Transform your Obsidian vault into a powerful tracking system. Track everything from simple daily habits to complex numeric metrics — all stored inside your vault. No external databases, no cloud, no telemetry.
 
 ---
 
@@ -13,9 +13,9 @@ Transform your Obsidian vault into a powerful tracking system. Track everything 
 ## ✨ Key Features
 
 ### 🎯 Six tracker types
-- **Good Habit** – track positive habits with interactive heatmaps  
-- **Bad Habit** – monitor habits you want to reduce or eliminate  
-- **Number** – record numeric values with debounced auto‑saving  
+- **Good Habit** – track positive habits with interactive heatmaps
+- **Bad Habit** – monitor habits you want to reduce or eliminate
+- **Number** – record numeric values with debounced auto‑saving
 - **Counter** – increment/decrement via “+ / –” buttons  
 - **Text** – store daily notes and observations  
 - **Scale** – slider input with customizable range (min/max/step)
@@ -35,15 +35,12 @@ Transform your Obsidian vault into a powerful tracking system. Track everything 
   - Period summaries  
 
 ### 🎨 Visuals & UX
-- **Modern card-based design** — elegant tracker cards with subtle shadows and smooth animations  
-- **Heatmaps** — calendar overview of habit activity with beautiful hover effects  
+- **Heatmaps** — calendar overview of habit activity  
 - **Interactive charts** — line graphs with optional limit guides  
-- **Limit indicators** — animated progress bar feedback when crossing thresholds  
-- **Date navigation** — sleek date picker controls all trackers in the block  
+- **Limit indicators (targets)** — animated visual feedback when crossing thresholds  
+- **Date navigation** — one date picker controls all trackers in the block  
 - **Hierarchical view** — folders (up to 3 levels) act as categories/subcategories  
 - **Iconize integration** — automatic display of emoji or icon from Iconize plugin  
-- **Responsive design** — optimized for desktop, tablet, and mobile devices  
-- **Theme-aware** — adapts to any Obsidian theme (light/dark)  
 
 ---
 
@@ -55,14 +52,14 @@ Transform your Obsidian vault into a powerful tracking system. Track everything 
 1. Press `Ctrl+P` (or `Cmd+P` on Mac).  
 2. Run **“Create new tracker”**.  
 3. Enter a name (e.g., “Morning Workout”).  
-4. Choose (or create) a folder.  
+4. Choose (or auto create) a folder.  
 5. Select the tracker type.  
 6. Configure limits, units, start date, etc.  
 7. Click **Create**.
 
 <!-- 🎥 GIF: Creation flow — open palette → create new tracker → choose type → file appears -->
 
-> You can structure trackers inside folders (up to 3 levels). The plugin will automatically interpret these folders as categories/subcategories.
+> You can structure trackers inside folders (up to 3 levels). The plugin will automatically interpret these folders as categories/subcategories. Folders containing the word `archive` are ignored, so old trackers can be saved there.
 
 ---
 
@@ -92,7 +89,7 @@ showStats: true
 ````
 
 **Parameters:**
-- `folder` — where tracker files are stored  
+- `folder` — where tracker files are stored
 - `date` — date to display  
   - default: today  
   - auto-detected from filename in daily notes  
@@ -110,7 +107,7 @@ Most users can start without changing anything. These options let you fine‑tun
 
 ### General
 - **Trackers folder** — default folder for new tracker files  
-- **Number of days for charts** — default statistics window
+- **Number of days** — default number for how many past days will be displayed in the graph and hitmaps
 
 ### Display
 - **Show chart by default**  
@@ -139,10 +136,10 @@ minValue: 0               # scale only
 maxValue: 10              # scale only
 step: 1                   # scale and plusminus
 
-minLimit: 5               # optional
-maxLimit: 100             # optional
+minLimit: 5               # optional, can be your target
+maxLimit: 100             # optional, a limit you don't want to cross
 
-unit: "kg"                # optional
+unit: "kg"                # optional, will appear next to the title and in the chart
 
 data:
   "2025-01-01": 1
@@ -203,38 +200,6 @@ Optional, but powerful.
 Available in **Ctrl+P / Cmd+P**:
 
 - **Create new tracker** — guided creation flow  
-
----
-
-## 🛠️ Technical Architecture
-
-### UI Framework
-The plugin UI is built with **Preact** — a fast, lightweight alternative to React with the same API. This provides:
-- Component-based architecture for maintainable code
-- Efficient virtual DOM diffing for smooth updates
-- Small bundle size (~3KB gzipped)
-
-### Key Technologies
-- **TypeScript** — type-safe development
-- **Preact** — reactive UI components
-- **Chart.js** — interactive charts and visualizations
-- **esbuild** — fast bundling with JSX support
-- **Obsidian API** — native integration with vault and editor
-
-### Project Structure
-```
-src/
-├── components/           # Preact components
-│   ├── TrackerBlock/     # Main block container
-│   ├── TrackerItem/      # Individual tracker
-│   ├── controls/         # Input controls (Number, Scale, etc.)
-│   ├── Statistics/       # Stats display
-│   └── Chart/            # Chart.js wrapper
-├── hooks/                # Custom Preact hooks
-├── services/             # Business logic
-├── domain/               # Types and interfaces
-└── ui/                   # Obsidian UI integration
-```
 
 ---
 

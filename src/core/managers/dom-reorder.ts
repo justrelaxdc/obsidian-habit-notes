@@ -1,6 +1,7 @@
 import type { TFile, TFolder } from "obsidian";
 import type { TrackerBlockRenderChild } from "../../ui/tracker-block-render-child";
 import { CSS_CLASSES } from "../../constants";
+import { logWarning } from "../../utils/notifications";
 
 /**
  * Manages DOM reordering for trackers and folders
