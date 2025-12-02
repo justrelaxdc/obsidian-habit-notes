@@ -446,8 +446,8 @@ export class EditTrackerModal extends Modal {
             const escapedUnit = unit.replace(/"/g, '\\"');
             newFrontmatter += `unit: "${escapedUnit}"\n`;
           }
-          const dataYaml = this.plugin.formatDataToYaml(existingData);
-          newFrontmatter += dataYaml;
+          const dataJson = this.plugin.formatDataToJson(existingData);
+          newFrontmatter += dataJson;
 
           const newContent = `---\n${newFrontmatter}---${body ? `\n\n${body}` : ""}`;
 

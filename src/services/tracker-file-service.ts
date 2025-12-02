@@ -64,71 +64,99 @@ export class TrackerFileService {
   }
 
   parseFrontmatterData(frontmatter: string): Record<string, string | number> {
-    const data: Record<string, string | number> = {};
-    const dataMatch = frontmatter.match(/data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/);
-    if (dataMatch) {
-      if (frontmatter.match(/data:\s*\{\}/)) {
-        return data;
+    // Find data: section in frontmatter
+    const dataIndex = frontmatter.indexOf('data:');
+    if (dataIndex === -1) {
+      return {};
+    }
+    
+    // Find the start of JSON object after "data:"
+    let jsonStart = dataIndex + 5; // length of "data:"
+    // Skip whitespace
+    while (jsonStart < frontmatter.length && /\s/.test(frontmatter[jsonStart])) {
+      jsonStart++;
+    }
+    
+    if (jsonStart >= frontmatter.length || frontmatter[jsonStart] !== '{') {
+      return {};
+    }
+    
+    // Extract JSON object by finding matching closing brace
+    let braceCount = 0;
+    let inString = false;
+    let escapeNext = false;
+    let jsonEnd = jsonStart;
+    
+    for (let i = jsonStart; i < frontmatter.length; i++) {
+      const char = frontmatter[i];
+      
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
       }
-      const dataContent = dataMatch[1];
-      if (dataContent) {
-        const dataLines = dataContent.split(/\n/);
-        dataLines.forEach((line) => {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith("#") || trimmed === "{}") return;
-          const match = trimmed.match(/^["']([^"']+)["']\s*:\s*(.+)$/);
-          if (match) {
-            const key = match[1].trim();
-            let value = match[2].trim();
-            if (
-              (value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))
-            ) {
-              value = value.slice(1, -1);
-              value = value.replace(/\\"/g, '"').replace(/\\'/g, "'");
-            }
-            data[key] = parseMaybeNumber(value);
-          } else {
-            const matchNoQuotes = trimmed.match(/^([^:]+?)\s*:\s*(.+)$/);
-            if (matchNoQuotes) {
-              const key = matchNoQuotes[1].trim();
-              let value = matchNoQuotes[2].trim();
-              if (
-                (value.startsWith('"') && value.endsWith('"')) ||
-                (value.startsWith("'") && value.endsWith("'"))
-              ) {
-                value = value.slice(1, -1);
-                value = value.replace(/\\"/g, '"').replace(/\\'/g, "'");
-              }
-              data[key] = parseMaybeNumber(value);
-            }
+      
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      
+      if (!inString) {
+        if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonEnd = i + 1;
+            break;
           }
-        });
+        }
       }
     }
-    return data;
+    
+    if (braceCount !== 0) {
+      // Malformed JSON
+      return {};
+    }
+    
+    const jsonString = frontmatter.substring(jsonStart, jsonEnd).trim();
+    if (jsonString === '{}') {
+      return {};
+    }
+    
+    try {
+      const parsed = JSON.parse(jsonString);
+      // Convert all values through parseMaybeNumber to maintain type consistency
+      const result: Record<string, string | number> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        result[key] = parseMaybeNumber(String(value));
+      }
+      return result;
+    } catch (error) {
+      logError("Tracker: error parsing JSON data", error);
+      return {};
+    }
   }
 
-  formatDataToYaml(data: Record<string, string | number>): string {
+  formatDataToJson(data: Record<string, string | number>): string {
     if (Object.keys(data).length === 0) {
       return "data: {}\n";
     }
-    let yaml = "data:\n";
-    const sortedDates = Object.keys(data).sort();
-    sortedDates.forEach((date) => {
-      const value = data[date];
-      if (typeof value === "string") {
-        const escapedValue = value
-          .replace(/\\/g, "\\\\")
-          .replace(/"/g, '\\"')
-          .replace(/\n/g, "\\n")
-          .replace(/\r/g, "\\r");
-        yaml += `  "${date}": "${escapedValue}"\n`;
-      } else {
-        yaml += `  "${date}": ${value}\n`;
-      }
-    });
-    return yaml;
+    
+    // Sort keys for readability
+    const sortedKeys = Object.keys(data).sort();
+    const sortedData: Record<string, string | number> = {};
+    for (const key of sortedKeys) {
+      sortedData[key] = data[key];
+    }
+    
+    // Compact JSON format (no spaces)
+    const jsonString = JSON.stringify(sortedData);
+    return `data: ${jsonString}\n`;
   }
 
   async readAllEntries(file: TFile): Promise<Map<string, string | number>> {
@@ -173,18 +201,67 @@ export class TrackerFileService {
       const data = this.parseFrontmatterData(frontmatter);
       data[dateIso] = parseMaybeNumber(value);
 
-      const dataYaml = this.formatDataToYaml(data);
+      const dataJson = this.formatDataToJson(data);
 
       let newFrontmatter = frontmatter.trim();
-      const dataMatch = newFrontmatter.match(/data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/);
-      if (dataMatch) {
-        const dataYamlTrimmed = dataYaml.endsWith("\n") ? dataYaml.slice(0, -1) : dataYaml;
-        newFrontmatter = newFrontmatter.replace(
-          /data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/,
-          dataYamlTrimmed
-        );
+      // Find data: section and replace with new JSON
+      // Use a helper function to find the JSON object boundaries
+      const dataIndex = newFrontmatter.indexOf('data:');
+      if (dataIndex !== -1) {
+        // Find the JSON object after "data:"
+        let jsonStart = dataIndex + 5;
+        while (jsonStart < newFrontmatter.length && /\s/.test(newFrontmatter[jsonStart])) {
+          jsonStart++;
+        }
+        
+        if (jsonStart < newFrontmatter.length && newFrontmatter[jsonStart] === '{') {
+          // Find matching closing brace
+          let braceCount = 0;
+          let inString = false;
+          let escapeNext = false;
+          let jsonEnd = jsonStart;
+          
+          for (let i = jsonStart; i < newFrontmatter.length; i++) {
+            const char = newFrontmatter[i];
+            
+            if (escapeNext) {
+              escapeNext = false;
+              continue;
+            }
+            
+            if (char === '\\') {
+              escapeNext = true;
+              continue;
+            }
+            
+            if (char === '"') {
+              inString = !inString;
+              continue;
+            }
+            
+            if (!inString) {
+              if (char === '{') {
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  jsonEnd = i + 1;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Replace the data section
+          const dataJsonTrimmed = dataJson.trim();
+          newFrontmatter = newFrontmatter.substring(0, dataIndex) + dataJsonTrimmed + newFrontmatter.substring(jsonEnd);
+        } else {
+          // data: exists but no JSON object, append it
+          newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
+        }
       } else {
-        newFrontmatter = newFrontmatter + "\n" + dataYaml.trimEnd();
+        // No data: section, append it
+        newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
       }
 
       if (!newFrontmatter.endsWith("\n")) {
@@ -222,18 +299,67 @@ export class TrackerFileService {
       // Delete the entry
       delete data[dateIso];
 
-      const dataYaml = this.formatDataToYaml(data);
+      const dataJson = this.formatDataToJson(data);
 
       let newFrontmatter = frontmatter.trim();
-      const dataMatch = newFrontmatter.match(/data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/);
-      if (dataMatch) {
-        const dataYamlTrimmed = dataYaml.endsWith("\n") ? dataYaml.slice(0, -1) : dataYaml;
-        newFrontmatter = newFrontmatter.replace(
-          /data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/,
-          dataYamlTrimmed
-        );
+      // Find data: section and replace with new JSON
+      // Use a helper function to find the JSON object boundaries
+      const dataIndex = newFrontmatter.indexOf('data:');
+      if (dataIndex !== -1) {
+        // Find the JSON object after "data:"
+        let jsonStart = dataIndex + 5;
+        while (jsonStart < newFrontmatter.length && /\s/.test(newFrontmatter[jsonStart])) {
+          jsonStart++;
+        }
+        
+        if (jsonStart < newFrontmatter.length && newFrontmatter[jsonStart] === '{') {
+          // Find matching closing brace
+          let braceCount = 0;
+          let inString = false;
+          let escapeNext = false;
+          let jsonEnd = jsonStart;
+          
+          for (let i = jsonStart; i < newFrontmatter.length; i++) {
+            const char = newFrontmatter[i];
+            
+            if (escapeNext) {
+              escapeNext = false;
+              continue;
+            }
+            
+            if (char === '\\') {
+              escapeNext = true;
+              continue;
+            }
+            
+            if (char === '"') {
+              inString = !inString;
+              continue;
+            }
+            
+            if (!inString) {
+              if (char === '{') {
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  jsonEnd = i + 1;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Replace the data section
+          const dataJsonTrimmed = dataJson.trim();
+          newFrontmatter = newFrontmatter.substring(0, dataIndex) + dataJsonTrimmed + newFrontmatter.substring(jsonEnd);
+        } else {
+          // data: exists but no JSON object, append it
+          newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
+        }
       } else {
-        newFrontmatter = newFrontmatter + "\n" + dataYaml.trimEnd();
+        // No data: section, append it
+        newFrontmatter = newFrontmatter + "\n" + dataJson.trim();
       }
 
       if (!newFrontmatter.endsWith("\n")) {

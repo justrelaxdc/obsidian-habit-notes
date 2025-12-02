@@ -292,8 +292,8 @@ export default class TrackerPlugin extends Plugin {
     return this.trackerFileService.parseFrontmatterData(frontmatter);
   }
 
-  formatDataToYaml(data: Record<string, string | number>): string {
-    return this.trackerFileService.formatDataToYaml(data);
+  formatDataToJson(data: Record<string, string | number>): string {
+    return this.trackerFileService.formatDataToJson(data);
   }
 
   async readValueForDate(file: TFile, dateIso: string): Promise<string | number | null> {
