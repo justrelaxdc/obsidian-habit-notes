@@ -1,4 +1,5 @@
-import { useCallback, useRef, useEffect, memo } from "preact/hooks";
+import { useCallback, useRef, useEffect } from "preact/hooks";
+import { memo } from "preact/compat";
 import type { TFile } from "obsidian";
 import { CSS_CLASSES, MODAL_LABELS } from "../../constants";
 import { normalizePath } from "../../utils/path";

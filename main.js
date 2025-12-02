@@ -96,8 +96,8 @@ function $() {
   $.__r = 0;
 }
 function I(n2, l3, u4, t3, i4, r3, o3, e3, f4, c3, s3) {
-  var a3, h3, y3, w3, d3, g2, _2, m3 = t3 && t3.__k || v, b = l3.length;
-  for (f4 = P(u4, l3, m3, f4, b), a3 = 0; a3 < b; a3++) null != (y3 = u4.__k[a3]) && (h3 = -1 == y3.__i ? p : m3[y3.__i] || p, y3.__i = a3, g2 = O(n2, y3, h3, i4, r3, o3, e3, f4, c3, s3), w3 = y3.__e, y3.ref && h3.ref != y3.ref && (h3.ref && B(h3.ref, null, y3), s3.push(y3.ref, y3.__c || w3, y3)), null == d3 && null != w3 && (d3 = w3), (_2 = !!(4 & y3.__u)) || h3.__k === y3.__k ? f4 = A(y3, f4, n2, _2) : "function" == typeof y3.type && void 0 !== g2 ? f4 = g2 : w3 && (f4 = w3.nextSibling), y3.__u &= -7);
+  var a3, h3, y3, w3, d3, g4, _3, m3 = t3 && t3.__k || v, b2 = l3.length;
+  for (f4 = P(u4, l3, m3, f4, b2), a3 = 0; a3 < b2; a3++) null != (y3 = u4.__k[a3]) && (h3 = -1 == y3.__i ? p : m3[y3.__i] || p, y3.__i = a3, g4 = O(n2, y3, h3, i4, r3, o3, e3, f4, c3, s3), w3 = y3.__e, y3.ref && h3.ref != y3.ref && (h3.ref && B(h3.ref, null, y3), s3.push(y3.ref, y3.__c || w3, y3)), null == d3 && null != w3 && (d3 = w3), (_3 = !!(4 & y3.__u)) || h3.__k === y3.__k ? f4 = A(y3, f4, n2, _3) : "function" == typeof y3.type && void 0 !== g4 ? f4 = g4 : w3 && (f4 = w3.nextSibling), y3.__u &= -7);
   return u4.__e = d3, f4;
 }
 function P(n2, l3, u4, t3, i4) {
@@ -117,6 +117,11 @@ function A(n2, l3, u4, t3) {
     l3 = l3 && l3.nextSibling;
   } while (null != l3 && 8 == l3.nodeType);
   return l3;
+}
+function H(n2, l3) {
+  return l3 = l3 || [], null == n2 || "boolean" == typeof n2 || (w(n2) ? n2.some(function(n3) {
+    H(n3, l3);
+  }) : l3.push(n2)), l3;
 }
 function L(n2, l3, u4, t3) {
   var i4, r3, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], s3 = null != c3 && 0 == (2 & c3.__u);
@@ -158,36 +163,36 @@ function F(n2) {
   };
 }
 function O(n2, u4, t3, i4, r3, o3, e3, f4, c3, s3) {
-  var a3, h3, p3, v3, y3, _2, m3, b, S2, C3, M2, $2, P2, A3, H, L2, T3, j3 = u4.type;
+  var a3, h3, p3, v3, y3, _3, m3, b2, S2, C3, M3, $2, P4, A4, H3, L2, T4, j4 = u4.type;
   if (null != u4.constructor) return null;
   128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (a3 = l.__b) && a3(u4);
-  n: if ("function" == typeof j3) try {
-    if (b = u4.props, S2 = "prototype" in j3 && j3.prototype.render, C3 = (a3 = j3.contextType) && i4[a3.__c], M2 = a3 ? C3 ? C3.props.value : a3.__ : i4, t3.__c ? m3 = (h3 = u4.__c = t3.__c).__ = h3.__E : (S2 ? u4.__c = h3 = new j3(b, M2) : (u4.__c = h3 = new x(b, M2), h3.constructor = j3, h3.render = E), C3 && C3.sub(h3), h3.props = b, h3.state || (h3.state = {}), h3.context = M2, h3.__n = i4, p3 = h3.__d = true, h3.__h = [], h3._sb = []), S2 && null == h3.__s && (h3.__s = h3.state), S2 && null != j3.getDerivedStateFromProps && (h3.__s == h3.state && (h3.__s = d({}, h3.__s)), d(h3.__s, j3.getDerivedStateFromProps(b, h3.__s))), v3 = h3.props, y3 = h3.state, h3.__v = u4, p3) S2 && null == j3.getDerivedStateFromProps && null != h3.componentWillMount && h3.componentWillMount(), S2 && null != h3.componentDidMount && h3.__h.push(h3.componentDidMount);
+  n: if ("function" == typeof j4) try {
+    if (b2 = u4.props, S2 = "prototype" in j4 && j4.prototype.render, C3 = (a3 = j4.contextType) && i4[a3.__c], M3 = a3 ? C3 ? C3.props.value : a3.__ : i4, t3.__c ? m3 = (h3 = u4.__c = t3.__c).__ = h3.__E : (S2 ? u4.__c = h3 = new j4(b2, M3) : (u4.__c = h3 = new x(b2, M3), h3.constructor = j4, h3.render = E), C3 && C3.sub(h3), h3.props = b2, h3.state || (h3.state = {}), h3.context = M3, h3.__n = i4, p3 = h3.__d = true, h3.__h = [], h3._sb = []), S2 && null == h3.__s && (h3.__s = h3.state), S2 && null != j4.getDerivedStateFromProps && (h3.__s == h3.state && (h3.__s = d({}, h3.__s)), d(h3.__s, j4.getDerivedStateFromProps(b2, h3.__s))), v3 = h3.props, y3 = h3.state, h3.__v = u4, p3) S2 && null == j4.getDerivedStateFromProps && null != h3.componentWillMount && h3.componentWillMount(), S2 && null != h3.componentDidMount && h3.__h.push(h3.componentDidMount);
     else {
-      if (S2 && null == j3.getDerivedStateFromProps && b !== v3 && null != h3.componentWillReceiveProps && h3.componentWillReceiveProps(b, M2), !h3.__e && null != h3.shouldComponentUpdate && false === h3.shouldComponentUpdate(b, h3.__s, M2) || u4.__v == t3.__v) {
-        for (u4.__v != t3.__v && (h3.props = b, h3.state = h3.__s, h3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
+      if (S2 && null == j4.getDerivedStateFromProps && b2 !== v3 && null != h3.componentWillReceiveProps && h3.componentWillReceiveProps(b2, M3), !h3.__e && null != h3.shouldComponentUpdate && false === h3.shouldComponentUpdate(b2, h3.__s, M3) || u4.__v == t3.__v) {
+        for (u4.__v != t3.__v && (h3.props = b2, h3.state = h3.__s, h3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
           n3 && (n3.__ = u4);
         }), $2 = 0; $2 < h3._sb.length; $2++) h3.__h.push(h3._sb[$2]);
         h3._sb = [], h3.__h.length && e3.push(h3);
         break n;
       }
-      null != h3.componentWillUpdate && h3.componentWillUpdate(b, h3.__s, M2), S2 && null != h3.componentDidUpdate && h3.__h.push(function() {
-        h3.componentDidUpdate(v3, y3, _2);
+      null != h3.componentWillUpdate && h3.componentWillUpdate(b2, h3.__s, M3), S2 && null != h3.componentDidUpdate && h3.__h.push(function() {
+        h3.componentDidUpdate(v3, y3, _3);
       });
     }
-    if (h3.context = M2, h3.props = b, h3.__P = n2, h3.__e = false, P2 = l.__r, A3 = 0, S2) {
-      for (h3.state = h3.__s, h3.__d = false, P2 && P2(u4), a3 = h3.render(h3.props, h3.state, h3.context), H = 0; H < h3._sb.length; H++) h3.__h.push(h3._sb[H]);
+    if (h3.context = M3, h3.props = b2, h3.__P = n2, h3.__e = false, P4 = l.__r, A4 = 0, S2) {
+      for (h3.state = h3.__s, h3.__d = false, P4 && P4(u4), a3 = h3.render(h3.props, h3.state, h3.context), H3 = 0; H3 < h3._sb.length; H3++) h3.__h.push(h3._sb[H3]);
       h3._sb = [];
     } else do {
-      h3.__d = false, P2 && P2(u4), a3 = h3.render(h3.props, h3.state, h3.context), h3.state = h3.__s;
-    } while (h3.__d && ++A3 < 25);
-    h3.state = h3.__s, null != h3.getChildContext && (i4 = d(d({}, i4), h3.getChildContext())), S2 && !p3 && null != h3.getSnapshotBeforeUpdate && (_2 = h3.getSnapshotBeforeUpdate(v3, y3)), L2 = a3, null != a3 && a3.type === k && null == a3.key && (L2 = V(a3.props.children)), f4 = I(n2, w(L2) ? L2 : [L2], u4, t3, i4, r3, o3, e3, f4, c3, s3), h3.base = u4.__e, u4.__u &= -161, h3.__h.length && e3.push(h3), m3 && (h3.__E = h3.__ = null);
+      h3.__d = false, P4 && P4(u4), a3 = h3.render(h3.props, h3.state, h3.context), h3.state = h3.__s;
+    } while (h3.__d && ++A4 < 25);
+    h3.state = h3.__s, null != h3.getChildContext && (i4 = d(d({}, i4), h3.getChildContext())), S2 && !p3 && null != h3.getSnapshotBeforeUpdate && (_3 = h3.getSnapshotBeforeUpdate(v3, y3)), L2 = a3, null != a3 && a3.type === k && null == a3.key && (L2 = V(a3.props.children)), f4 = I(n2, w(L2) ? L2 : [L2], u4, t3, i4, r3, o3, e3, f4, c3, s3), h3.base = u4.__e, u4.__u &= -161, h3.__h.length && e3.push(h3), m3 && (h3.__E = h3.__ = null);
   } catch (n3) {
     if (u4.__v = null, c3 || null != o3) if (n3.then) {
       for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
       o3[o3.indexOf(f4)] = null, u4.__e = f4;
     } else {
-      for (T3 = o3.length; T3--; ) g(o3[T3]);
+      for (T4 = o3.length; T4--; ) g(o3[T4]);
       z(u4);
     }
     else u4.__e = t3.__e, u4.__k = t3.__k, n3.then || z(u4);
@@ -215,7 +220,7 @@ function V(n2) {
   return "object" != typeof n2 || null == n2 || n2.__b && n2.__b > 0 ? n2 : w(n2) ? n2.map(V) : d({}, n2);
 }
 function q(u4, t3, i4, r3, o3, e3, f4, c3, s3) {
-  var a3, h3, v3, y3, d3, _2, m3, b = i4.props, k3 = t3.props, x3 = t3.type;
+  var a3, h3, v3, y3, d3, _3, m3, b2 = i4.props, k3 = t3.props, x3 = t3.type;
   if ("svg" == x3 ? o3 = "http://www.w3.org/2000/svg" : "math" == x3 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
     for (a3 = 0; a3 < e3.length; a3++) if ((d3 = e3[a3]) && "setAttribute" in d3 == !!x3 && (x3 ? d3.localName == x3 : 3 == d3.nodeType)) {
       u4 = d3, e3[a3] = null;
@@ -226,19 +231,19 @@ function q(u4, t3, i4, r3, o3, e3, f4, c3, s3) {
     if (null == x3) return document.createTextNode(k3);
     u4 = document.createElementNS(o3, x3, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
   }
-  if (null == x3) b === k3 || c3 && u4.data == k3 || (u4.data = k3);
+  if (null == x3) b2 === k3 || c3 && u4.data == k3 || (u4.data = k3);
   else {
-    if (e3 = e3 && n.call(u4.childNodes), b = i4.props || p, !c3 && null != e3) for (b = {}, a3 = 0; a3 < u4.attributes.length; a3++) b[(d3 = u4.attributes[a3]).name] = d3.value;
-    for (a3 in b) if (d3 = b[a3], "children" == a3) ;
+    if (e3 = e3 && n.call(u4.childNodes), b2 = i4.props || p, !c3 && null != e3) for (b2 = {}, a3 = 0; a3 < u4.attributes.length; a3++) b2[(d3 = u4.attributes[a3]).name] = d3.value;
+    for (a3 in b2) if (d3 = b2[a3], "children" == a3) ;
     else if ("dangerouslySetInnerHTML" == a3) v3 = d3;
     else if (!(a3 in k3)) {
       if ("value" == a3 && "defaultValue" in k3 || "checked" == a3 && "defaultChecked" in k3) continue;
       j(u4, a3, null, d3, o3);
     }
-    for (a3 in k3) d3 = k3[a3], "children" == a3 ? y3 = d3 : "dangerouslySetInnerHTML" == a3 ? h3 = d3 : "value" == a3 ? _2 = d3 : "checked" == a3 ? m3 = d3 : c3 && "function" != typeof d3 || b[a3] === d3 || j(u4, a3, d3, b[a3], o3);
+    for (a3 in k3) d3 = k3[a3], "children" == a3 ? y3 = d3 : "dangerouslySetInnerHTML" == a3 ? h3 = d3 : "value" == a3 ? _3 = d3 : "checked" == a3 ? m3 = d3 : c3 && "function" != typeof d3 || b2[a3] === d3 || j(u4, a3, d3, b2[a3], o3);
     if (h3) c3 || v3 && (h3.__html == v3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
     else if (v3 && (u4.innerHTML = ""), I("template" == t3.type ? u4.content : u4, w(y3) ? y3 : [y3], t3, i4, r3, "foreignObject" == x3 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i4.__k && S(i4, 0), c3, s3), null != e3) for (a3 = e3.length; a3--; ) g(e3[a3]);
-    c3 || (a3 = "value", "progress" == x3 && null == _2 ? u4.removeAttribute("value") : null != _2 && (_2 !== u4[a3] || "progress" == x3 && !_2 || "option" == x3 && _2 != b[a3]) && j(u4, a3, _2, b[a3], o3), a3 = "checked", null != m3 && m3 != u4[a3] && j(u4, a3, m3, b[a3], o3));
+    c3 || (a3 = "value", "progress" == x3 && null == _3 ? u4.removeAttribute("value") : null != _3 && (_3 !== u4[a3] || "progress" == x3 && !_3 || "option" == x3 && _3 != b2[a3]) && j(u4, a3, _3, b2[a3], o3), a3 = "checked", null != m3 && m3 != u4[a3] && j(u4, a3, m3, b2[a3], o3));
   }
   return u4;
 }
@@ -328,10 +333,19 @@ function parseOptions(src) {
 // src/services/date-service.ts
 var DateService = class {
   static momentAvailable() {
-    return typeof window.moment !== "undefined";
+    if (this._momentAvailable === null) {
+      this._momentAvailable = typeof window.moment !== "undefined";
+      if (this._momentAvailable) {
+        this._moment = window.moment;
+      }
+    }
+    return this._momentAvailable;
   }
   static getMoment() {
-    return window.moment;
+    if (this._moment === null && this.momentAvailable()) {
+      this._moment = window.moment;
+    }
+    return this._moment;
   }
   /**
    * Create a DateWrapper from a date string and format
@@ -587,11 +601,15 @@ var DateService = class {
     return date.toISOString().split("T")[0];
   }
 };
+// Cache moment availability check
+DateService._momentAvailable = null;
+DateService._moment = null;
 
 // src/constants/index.ts
 var MOBILE_BREAKPOINT = 768;
 var MAX_DAYS_BACK = 3650;
 var CACHE_TTL_MS = 5 * 60 * 1e3;
+var MAX_CACHE_SIZE = 100;
 var DEBOUNCE_DELAY_MS = 300;
 var ANIMATION_DURATION_MS = 300;
 var SCROLL_RESTORE_DELAY_2_MS = 100;
@@ -1056,6 +1074,188 @@ function LoadingIndicator({ isActive }) {
   ] });
 }
 
+// node_modules/preact/compat/dist/compat.module.js
+function g3(n2, t3) {
+  for (var e3 in t3) n2[e3] = t3[e3];
+  return n2;
+}
+function E2(n2, t3) {
+  for (var e3 in n2) if ("__source" !== e3 && !(e3 in t3)) return true;
+  for (var r3 in t3) if ("__source" !== r3 && n2[r3] !== t3[r3]) return true;
+  return false;
+}
+function N2(n2, t3) {
+  this.props = n2, this.context = t3;
+}
+function M2(n2, e3) {
+  function r3(n3) {
+    var t3 = this.props.ref, r4 = t3 == n3.ref;
+    return !r4 && t3 && (t3.call ? t3(null) : t3.current = null), e3 ? !e3(this.props, n3) || !r4 : E2(this.props, n3);
+  }
+  function u4(e4) {
+    return this.shouldComponentUpdate = r3, _(n2, e4);
+  }
+  return u4.displayName = "Memo(" + (n2.displayName || n2.name) + ")", u4.prototype.isReactComponent = true, u4.__f = true, u4.type = n2, u4;
+}
+(N2.prototype = new x()).isPureReactComponent = true, N2.prototype.shouldComponentUpdate = function(n2, t3) {
+  return E2(this.props, n2) || E2(this.state, t3);
+};
+var T3 = l.__b;
+l.__b = function(n2) {
+  n2.type && n2.type.__f && n2.ref && (n2.props.ref = n2.ref, n2.ref = null), T3 && T3(n2);
+};
+var A3 = "undefined" != typeof Symbol && Symbol.for && Symbol.for("react.forward_ref") || 3911;
+var F3 = l.__e;
+l.__e = function(n2, t3, e3, r3) {
+  if (n2.then) {
+    for (var u4, o3 = t3; o3 = o3.__; ) if ((u4 = o3.__c) && u4.__c) return null == t3.__e && (t3.__e = e3.__e, t3.__k = e3.__k), u4.__c(n2, t3);
+  }
+  F3(n2, t3, e3, r3);
+};
+var U = l.unmount;
+function V2(n2, t3, e3) {
+  return n2 && (n2.__c && n2.__c.__H && (n2.__c.__H.__.forEach(function(n3) {
+    "function" == typeof n3.__c && n3.__c();
+  }), n2.__c.__H = null), null != (n2 = g3({}, n2)).__c && (n2.__c.__P === e3 && (n2.__c.__P = t3), n2.__c.__e = true, n2.__c = null), n2.__k = n2.__k && n2.__k.map(function(n3) {
+    return V2(n3, t3, e3);
+  })), n2;
+}
+function W(n2, t3, e3) {
+  return n2 && e3 && (n2.__v = null, n2.__k = n2.__k && n2.__k.map(function(n3) {
+    return W(n3, t3, e3);
+  }), n2.__c && n2.__c.__P === t3 && (n2.__e && e3.appendChild(n2.__e), n2.__c.__e = true, n2.__c.__P = e3)), n2;
+}
+function P3() {
+  this.__u = 0, this.o = null, this.__b = null;
+}
+function j3(n2) {
+  var t3 = n2.__.__c;
+  return t3 && t3.__a && t3.__a(n2);
+}
+function B3() {
+  this.i = null, this.l = null;
+}
+l.unmount = function(n2) {
+  var t3 = n2.__c;
+  t3 && t3.__R && t3.__R(), t3 && 32 & n2.__u && (n2.type = null), U && U(n2);
+}, (P3.prototype = new x()).__c = function(n2, t3) {
+  var e3 = t3.__c, r3 = this;
+  null == r3.o && (r3.o = []), r3.o.push(e3);
+  var u4 = j3(r3.__v), o3 = false, i4 = function() {
+    o3 || (o3 = true, e3.__R = null, u4 ? u4(l3) : l3());
+  };
+  e3.__R = i4;
+  var l3 = function() {
+    if (!--r3.__u) {
+      if (r3.state.__a) {
+        var n3 = r3.state.__a;
+        r3.__v.__k[0] = W(n3, n3.__c.__P, n3.__c.__O);
+      }
+      var t4;
+      for (r3.setState({ __a: r3.__b = null }); t4 = r3.o.pop(); ) t4.forceUpdate();
+    }
+  };
+  r3.__u++ || 32 & t3.__u || r3.setState({ __a: r3.__b = r3.__v.__k[0] }), n2.then(i4, i4);
+}, P3.prototype.componentWillUnmount = function() {
+  this.o = [];
+}, P3.prototype.render = function(n2, e3) {
+  if (this.__b) {
+    if (this.__v.__k) {
+      var r3 = document.createElement("div"), o3 = this.__v.__k[0].__c;
+      this.__v.__k[0] = V2(this.__b, r3, o3.__O = o3.__P);
+    }
+    this.__b = null;
+  }
+  var i4 = e3.__a && _(k, null, n2.fallback);
+  return i4 && (i4.__u &= -33), [_(k, null, e3.__a ? null : n2.children), i4];
+};
+var H2 = function(n2, t3, e3) {
+  if (++e3[1] === e3[0] && n2.l.delete(t3), n2.props.revealOrder && ("t" !== n2.props.revealOrder[0] || !n2.l.size)) for (e3 = n2.i; e3; ) {
+    for (; e3.length > 3; ) e3.pop()();
+    if (e3[1] < e3[0]) break;
+    n2.i = e3 = e3[2];
+  }
+};
+(B3.prototype = new x()).__a = function(n2) {
+  var t3 = this, e3 = j3(t3.__v), r3 = t3.l.get(n2);
+  return r3[0]++, function(u4) {
+    var o3 = function() {
+      t3.props.revealOrder ? (r3.push(u4), H2(t3, n2, r3)) : u4();
+    };
+    e3 ? e3(o3) : o3();
+  };
+}, B3.prototype.render = function(n2) {
+  this.i = null, this.l = /* @__PURE__ */ new Map();
+  var t3 = H(n2.children);
+  n2.revealOrder && "b" === n2.revealOrder[0] && t3.reverse();
+  for (var e3 = t3.length; e3--; ) this.l.set(t3[e3], this.i = [1, 0, this.i]);
+  return n2.children;
+}, B3.prototype.componentDidUpdate = B3.prototype.componentDidMount = function() {
+  var n2 = this;
+  this.l.forEach(function(t3, e3) {
+    H2(n2, e3, t3);
+  });
+};
+var q3 = "undefined" != typeof Symbol && Symbol.for && Symbol.for("react.element") || 60103;
+var G2 = /^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image(!S)|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/;
+var J2 = /^on(Ani|Tra|Tou|BeforeInp|Compo)/;
+var K2 = /[A-Z0-9]/g;
+var Q2 = "undefined" != typeof document;
+var X = function(n2) {
+  return ("undefined" != typeof Symbol && "symbol" == typeof Symbol() ? /fil|che|rad/ : /fil|che|ra/).test(n2);
+};
+x.prototype.isReactComponent = {}, ["componentWillMount", "componentWillReceiveProps", "componentWillUpdate"].forEach(function(t3) {
+  Object.defineProperty(x.prototype, t3, { configurable: true, get: function() {
+    return this["UNSAFE_" + t3];
+  }, set: function(n2) {
+    Object.defineProperty(this, t3, { configurable: true, writable: true, value: n2 });
+  } });
+});
+var en = l.event;
+function rn() {
+}
+function un() {
+  return this.cancelBubble;
+}
+function on() {
+  return this.defaultPrevented;
+}
+l.event = function(n2) {
+  return en && (n2 = en(n2)), n2.persist = rn, n2.isPropagationStopped = un, n2.isDefaultPrevented = on, n2.nativeEvent = n2;
+};
+var ln;
+var cn = { enumerable: false, configurable: true, get: function() {
+  return this.class;
+} };
+var fn = l.vnode;
+l.vnode = function(n2) {
+  "string" == typeof n2.type && function(n3) {
+    var t3 = n3.props, e3 = n3.type, u4 = {}, o3 = -1 === e3.indexOf("-");
+    for (var i4 in t3) {
+      var l3 = t3[i4];
+      if (!("value" === i4 && "defaultValue" in t3 && null == l3 || Q2 && "children" === i4 && "noscript" === e3 || "class" === i4 || "className" === i4)) {
+        var c3 = i4.toLowerCase();
+        "defaultValue" === i4 && "value" in t3 && null == t3.value ? i4 = "value" : "download" === i4 && true === l3 ? l3 = "" : "translate" === c3 && "no" === l3 ? l3 = false : "o" === c3[0] && "n" === c3[1] ? "ondoubleclick" === c3 ? i4 = "ondblclick" : "onchange" !== c3 || "input" !== e3 && "textarea" !== e3 || X(t3.type) ? "onfocus" === c3 ? i4 = "onfocusin" : "onblur" === c3 ? i4 = "onfocusout" : J2.test(i4) && (i4 = c3) : c3 = i4 = "oninput" : o3 && G2.test(i4) ? i4 = i4.replace(K2, "-$&").toLowerCase() : null === l3 && (l3 = void 0), "oninput" === c3 && u4[i4 = c3] && (i4 = "oninputCapture"), u4[i4] = l3;
+      }
+    }
+    "select" == e3 && u4.multiple && Array.isArray(u4.value) && (u4.value = H(t3.children).forEach(function(n4) {
+      n4.props.selected = -1 != u4.value.indexOf(n4.props.value);
+    })), "select" == e3 && null != u4.defaultValue && (u4.value = H(t3.children).forEach(function(n4) {
+      n4.props.selected = u4.multiple ? -1 != u4.defaultValue.indexOf(n4.props.value) : u4.defaultValue == n4.props.value;
+    })), t3.class && !t3.className ? (u4.class = t3.class, Object.defineProperty(u4, "className", cn)) : (t3.className && !t3.class || t3.class && t3.className) && (u4.class = u4.className = t3.className), n3.props = u4;
+  }(n2), n2.$$typeof = q3, fn && fn(n2);
+};
+var an = l.__r;
+l.__r = function(n2) {
+  an && an(n2), ln = n2.__c;
+};
+var sn = l.diffed;
+l.diffed = function(n2) {
+  sn && sn(n2);
+  var t3 = n2.props, e3 = n2.__e;
+  null != e3 && "textarea" === n2.type && "value" in t3 && t3.value !== e3.value && (e3.value = null == t3.value ? "" : t3.value), ln = null;
+};
+
 // src/utils/path.ts
 function normalizePath(path) {
   if (!path) return "";
@@ -1165,8 +1365,23 @@ function NumberControl({ file, dateIso, plugin, fileOptions, entries, onValueCha
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
     }
-    const val = value === "" ? "0" : value;
-    const numVal = Number(val);
+    if (value === "" || value.trim() === "") {
+      const doDelete = async () => {
+        try {
+          await plugin.deleteEntry(file, dateIso);
+          await onValueChange();
+        } catch (err) {
+          console.error("NumberControl: delete error", err);
+        }
+      };
+      if (immediate) {
+        await doDelete();
+      } else {
+        debounceRef.current = setTimeout(doDelete, DEBOUNCE_DELAY_MS);
+      }
+      return;
+    }
+    const numVal = Number(value);
     if (isNaN(numVal)) return;
     const doWrite = async () => {
       try {
@@ -1717,7 +1932,7 @@ var StatisticsService = class {
       actualDaysCount++;
       currentDate = currentDate.add(1, "days");
     }
-    const sum = periodDays.reduce((a3, b) => a3 + b, 0);
+    const sum = periodDays.reduce((a3, b2) => a3 + b2, 0);
     const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
     const totalRecords = entries.size;
     const activeDays = periodDays.filter((v3) => v3 > 0).length;
@@ -1771,7 +1986,7 @@ var StatisticsService = class {
       actualDaysCount++;
       currentDate = currentDate.add(1, "days");
     }
-    const sum = periodDays.reduce((a3, b) => a3 + b, 0);
+    const sum = periodDays.reduce((a3, b2) => a3 + b2, 0);
     const avg = actualDaysCount > 0 ? sum / actualDaysCount : 0;
     const totalRecords = entries.size;
     let min = null;
@@ -1779,7 +1994,7 @@ var StatisticsService = class {
     let median = null;
     const nonZeroValues = periodDays.filter((v3) => v3 > 0);
     if (periodDays.length > 0) {
-      const sortedValues = [...periodDays].sort((a3, b) => a3 - b);
+      const sortedValues = [...periodDays].sort((a3, b2) => a3 - b2);
       min = sortedValues[0];
       max = sortedValues[sortedValues.length - 1];
       const mid = Math.floor(sortedValues.length / 2);
@@ -2166,9 +2381,9 @@ function n2p(v3) {
 }
 var map$1 = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, A: 10, B: 11, C: 12, D: 13, E: 14, F: 15, a: 10, b: 11, c: 12, d: 13, e: 14, f: 15 };
 var hex = [..."0123456789ABCDEF"];
-var h1 = (b) => hex[b & 15];
-var h22 = (b) => hex[(b & 240) >> 4] + hex[b & 15];
-var eq = (b) => (b & 240) >> 4 === (b & 15);
+var h1 = (b2) => hex[b2 & 15];
+var h22 = (b2) => hex[(b2 & 240) >> 4] + hex[b2 & 15];
+var eq = (b2) => (b2 & 240) >> 4 === (b2 & 15);
 var isShort = (v3) => eq(v3.r) && eq(v3.g) && eq(v3.b) && eq(v3.a);
 function hexParse(str) {
   var len = str.length;
@@ -2207,54 +2422,54 @@ function hsv2rgbn(h3, s3, v3) {
   const f4 = (n2, k3 = (n2 + h3 / 60) % 6) => v3 - v3 * s3 * Math.max(Math.min(k3, 4 - k3, 1), 0);
   return [f4(5), f4(3), f4(1)];
 }
-function hwb2rgbn(h3, w3, b) {
+function hwb2rgbn(h3, w3, b2) {
   const rgb = hsl2rgbn(h3, 1, 0.5);
   let i4;
-  if (w3 + b > 1) {
-    i4 = 1 / (w3 + b);
+  if (w3 + b2 > 1) {
+    i4 = 1 / (w3 + b2);
     w3 *= i4;
-    b *= i4;
+    b2 *= i4;
   }
   for (i4 = 0; i4 < 3; i4++) {
-    rgb[i4] *= 1 - w3 - b;
+    rgb[i4] *= 1 - w3 - b2;
     rgb[i4] += w3;
   }
   return rgb;
 }
-function hueValue(r3, g2, b, d3, max) {
+function hueValue(r3, g4, b2, d3, max) {
   if (r3 === max) {
-    return (g2 - b) / d3 + (g2 < b ? 6 : 0);
+    return (g4 - b2) / d3 + (g4 < b2 ? 6 : 0);
   }
-  if (g2 === max) {
-    return (b - r3) / d3 + 2;
+  if (g4 === max) {
+    return (b2 - r3) / d3 + 2;
   }
-  return (r3 - g2) / d3 + 4;
+  return (r3 - g4) / d3 + 4;
 }
 function rgb2hsl(v3) {
   const range = 255;
   const r3 = v3.r / range;
-  const g2 = v3.g / range;
-  const b = v3.b / range;
-  const max = Math.max(r3, g2, b);
-  const min = Math.min(r3, g2, b);
+  const g4 = v3.g / range;
+  const b2 = v3.b / range;
+  const max = Math.max(r3, g4, b2);
+  const min = Math.min(r3, g4, b2);
   const l3 = (max + min) / 2;
   let h3, s3, d3;
   if (max !== min) {
     d3 = max - min;
     s3 = l3 > 0.5 ? d3 / (2 - max - min) : d3 / (max + min);
-    h3 = hueValue(r3, g2, b, d3, max);
+    h3 = hueValue(r3, g4, b2, d3, max);
     h3 = h3 * 60 + 0.5;
   }
   return [h3 | 0, s3 || 0, l3];
 }
-function calln(f4, a3, b, c3) {
-  return (Array.isArray(a3) ? f4(a3[0], a3[1], a3[2]) : f4(a3, b, c3)).map(n2b);
+function calln(f4, a3, b2, c3) {
+  return (Array.isArray(a3) ? f4(a3[0], a3[1], a3[2]) : f4(a3, b2, c3)).map(n2b);
 }
 function hsl2rgb(h3, s3, l3) {
   return calln(hsl2rgbn, h3, s3, l3);
 }
-function hwb2rgb(h3, w3, b) {
-  return calln(hwb2rgbn, h3, w3, b);
+function hwb2rgb(h3, w3, b2) {
+  return calln(hwb2rgbn, h3, w3, b2);
 }
 function hsv2rgb(h3, s3, v3) {
   return calln(hsv2rgbn, h3, s3, v3);
@@ -2490,11 +2705,11 @@ function unpack() {
   const unpacked = {};
   const keys = Object.keys(names$1);
   const tkeys = Object.keys(map);
-  let i4, j3, k3, ok, nk;
+  let i4, j4, k3, ok, nk;
   for (i4 = 0; i4 < keys.length; i4++) {
     ok = nk = keys[i4];
-    for (j3 = 0; j3 < tkeys.length; j3++) {
-      k3 = tkeys[j3];
+    for (j4 = 0; j4 < tkeys.length; j4++) {
+      k3 = tkeys[j4];
       nk = nk.replace(k3, map[k3]);
     }
     k3 = parseInt(names$1[ok], 16);
@@ -2520,7 +2735,7 @@ var RGB_RE = /^rgba?\(\s*([-+.\d]+)(%)?[\s,]+([-+.e\d]+)(%)?[\s,]+([-+.e\d]+)(%)
 function rgbParse(str) {
   const m3 = RGB_RE.exec(str);
   let a3 = 255;
-  let r3, g2, b;
+  let r3, g4, b2;
   if (!m3) {
     return;
   }
@@ -2529,15 +2744,15 @@ function rgbParse(str) {
     a3 = m3[8] ? p2b(v3) : lim(v3 * 255, 0, 255);
   }
   r3 = +m3[1];
-  g2 = +m3[3];
-  b = +m3[5];
+  g4 = +m3[3];
+  b2 = +m3[5];
   r3 = 255 & (m3[2] ? p2b(r3) : lim(r3, 0, 255));
-  g2 = 255 & (m3[4] ? p2b(g2) : lim(g2, 0, 255));
-  b = 255 & (m3[6] ? p2b(b) : lim(b, 0, 255));
+  g4 = 255 & (m3[4] ? p2b(g4) : lim(g4, 0, 255));
+  b2 = 255 & (m3[6] ? p2b(b2) : lim(b2, 0, 255));
   return {
     r: r3,
-    g: g2,
-    b,
+    g: g4,
+    b: b2,
     a: a3
   };
 }
@@ -2548,12 +2763,12 @@ var to = (v3) => v3 <= 31308e-7 ? v3 * 12.92 : Math.pow(v3, 1 / 2.4) * 1.055 - 0
 var from = (v3) => v3 <= 0.04045 ? v3 / 12.92 : Math.pow((v3 + 0.055) / 1.055, 2.4);
 function interpolate(rgb1, rgb2, t3) {
   const r3 = from(b2n(rgb1.r));
-  const g2 = from(b2n(rgb1.g));
-  const b = from(b2n(rgb1.b));
+  const g4 = from(b2n(rgb1.g));
+  const b2 = from(b2n(rgb1.b));
   return {
     r: n2b(to(r3 + t3 * (from(b2n(rgb2.r)) - r3))),
-    g: n2b(to(g2 + t3 * (from(b2n(rgb2.g)) - g2))),
-    b: n2b(to(b + t3 * (from(b2n(rgb2.b)) - b))),
+    g: n2b(to(g4 + t3 * (from(b2n(rgb2.g)) - g4))),
+    b: n2b(to(b2 + t3 * (from(b2n(rgb2.b)) - b2))),
     a: rgb1.a + t3 * (rgb2.a - rgb1.a)
   };
 }
@@ -2738,29 +2953,29 @@ function valueOrDefault(value, defaultValue) {
 }
 var toPercentage = (value, dimension) => typeof value === "string" && value.endsWith("%") ? parseFloat(value) / 100 : +value / dimension;
 var toDimension = (value, dimension) => typeof value === "string" && value.endsWith("%") ? parseFloat(value) / 100 * dimension : +value;
-function callback(fn, args, thisArg) {
-  if (fn && typeof fn.call === "function") {
-    return fn.apply(thisArg, args);
+function callback(fn2, args, thisArg) {
+  if (fn2 && typeof fn2.call === "function") {
+    return fn2.apply(thisArg, args);
   }
 }
-function each(loopable, fn, thisArg, reverse) {
+function each(loopable, fn2, thisArg, reverse) {
   let i4, len, keys;
   if (isArray(loopable)) {
     len = loopable.length;
     if (reverse) {
       for (i4 = len - 1; i4 >= 0; i4--) {
-        fn.call(thisArg, loopable[i4], i4);
+        fn2.call(thisArg, loopable[i4], i4);
       }
     } else {
       for (i4 = 0; i4 < len; i4++) {
-        fn.call(thisArg, loopable[i4], i4);
+        fn2.call(thisArg, loopable[i4], i4);
       }
     }
   } else if (isObject(loopable)) {
     keys = Object.keys(loopable);
     len = keys.length;
     for (i4 = 0; i4 < len; i4++) {
-      fn.call(thisArg, loopable[keys[i4]], keys[i4]);
+      fn2.call(thisArg, loopable[keys[i4]], keys[i4]);
     }
   }
 }
@@ -2896,12 +3111,12 @@ function _capitalize(str) {
 }
 var defined = (value) => typeof value !== "undefined";
 var isFunction = (value) => typeof value === "function";
-var setsEqual = (a3, b) => {
-  if (a3.size !== b.size) {
+var setsEqual = (a3, b2) => {
+  if (a3.size !== b2.size) {
     return false;
   }
   for (const item of a3) {
-    if (!b.has(item)) {
+    if (!b2.has(item)) {
       return false;
     }
   }
@@ -2944,7 +3159,7 @@ function _factorize(value) {
   if (sqrt === (sqrt | 0)) {
     result.push(sqrt);
   }
-  result.sort((a3, b) => a3 - b).pop();
+  result.sort((a3, b2) => a3 - b2).pop();
   return result;
 }
 function isNonPrimitive(n2) {
@@ -3001,8 +3216,8 @@ function getAngleFromPoint(centrePoint, anglePoint) {
 function distanceBetweenPoints(pt1, pt2) {
   return Math.sqrt(Math.pow(pt2.x - pt1.x, 2) + Math.pow(pt2.y - pt1.y, 2));
 }
-function _angleDiff(a3, b) {
-  return (a3 - b + PITAU) % TAU - PI;
+function _angleDiff(a3, b2) {
+  return (a3 - b2 + PITAU) % TAU - PI;
 }
 function _normalizeAngle(a3) {
   return (a3 % TAU + TAU) % TAU;
@@ -3132,7 +3347,7 @@ var requestAnimFrame = function() {
   }
   return window.requestAnimationFrame;
 }();
-function throttled(fn, thisArg) {
+function throttled(fn2, thisArg) {
   let argsToUse = [];
   let ticking = false;
   return function(...args) {
@@ -3141,19 +3356,19 @@ function throttled(fn, thisArg) {
       ticking = true;
       requestAnimFrame.call(window, () => {
         ticking = false;
-        fn.apply(thisArg, argsToUse);
+        fn2.apply(thisArg, argsToUse);
       });
     }
   };
 }
-function debounce(fn, delay) {
+function debounce(fn2, delay) {
   let timeout;
   return function(...args) {
     if (delay) {
       clearTimeout(timeout);
-      timeout = setTimeout(fn, delay, args);
+      timeout = setTimeout(fn2, delay, args);
     } else {
-      fn.apply(this, args);
+      fn2.apply(this, args);
     }
     return delay;
   };
@@ -3681,14 +3896,14 @@ function _longestText(ctx, font, arrayOfThings, cache) {
   ctx.font = font;
   let longest = 0;
   const ilen = arrayOfThings.length;
-  let i4, j3, jlen, thing, nestedThing;
+  let i4, j4, jlen, thing, nestedThing;
   for (i4 = 0; i4 < ilen; i4++) {
     thing = arrayOfThings[i4];
     if (thing !== void 0 && thing !== null && !isArray(thing)) {
       longest = _measureText(ctx, data, gc, longest, thing);
     } else if (isArray(thing)) {
-      for (j3 = 0, jlen = thing.length; j3 < jlen; j3++) {
-        nestedThing = thing[j3];
+      for (j4 = 0, jlen = thing.length; j4 < jlen; j4++) {
+        nestedThing = thing[j4];
         if (nestedThing !== void 0 && nestedThing !== null && !isArray(nestedThing)) {
           longest = _measureText(ctx, data, gc, longest, nestedThing);
         }
@@ -4732,10 +4947,10 @@ function _bezierInterpolation(p1, p22, t3, mode) {
     y: p22.cp1y
   };
   const a3 = _pointInLine(p1, cp1, t3);
-  const b = _pointInLine(cp1, cp2, t3);
+  const b2 = _pointInLine(cp1, cp2, t3);
   const c3 = _pointInLine(cp2, p22, t3);
-  const d3 = _pointInLine(a3, b, t3);
-  const e3 = _pointInLine(b, c3, t3);
+  const d3 = _pointInLine(a3, b2, t3);
+  const e3 = _pointInLine(b2, c3, t3);
   return _pointInLine(d3, e3, t3);
 }
 var getRightToLeftAdapter = function(rectX, width) {
@@ -4809,7 +5024,7 @@ function propertyFn(property) {
   }
   return {
     between: _isBetween,
-    compare: (a3, b) => a3 - b,
+    compare: (a3, b2) => a3 - b2,
     normalize: (x3) => x3
   };
 }
@@ -5128,7 +5343,7 @@ var Animator = class {
   _notify(chart, anims, date, type) {
     const callbacks = anims.listeners[type];
     const numSteps = anims.duration;
-    callbacks.forEach((fn) => fn({
+    callbacks.forEach((fn2) => fn2({
       chart,
       initial: anims.initial,
       numSteps,
@@ -5512,19 +5727,19 @@ function defaultClip(xScale, yScale, allowedOverflow) {
   };
 }
 function toClip(value) {
-  let t3, r3, b, l3;
+  let t3, r3, b2, l3;
   if (isObject(value)) {
     t3 = value.top;
     r3 = value.right;
-    b = value.bottom;
+    b2 = value.bottom;
     l3 = value.left;
   } else {
-    t3 = r3 = b = l3 = value;
+    t3 = r3 = b2 = l3 = value;
   }
   return {
     top: t3,
     right: r3,
-    bottom: b,
+    bottom: b2,
     left: l3,
     disabled: value === false
   };
@@ -6282,7 +6497,7 @@ function getAllScaleValues(scale, type) {
     for (let i4 = 0, ilen = visibleMetas.length; i4 < ilen; i4++) {
       values = values.concat(visibleMetas[i4].controller.getAllParsedValues(scale));
     }
-    scale._cache.$bar = _arrayUnique(values.sort((a3, b) => a3 - b));
+    scale._cache.$bar = _arrayUnique(values.sort((a3, b2) => a3 - b2));
   }
   return scale._cache.$bar;
 }
@@ -6457,12 +6672,12 @@ function setBorderSkipped(properties, options, stack, index2) {
   res[parseEdge(edge, start, end, reverse)] = true;
   properties.borderSkipped = res;
 }
-function parseEdge(edge, a3, b, reverse) {
+function parseEdge(edge, a3, b2, reverse) {
   if (reverse) {
-    edge = swap(edge, a3, b);
-    edge = startEnd(edge, b, a3);
+    edge = swap(edge, a3, b2);
+    edge = startEnd(edge, b2, a3);
   } else {
-    edge = startEnd(edge, a3, b);
+    edge = startEnd(edge, a3, b2);
   }
   return edge;
 }
@@ -6898,8 +7113,8 @@ function getRatioAndOffset(rotation, circumference, cutout) {
     const startY = Math.sin(startAngle);
     const endX = Math.cos(endAngle);
     const endY = Math.sin(endAngle);
-    const calcMax = (angle, a3, b) => _angleBetween(angle, startAngle, endAngle, true) ? 1 : Math.max(a3, a3 * cutout, b, b * cutout);
-    const calcMin = (angle, a3, b) => _angleBetween(angle, startAngle, endAngle, true) ? -1 : Math.min(a3, a3 * cutout, b, b * cutout);
+    const calcMax = (angle, a3, b2) => _angleBetween(angle, startAngle, endAngle, true) ? 1 : Math.max(a3, a3 * cutout, b2, b2 * cutout);
+    const calcMin = (angle, a3, b2) => _angleBetween(angle, startAngle, endAngle, true) ? -1 : Math.min(a3, a3 * cutout, b2, b2 * cutout);
     const maxX = calcMax(0, startX, endX);
     const maxY = calcMax(HALF_PI, startY, endY);
     const minX = calcMin(PI, startX, endX);
@@ -7786,10 +8001,10 @@ function evaluateInteractionItems(chart, axis, position, handler, intersect) {
   for (let i4 = 0, ilen = metasets.length; i4 < ilen; ++i4) {
     const { index: index2, data } = metasets[i4];
     const { lo, hi } = binarySearch(metasets[i4], axis, value, intersect);
-    for (let j3 = lo; j3 <= hi; ++j3) {
-      const element = data[j3];
+    for (let j4 = lo; j4 <= hi; ++j4) {
+      const element = data[j4];
       if (!element.skip) {
-        handler(element, index2, j3);
+        handler(element, index2, j4);
       }
     }
   }
@@ -7984,9 +8199,9 @@ function filterDynamicPositionByAxis(array, axis) {
   return array.filter((v3) => STATIC_POSITIONS.indexOf(v3.pos) === -1 && v3.box.axis === axis);
 }
 function sortByWeight(array, reverse) {
-  return array.sort((a3, b) => {
-    const v0 = reverse ? b : a3;
-    const v1 = reverse ? a3 : b;
+  return array.sort((a3, b2) => {
+    const v0 = reverse ? b2 : a3;
+    const v1 = reverse ? a3 : b2;
     return v0.weight === v1.weight ? v0.index - v1.index : v0.weight - v1.weight;
   });
 }
@@ -8063,8 +8278,8 @@ function buildLayoutBoxes(boxes) {
     horizontal: top.concat(bottom).concat(centerHorizontal)
   };
 }
-function getCombinedMax(maxPadding, chartArea, a3, b) {
-  return Math.max(maxPadding[a3], chartArea[a3]) + Math.max(maxPadding[b], chartArea[b]);
+function getCombinedMax(maxPadding, chartArea, a3, b2) {
+  return Math.max(maxPadding[a3], chartArea[a3]) + Math.max(maxPadding[b2], chartArea[b2]);
 }
 function updateMaxPadding(maxPadding, boxPadding) {
   maxPadding.top = Math.max(maxPadding.top, boxPadding.top);
@@ -9310,7 +9525,7 @@ var Scale = class _Scale extends Element {
     const increment = Math.floor(length / getTicksLimit(length, maxTicksLimit));
     let widestLabelSize = 0;
     let highestLabelSize = 0;
-    let i4, j3, jlen, label, tickFont, fontString, cache, lineHeight, width, height, nestedLabel;
+    let i4, j4, jlen, label, tickFont, fontString, cache, lineHeight, width, height, nestedLabel;
     for (i4 = 0; i4 < length; i4 += increment) {
       label = ticks[i4].label;
       tickFont = this._resolveTickFontOptions(i4);
@@ -9325,8 +9540,8 @@ var Scale = class _Scale extends Element {
         width = _measureText(ctx, cache.data, cache.gc, width, label);
         height = lineHeight;
       } else if (isArray(label)) {
-        for (j3 = 0, jlen = label.length; j3 < jlen; ++j3) {
-          nestedLabel = label[j3];
+        for (j4 = 0, jlen = label.length; j4 < jlen; ++j4) {
+          nestedLabel = label[j4];
           if (!isNullOrUndef(nestedLabel) && !isArray(nestedLabel)) {
             width = _measureText(ctx, cache.data, cache.gc, width, nestedLabel);
             height += lineHeight;
@@ -10249,7 +10464,7 @@ var PluginService = class {
   _notifyStateChanges(chart) {
     const previousDescriptors = this._oldCache || [];
     const descriptors2 = this._cache;
-    const diff = (a3, b) => a3.filter((x3) => !b.some((y3) => x3.plugin.id === y3.plugin.id));
+    const diff = (a3, b2) => a3.filter((x3) => !b2.some((y3) => x3.plugin.id === y3.plugin.id));
     this._notify(diff(previousDescriptors, descriptors2), chart, "stop");
     this._notify(diff(descriptors2, previousDescriptors), chart, "start");
   }
@@ -10659,8 +10874,8 @@ function positionIsHorizontal(position, axis) {
   return position === "top" || position === "bottom" || KNOWN_POSITIONS.indexOf(position) === -1 && axis === "x";
 }
 function compare2Level(l1, l22) {
-  return function(a3, b) {
-    return a3[l1] === b[l1] ? a3[l22] - b[l22] : a3[l1] - b[l1];
+  return function(a3, b2) {
+    return a3[l1] === b2[l1] ? a3[l22] - b2[l22] : a3[l1] - b2[l1];
   };
 }
 function onAnimationsComplete(context) {
@@ -10925,7 +11140,7 @@ var Chart = class {
     const metasets = this._metasets;
     const numData = this.data.datasets.length;
     const numMeta = metasets.length;
-    metasets.sort((a3, b) => a3.index - b.index);
+    metasets.sort((a3, b2) => a3.index - b2.index);
     if (numMeta > numData) {
       for (let i4 = numData; i4 < numMeta; ++i4) {
         this._destroyDatasetMeta(i4);
@@ -11461,7 +11676,7 @@ var Chart = class {
   }
   _updateHoverStyles(active, lastActive, replay) {
     const hoverOptions = this.options.hover;
-    const diff = (a3, b) => a3.filter((x3) => !b.some((y3) => x3.datasetIndex === y3.datasetIndex && x3.index === y3.index));
+    const diff = (a3, b2) => a3.filter((x3) => !b2.some((y3) => x3.datasetIndex === y3.datasetIndex && x3.index === y3.index));
     const deactivated = diff(lastActive, active);
     const activated = replay ? active : diff(active, lastActive);
     if (deactivated.length) {
@@ -12491,13 +12706,13 @@ function lttbDecimation(data, start, count, availableWidth, options) {
   for (i4 = 0; i4 < samples - 2; i4++) {
     let avgX = 0;
     let avgY = 0;
-    let j3;
+    let j4;
     const avgRangeStart = Math.floor((i4 + 1) * bucketWidth) + 1 + start;
     const avgRangeEnd = Math.min(Math.floor((i4 + 2) * bucketWidth) + 1, count) + start;
     const avgRangeLength = avgRangeEnd - avgRangeStart;
-    for (j3 = avgRangeStart; j3 < avgRangeEnd; j3++) {
-      avgX += data[j3].x;
-      avgY += data[j3].y;
+    for (j4 = avgRangeStart; j4 < avgRangeEnd; j4++) {
+      avgX += data[j4].x;
+      avgY += data[j4].y;
     }
     avgX /= avgRangeLength;
     avgY /= avgRangeLength;
@@ -12505,12 +12720,12 @@ function lttbDecimation(data, start, count, availableWidth, options) {
     const rangeTo = Math.min(Math.floor((i4 + 1) * bucketWidth) + 1, count) + start;
     const { x: pointAx, y: pointAy } = data[a3];
     maxArea = area = -1;
-    for (j3 = rangeOffs; j3 < rangeTo; j3++) {
-      area = 0.5 * Math.abs((pointAx - avgX) * (data[j3].y - pointAy) - (pointAx - data[j3].x) * (avgY - pointAy));
+    for (j4 = rangeOffs; j4 < rangeTo; j4++) {
+      area = 0.5 * Math.abs((pointAx - avgX) * (data[j4].y - pointAy) - (pointAx - data[j4].x) * (avgY - pointAy));
       if (area > maxArea) {
         maxArea = area;
-        maxAreaPoint = data[j3];
-        nextA = j3;
+        maxAreaPoint = data[j4];
+        nextA = j4;
       }
     }
     decimated[sampledIndex++] = maxAreaPoint;
@@ -12772,11 +12987,11 @@ function _findSegmentEnd(start, end, points) {
   }
   return end;
 }
-function _getEdge(a3, b, prop, fn) {
-  if (a3 && b) {
-    return fn(a3[prop], b[prop]);
+function _getEdge(a3, b2, prop, fn2) {
+  if (a3 && b2) {
+    return fn2(a3[prop], b2[prop]);
   }
-  return a3 ? a3[prop] : b ? b[prop] : 0;
+  return a3 ? a3[prop] : b2 ? b2[prop] : 0;
 }
 function _createBoundaryLine(boundary, line) {
   let points = [];
@@ -12904,8 +13119,8 @@ function _buildStackLine(source) {
   }, line));
   for (let i4 = 0; i4 < segments.length; i4++) {
     const segment = segments[i4];
-    for (let j3 = segment.start; j3 <= segment.end; j3++) {
-      addPointsBelow(points, sourcePoints[j3], linesBelow);
+    for (let j4 = segment.start; j4 <= segment.end; j4++) {
+      addPointsBelow(points, sourcePoints[j4], linesBelow);
     }
   }
   return new LineElement({
@@ -12929,8 +13144,8 @@ function getLinesBelow(scale, index2) {
 }
 function addPointsBelow(points, sourcePoint, linesBelow) {
   const postponed = [];
-  for (let j3 = 0; j3 < linesBelow.length; j3++) {
-    const line = linesBelow[j3];
+  for (let j4 = 0; j4 < linesBelow.length; j4++) {
+    const line = linesBelow[j4];
     const { first, last, point } = findPoint(line, sourcePoint, "x");
     if (!point || first && last) {
       continue;
@@ -13333,7 +13548,7 @@ var getBoxSize = (labelOpts, fontSize) => {
     itemHeight: Math.max(fontSize, boxHeight)
   };
 };
-var itemsEqual = (a3, b) => a3 !== null && b !== null && a3.datasetIndex === b.datasetIndex && a3.index === b.index;
+var itemsEqual = (a3, b2) => a3 !== null && b2 !== null && a3.datasetIndex === b2.datasetIndex && a3.index === b2.index;
 var Legend = class extends Element {
   constructor(config) {
     super();
@@ -13388,7 +13603,7 @@ var Legend = class extends Element {
       legendItems = legendItems.filter((item) => labelOpts.filter(item, this.chart.data));
     }
     if (labelOpts.sort) {
-      legendItems = legendItems.sort((a3, b) => labelOpts.sort(a3, b, this.chart.data));
+      legendItems = legendItems.sort((a3, b2) => labelOpts.sort(a3, b2, this.chart.data));
     }
     if (this.options.reverse) {
       legendItems.reverse();
@@ -13748,7 +13963,7 @@ function calculateItemSize(boxWidth, labelFont, ctx, legendItem, _itemHeight) {
 function calculateItemWidth(legendItem, boxWidth, labelFont, ctx) {
   let legendItemText = legendItem.text;
   if (legendItemText && typeof legendItemText !== "string") {
-    legendItemText = legendItemText.reduce((a3, b) => a3.length > b.length ? a3 : b);
+    legendItemText = legendItemText.reduce((a3, b2) => a3.length > b2.length ? a3 : b2);
   }
   return boxWidth + labelFont.size / 2 + ctx.measureText(legendItemText).width;
 }
@@ -14073,7 +14288,7 @@ var positioners = {
     }
     const xAverage = [
       ...xSet
-    ].reduce((a3, b) => a3 + b) / xSet.size;
+    ].reduce((a3, b2) => a3 + b2) / xSet.size;
     return {
       x: xAverage,
       y: y3 / count
@@ -14477,7 +14692,7 @@ var Tooltip = class extends Element {
       tooltipItems = tooltipItems.filter((element, index2, array) => options.filter(element, index2, array, data));
     }
     if (options.itemSort) {
-      tooltipItems = tooltipItems.sort((a3, b) => options.itemSort(a3, b, data));
+      tooltipItems = tooltipItems.sort((a3, b2) => options.itemSort(a3, b2, data));
     }
     each(tooltipItems, (context) => {
       const scoped = overrideCallbacks(options.callbacks, context);
@@ -14694,7 +14909,7 @@ var Tooltip = class extends Element {
       pt.y += bodyLineHeight + bodySpacing;
     };
     const bodyAlignForCalculation = rtlHelper.textAlign(bodyAlign);
-    let bodyItem, textColor, lines, i4, j3, ilen, jlen;
+    let bodyItem, textColor, lines, i4, j4, ilen, jlen;
     ctx.textAlign = bodyAlign;
     ctx.textBaseline = "middle";
     ctx.font = bodyFont.string;
@@ -14712,8 +14927,8 @@ var Tooltip = class extends Element {
         this._drawColorBox(ctx, pt, i4, rtlHelper, options);
         bodyLineHeight = Math.max(bodyFont.lineHeight, boxHeight);
       }
-      for (j3 = 0, jlen = lines.length; j3 < jlen; ++j3) {
-        fillLineOfText(lines[j3]);
+      for (j4 = 0, jlen = lines.length; j4 < jlen; ++j4) {
+        fillLineOfText(lines[j4]);
         bodyLineHeight = bodyFont.lineHeight;
       }
       each(bodyItem.after, fillLineOfText);
@@ -15222,24 +15437,24 @@ function generateTicks$1(generationOptions, dataRange) {
   factor = Math.pow(10, isNullOrUndef(precision) ? decimalPlaces : precision);
   niceMin = Math.round(niceMin * factor) / factor;
   niceMax = Math.round(niceMax * factor) / factor;
-  let j3 = 0;
+  let j4 = 0;
   if (minDefined) {
     if (includeBounds && niceMin !== min) {
       ticks.push({
         value: min
       });
       if (niceMin < min) {
-        j3++;
+        j4++;
       }
-      if (almostEquals(Math.round((niceMin + j3 * spacing) * factor) / factor, min, relativeLabelSize(min, minSpacing, generationOptions))) {
-        j3++;
+      if (almostEquals(Math.round((niceMin + j4 * spacing) * factor) / factor, min, relativeLabelSize(min, minSpacing, generationOptions))) {
+        j4++;
       }
     } else if (niceMin < min) {
-      j3++;
+      j4++;
     }
   }
-  for (; j3 < numSpaces; ++j3) {
-    const tickValue = Math.round((niceMin + j3 * spacing) * factor) / factor;
+  for (; j4 < numSpaces; ++j4) {
+    const tickValue = Math.round((niceMin + j4 * spacing) * factor) / factor;
     if (maxDefined && tickValue > max) {
       break;
     }
@@ -16119,8 +16334,8 @@ var INTERVALS = {
   }
 };
 var UNITS = /* @__PURE__ */ Object.keys(INTERVALS);
-function sorter(a3, b) {
-  return a3 - b;
+function sorter(a3, b2) {
+  return a3 - b2;
 }
 function parse(scale, input) {
   if (isNullOrUndef(input)) {
@@ -16574,7 +16789,7 @@ var TimeSeriesScale = class extends TimeScale {
     if (!timestamps.includes(max) || timestamps.length === 1) {
       timestamps.push(max);
     }
-    return timestamps.sort((a3, b) => a3 - b);
+    return timestamps.sort((a3, b2) => a3 - b2);
   }
   _getTimestampsForTable() {
     let timestamps = this._cache.all || [];
@@ -16662,9 +16877,9 @@ function getThemeColors() {
 function colorToRgba(color2, alpha2) {
   if (color2.startsWith("#")) {
     const r3 = parseInt(color2.slice(1, 3), 16);
-    const g2 = parseInt(color2.slice(3, 5), 16);
-    const b = parseInt(color2.slice(5, 7), 16);
-    return `rgba(${r3}, ${g2}, ${b}, ${alpha2})`;
+    const g4 = parseInt(color2.slice(3, 5), 16);
+    const b2 = parseInt(color2.slice(5, 7), 16);
+    return `rgba(${r3}, ${g4}, ${b2}, ${alpha2})`;
   } else if (color2.startsWith("rgb")) {
     return color2.replace("rgb", "rgba").replace(")", `, ${alpha2})`);
   }
@@ -17028,6 +17243,7 @@ function ChartWrapper({
       onDateClick(dateStr);
     }
   }, [onDateClick]);
+  const prevConfigRef = A2(null);
   y2(() => {
     if (!canvasRef.current) return;
     const colors2 = getThemeColors();
@@ -17049,28 +17265,62 @@ function ChartWrapper({
       startTrackingDateStr,
       todayStr
     );
-    const config = chartService.createChartConfig(
-      chartData,
-      colors2,
-      {
-        dateIso,
-        daysToShow,
-        metricType: trackerType,
-        unit,
-        minLimit,
-        maxLimit,
-        scaleMinValue,
-        scaleMaxValue
-      },
-      handleChartClick
-    );
-    if (chartRef.current) {
-      chartRef.current.destroy();
-    }
-    const ctx = canvasRef.current.getContext("2d");
-    if (ctx) {
-      chartRef.current = new Chart(ctx, config);
+    const currentConfig = {
+      trackerType,
+      unit,
+      minLimit,
+      maxLimit,
+      scaleMinValue,
+      scaleMaxValue
+    };
+    const canUpdate = chartRef.current && prevConfigRef.current && prevConfigRef.current.trackerType === currentConfig.trackerType && prevConfigRef.current.unit === currentConfig.unit && prevConfigRef.current.minLimit === currentConfig.minLimit && prevConfigRef.current.maxLimit === currentConfig.maxLimit && prevConfigRef.current.scaleMinValue === currentConfig.scaleMinValue && prevConfigRef.current.scaleMaxValue === currentConfig.scaleMaxValue;
+    if (canUpdate && chartRef.current) {
+      const config = chartService.createChartConfig(
+        chartData,
+        colors2,
+        {
+          dateIso,
+          daysToShow,
+          metricType: trackerType,
+          unit,
+          minLimit,
+          maxLimit,
+          scaleMinValue,
+          scaleMaxValue
+        },
+        handleChartClick
+      );
+      chartRef.current.data = config.data;
+      if (config.options) {
+        Object.assign(chartRef.current.options, config.options);
+      }
       chartRef.current.dateStrings = chartData.dateStrings;
+      chartRef.current.update("none");
+    } else {
+      const config = chartService.createChartConfig(
+        chartData,
+        colors2,
+        {
+          dateIso,
+          daysToShow,
+          metricType: trackerType,
+          unit,
+          minLimit,
+          maxLimit,
+          scaleMinValue,
+          scaleMaxValue
+        },
+        handleChartClick
+      );
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+      const ctx = canvasRef.current.getContext("2d");
+      if (ctx) {
+        chartRef.current = new Chart(ctx, config);
+        chartRef.current.dateStrings = chartData.dateStrings;
+      }
+      prevConfigRef.current = currentConfig;
     }
     return () => {
       if (chartRef.current) {
@@ -17098,36 +17348,34 @@ function ChartWrapper({
 }
 
 // src/components/TrackerItem/TrackerItem.tsx
-function TrackerItem({ file, plugin, dateIso, viewMode, opts }) {
+function TrackerItemComponent({ file, plugin, dateIso, viewMode, opts }) {
   const { onDateChange } = useTrackerContext();
   const [fileOptions, setFileOptions] = d2(null);
   const [entries, setEntries] = d2(/* @__PURE__ */ new Map());
   const [isLoading, setIsLoading] = d2(true);
+  const loadData = q2(async () => {
+    try {
+      const [options, entriesData] = await Promise.all([
+        plugin.getFileTypeFromFrontmatter(file),
+        plugin.readAllEntries(file)
+      ]);
+      setFileOptions(options);
+      setEntries(entriesData);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("TrackerItem: error loading data", error);
+      setIsLoading(false);
+    }
+  }, [plugin, file]);
   y2(() => {
-    let mounted = true;
-    const loadData = async () => {
-      try {
-        const [options, entriesData] = await Promise.all([
-          plugin.getFileTypeFromFrontmatter(file),
-          plugin.readAllEntries(file)
-        ]);
-        if (mounted) {
-          setFileOptions(options);
-          setEntries(entriesData);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("TrackerItem: error loading data", error);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
     loadData();
+  }, [loadData, dateIso]);
+  y2(() => {
+    plugin.registerTrackerRefresh(file.path, loadData);
     return () => {
-      mounted = false;
+      plugin.unregisterTrackerRefresh(file.path);
     };
-  }, [file, plugin, dateIso]);
+  }, [plugin, file.path, loadData]);
   const handleValueChange = q2(async () => {
     const entriesData = await plugin.readAllEntries(file);
     setEntries(entriesData);
@@ -17333,9 +17581,24 @@ function TrackerItem({ file, plugin, dateIso, viewMode, opts }) {
     )
   ] });
 }
+var TrackerItem = M2(TrackerItemComponent, (prevProps, nextProps) => {
+  if (prevProps.file.path !== nextProps.file.path) return false;
+  if (prevProps.dateIso !== nextProps.dateIso) return false;
+  if (prevProps.viewMode !== nextProps.viewMode) return false;
+  if (prevProps.plugin !== nextProps.plugin) return false;
+  const prevOpts = prevProps.opts;
+  const nextOpts = nextProps.opts;
+  const prevKeys = Object.keys(prevOpts);
+  const nextKeys = Object.keys(nextOpts);
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (const key of prevKeys) {
+    if (prevOpts[key] !== nextOpts[key]) return false;
+  }
+  return true;
+});
 
 // src/components/TrackerBlock/FolderNode.tsx
-function FolderNode({ node, plugin, dateIso, viewMode, opts }) {
+function FolderNodeComponent({ node, plugin, dateIso, viewMode, opts }) {
   const nodeRef = A2(null);
   const shouldShowHeader = node.files.length > 0 || node.level > 0 && node.children.length > 0;
   const handleMoveUp = q2(async () => {
@@ -17425,6 +17688,25 @@ function FolderNode({ node, plugin, dateIso, viewMode, opts }) {
     }
   );
 }
+var FolderNode = M2(FolderNodeComponent, (prevProps, nextProps) => {
+  if (prevProps.node.path !== nextProps.node.path) return false;
+  if (prevProps.node.files.length !== nextProps.node.files.length) return false;
+  if (prevProps.node.children.length !== nextProps.node.children.length) return false;
+  if (!prevProps.node.files.every((f4, i4) => f4.path === nextProps.node.files[i4]?.path)) return false;
+  if (!prevProps.node.children.every((c3, i4) => c3.path === nextProps.node.children[i4]?.path)) return false;
+  if (prevProps.dateIso !== nextProps.dateIso) return false;
+  if (prevProps.viewMode !== nextProps.viewMode) return false;
+  if (prevProps.plugin !== nextProps.plugin) return false;
+  const prevOpts = prevProps.opts;
+  const nextOpts = nextProps.opts;
+  const prevKeys = Object.keys(prevOpts);
+  const nextKeys = Object.keys(nextOpts);
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (const key of prevKeys) {
+    if (prevOpts[key] !== nextOpts[key]) return false;
+  }
+  return true;
+});
 
 // src/components/TrackerBlock/TrackerBlock.tsx
 function TrackerBlock({
@@ -17667,9 +17949,9 @@ var FolderTreeService = class {
     const relativePath = this.getRelativePath(folderPath);
     const sortOrder = this.customSortOrder?.[relativePath];
     if (!sortOrder || sortOrder.length === 0) {
-      return [...items].sort((a3, b) => {
+      return [...items].sort((a3, b2) => {
         const aName = a3 instanceof import_obsidian2.TFile ? a3.basename : a3.name;
-        const bName = b instanceof import_obsidian2.TFile ? b.basename : b.name;
+        const bName = b2 instanceof import_obsidian2.TFile ? b2.basename : b2.name;
         return aName.localeCompare(bName, void 0, { sensitivity: "base" });
       });
     }
@@ -17696,9 +17978,9 @@ var FolderTreeService = class {
         remaining.push(item);
       }
     }
-    remaining.sort((a3, b) => {
+    remaining.sort((a3, b2) => {
       const aName = a3 instanceof import_obsidian2.TFile ? a3.basename : a3.name;
-      const bName = b instanceof import_obsidian2.TFile ? b.basename : b.name;
+      const bName = b2 instanceof import_obsidian2.TFile ? b2.basename : b2.name;
       return aName.localeCompare(bName, void 0, { sensitivity: "base" });
     });
     return [...sorted, ...remaining];
@@ -17751,8 +18033,41 @@ var FolderTreeService = class {
 // src/services/tracker-file-service.ts
 var import_obsidian3 = require("obsidian");
 var TrackerFileService = class {
+  // 5 minutes
   constructor(app) {
     this.app = app;
+    // Cache for file content to avoid redundant reads
+    this.fileContentCache = /* @__PURE__ */ new Map();
+    this.CACHE_TTL_MS = 5 * 60 * 1e3;
+  }
+  /**
+   * Get cached file content or read from vault
+   */
+  async getFileContent(file) {
+    const cacheKey = file.path;
+    const cached = this.fileContentCache.get(cacheKey);
+    const now = Date.now();
+    const fileMtime = file.stat?.mtime || 0;
+    if (cached) {
+      const cacheAge = now - cached.timestamp;
+      if (cacheAge < this.CACHE_TTL_MS && cached.fileMtime === fileMtime) {
+        return cached.content;
+      }
+    }
+    const content = await this.app.vault.read(file);
+    const latestMtime = file.stat?.mtime || now;
+    this.fileContentCache.set(cacheKey, {
+      content,
+      timestamp: now,
+      fileMtime: latestMtime
+    });
+    return content;
+  }
+  /**
+   * Invalidate cache for a specific file
+   */
+  invalidateFileCache(filePath) {
+    this.fileContentCache.delete(filePath);
   }
   async ensureFileWithHeading(filePath, type = "good-habit") {
     const existing = this.app.vault.getAbstractFileByPath(filePath);
@@ -17829,7 +18144,7 @@ data: {}
   async readAllEntries(file) {
     const entries = /* @__PURE__ */ new Map();
     try {
-      const raw = await this.app.vault.read(file);
+      const raw = await this.getFileContent(file);
       const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
       if (!frontmatterMatch) return entries;
       const frontmatter = frontmatterMatch[1];
@@ -17848,7 +18163,8 @@ data: {}
   }
   async writeLogLine(file, dateIso, value) {
     try {
-      const content = await this.app.vault.read(file);
+      const content = await this.getFileContent(file);
+      this.invalidateFileCache(file.path);
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
       if (!frontmatterMatch) {
         throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
@@ -17881,10 +18197,49 @@ ${newFrontmatter}---${body}`;
       throw new Error(errorMsg);
     }
   }
+  /**
+   * Delete entry for a specific date
+   */
+  async deleteEntry(file, dateIso) {
+    try {
+      const content = await this.getFileContent(file);
+      this.invalidateFileCache(file.path);
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!frontmatterMatch) {
+        throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
+      }
+      const frontmatter = frontmatterMatch[1];
+      const body = content.slice(frontmatterMatch[0].length);
+      const data = this.parseFrontmatterData(frontmatter);
+      delete data[dateIso];
+      const dataYaml = this.formatDataToYaml(data);
+      let newFrontmatter = frontmatter.trim();
+      const dataMatch = newFrontmatter.match(/data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/);
+      if (dataMatch) {
+        const dataYamlTrimmed = dataYaml.endsWith("\n") ? dataYaml.slice(0, -1) : dataYaml;
+        newFrontmatter = newFrontmatter.replace(
+          /data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/,
+          dataYamlTrimmed
+        );
+      } else {
+        newFrontmatter = newFrontmatter + "\n" + dataYaml.trimEnd();
+      }
+      if (!newFrontmatter.endsWith("\n")) {
+        newFrontmatter += "\n";
+      }
+      const newContent = `---
+${newFrontmatter}---${body}`;
+      await this.app.vault.modify(file, newContent);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("Tracker: delete entry error", error);
+      throw new Error(errorMsg);
+    }
+  }
   async getFileTypeFromFrontmatter(file) {
     const fileOpts = {};
     try {
-      const fileContent = await this.app.vault.read(file);
+      const fileContent = await this.getFileContent(file);
       const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
       if (frontmatterMatch) {
         const frontmatter = frontmatterMatch[1];
@@ -18946,10 +19301,6 @@ var styles_default = `/* ============================================\r
   transition: border-color 0.2s ease;\r
 }\r
 \r
-.tracker-notes__folder-header:hover {\r
-  border-color: var(--background-modifier-border-hover, var(--background-modifier-border));\r
-}\r
-\r
 .tracker-notes__folder-header.level-0 { \r
   font-size: 1.45em; \r
   margin-top: 0;\r
@@ -19392,15 +19743,6 @@ var styles_default = `/* ============================================\r
   outline: none; \r
   overflow: hidden;\r
   transition: border-color 0.2s ease, box-shadow 0.2s ease;\r
-}\r
-\r
-.tracker-notes__progress-bar-input:hover { \r
-  border-color: var(--background-modifier-border-hover, var(--interactive-accent)); \r
-}\r
-\r
-.tracker-notes__progress-bar-input:focus-visible { \r
-  box-shadow: 0 0 0 3px rgba(var(--interactive-accent-rgb, 127, 109, 242), 0.2);\r
-  border-color: var(--interactive-accent);\r
 }\r
 \r
 .tracker-notes__progress-bar-progress { \r
@@ -20001,14 +20343,11 @@ var styles_default = `/* ============================================\r
   background: var(--interactive-accent);\r
   color: var(--text-on-accent);\r
   border-color: var(--interactive-accent);\r
-  box-shadow: 0 2px 6px rgba(var(--interactive-accent-rgb, 127, 109, 242), 0.25);\r
 }\r
 \r
 .tracker-modal-buttons button.mod-cta:hover {\r
   background: var(--interactive-accent-hover, var(--interactive-accent));\r
   border-color: var(--interactive-accent-hover, var(--interactive-accent));\r
-  box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb, 127, 109, 242), 0.35);\r
-  transform: translateY(-1px);\r
 }\r
 \r
 /* ============================================\r
@@ -20830,6 +21169,46 @@ var IconizeService = class {
     }
   }
   /**
+   * Updates icon path when a file or folder is renamed
+   * This preserves the icon association after rename
+   */
+  updateIconPath(oldPath, newPath) {
+    if (!this.iconData) {
+      return;
+    }
+    const oldNormalized = this.normalizePath(oldPath);
+    const newNormalized = this.normalizePath(newPath);
+    const pathVariants = [
+      oldNormalized,
+      `/${oldNormalized}`,
+      oldNormalized.endsWith(".md") ? oldNormalized.slice(0, -3) : null,
+      oldNormalized.endsWith(".md") ? `/${oldNormalized.slice(0, -3)}` : null
+    ].filter(Boolean);
+    let iconValue = null;
+    let foundPath = null;
+    for (const variant of pathVariants) {
+      if (this.iconData[variant] && typeof this.iconData[variant] === "string") {
+        iconValue = this.iconData[variant];
+        foundPath = variant;
+        break;
+      }
+    }
+    if (iconValue && foundPath) {
+      let newPathKey;
+      if (foundPath.startsWith("/")) {
+        newPathKey = `/${newNormalized}`;
+      } else {
+        newPathKey = newNormalized;
+      }
+      if (foundPath.endsWith(".md") || !foundPath.includes(".") && newPath.endsWith(".md")) {
+      } else if (newPath.endsWith(".md") && !newPathKey.endsWith(".md")) {
+        newPathKey = newPathKey.slice(0, -3);
+      }
+      this.iconData[newPathKey] = iconValue;
+      delete this.iconData[foundPath];
+    }
+  }
+  /**
    * Invalidates cached data (useful if Iconize data changes)
    */
   invalidateCache() {
@@ -20840,23 +21219,34 @@ var IconizeService = class {
 
 // src/core/managers/state-manager.ts
 var StateManager = class {
+  // LRU tracking: most recently used at the end
   constructor(app, trackerFileService, folderTreeService) {
     this.app = app;
     this.trackerFileService = trackerFileService;
     this.folderTreeService = folderTreeService;
     this.trackerState = /* @__PURE__ */ new Map();
-    this.currentNotePath = null;
+    this.accessOrder = [];
   }
   /**
-   * Check if note changed and clear caches if needed
+   * Update access order for LRU cache
    */
-  async checkNoteChange(notePath) {
-    if (notePath !== this.currentNotePath) {
-      await this.clearAllCaches();
-      this.currentNotePath = notePath;
-      return true;
+  updateAccessOrder(filePath) {
+    const index2 = this.accessOrder.indexOf(filePath);
+    if (index2 !== -1) {
+      this.accessOrder.splice(index2, 1);
     }
-    return false;
+    this.accessOrder.push(filePath);
+  }
+  /**
+   * Evict least recently used cache entry if cache is full
+   */
+  evictIfNeeded() {
+    if (this.trackerState.size >= MAX_CACHE_SIZE) {
+      const lruKey = this.accessOrder.shift();
+      if (lruKey) {
+        this.trackerState.delete(lruKey);
+      }
+    }
   }
   /**
    * Ensure tracker state is loaded for a file
@@ -20864,14 +21254,17 @@ var StateManager = class {
   async ensureTrackerState(file) {
     const existing = this.trackerState.get(file.path);
     if (existing) {
+      this.updateAccessOrder(file.path);
       return existing;
     }
+    this.evictIfNeeded();
     const [entries, fileOpts] = await Promise.all([
       this.trackerFileService.readAllEntries(file),
       this.trackerFileService.getFileTypeFromFrontmatter(file)
     ]);
     const state = { entries, fileOpts };
     this.trackerState.set(file.path, state);
+    this.updateAccessOrder(file.path);
     return state;
   }
   /**
@@ -20879,12 +21272,18 @@ var StateManager = class {
    */
   clearTrackerState(path) {
     this.trackerState.delete(path);
+    const index2 = this.accessOrder.indexOf(path);
+    if (index2 !== -1) {
+      this.accessOrder.splice(index2, 1);
+    }
   }
   /**
    * Clears all backend state (trackerState, FolderTreeService cache)
+   * Use sparingly - prefer selective cache invalidation
    */
   async clearAllCaches() {
     this.trackerState.clear();
+    this.accessOrder = [];
     this.folderTreeService.invalidate();
   }
   /**
@@ -20917,8 +21316,16 @@ var StateManager = class {
     if (state) {
       this.trackerState.delete(oldPath);
       this.trackerState.set(newPath, state);
+      const index2 = this.accessOrder.indexOf(oldPath);
+      if (index2 !== -1) {
+        this.accessOrder[index2] = newPath;
+      }
     } else {
       this.trackerState.delete(newPath);
+      const index2 = this.accessOrder.indexOf(newPath);
+      if (index2 !== -1) {
+        this.accessOrder.splice(index2, 1);
+      }
     }
   }
   /**
@@ -20991,7 +21398,7 @@ var SortOrderManager = class {
     if (sortOrder && sortOrder.length > 0) {
       return sortOrder;
     }
-    return items.map((item) => "basename" in item ? item.basename : item.name).sort((a3, b) => a3.localeCompare(b, void 0, { sensitivity: "base" }));
+    return items.map((item) => "basename" in item ? item.basename : item.name).sort((a3, b2) => a3.localeCompare(b2, void 0, { sensitivity: "base" }));
   }
   /**
    * Saves sort order for a folder to settings
@@ -21029,9 +21436,9 @@ var SortOrderManager = class {
         remaining.push(item);
       }
     }
-    remaining.sort((a3, b) => {
+    remaining.sort((a3, b2) => {
       const aName = "basename" in a3 ? a3.basename : a3.name;
-      const bName = "basename" in b ? b.basename : b.name;
+      const bName = "basename" in b2 ? b2.basename : b2.name;
       return aName.localeCompare(bName, void 0, { sensitivity: "base" });
     });
     return [...sorted, ...remaining];
@@ -21470,22 +21877,11 @@ var BlockManager = class {
     }
   }
   /**
-   * Refresh trackers for a specific file
+   * Refresh a specific tracker by calling its registered callback
    */
-  async refreshTrackersForFile(file, invalidateCacheForFile) {
+  refreshTrackersForFile(file, invalidateCacheForFile, refreshTracker) {
     invalidateCacheForFile(file);
-    const renderPromises = [];
-    for (const block of Array.from(this.activeBlocks)) {
-      const hasTracker = block.containerEl.querySelector(
-        `.tracker-notes__tracker[data-file-path="${file.path}"]`
-      );
-      if (hasTracker) {
-        renderPromises.push(block.render());
-      }
-    }
-    if (renderPromises.length > 0) {
-      await Promise.allSettled(renderPromises);
-    }
+    refreshTracker(file.path);
   }
   /**
    * Refresh all active blocks with scroll position preservation
@@ -21657,6 +22053,8 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
     this.refreshBlocksDebounceTimer = null;
+    // Simple callback registry for tracker refresh
+    this.trackerRefreshCallbacks = /* @__PURE__ */ new Map();
   }
   /**
    * Get active blocks (for external access)
@@ -21692,7 +22090,7 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
     this.domReorderManager = new DomReorderManager(
       () => this.blockManager.activeBlocks,
       (p3) => this.normalizePath(p3),
-      (t3, b) => this.blockManager.isFolderRelevant(t3, b)
+      (t3, b2) => this.blockManager.isFolderRelevant(t3, b2)
     );
     this.vaultEventHandlers = new VaultEventHandlers(
       this.sortOrderManager,
@@ -21769,8 +22167,6 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   }
   // ---- Code blocks -----------------------------------------------------------
   async processTrackerBlock(source, el, ctx) {
-    const notePath = ctx.sourcePath || null;
-    await this.stateManager.checkNoteChange(notePath);
     const block = new TrackerBlockRenderChild(this, source, el, ctx);
     ctx.addChild(block);
     this.blockManager.addBlock(block);
@@ -21782,8 +22178,12 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   async refreshBlocksForFolder(folderPath) {
     await this.blockManager.refreshBlocksForFolder(folderPath, (p3) => this.normalizePath(p3));
   }
-  async refreshTrackersForFile(file) {
-    await this.blockManager.refreshTrackersForFile(file, (f4) => this.invalidateCacheForFile(f4));
+  refreshTrackersForFile(file) {
+    this.blockManager.refreshTrackersForFile(
+      file,
+      (f4) => this.invalidateCacheForFile(f4),
+      (path) => this.refreshTracker(path)
+    );
   }
   async refreshAllBlocks() {
     await this.blockManager.refreshAllBlocks();
@@ -21798,9 +22198,43 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
   }
   invalidateCacheForFile(file) {
     this.stateManager.clearTrackerState(file.path);
+    this.trackerFileService.invalidateFileCache(file.path);
+  }
+  /**
+   * Register a refresh callback for a tracker
+   */
+  registerTrackerRefresh(filePath, callback2) {
+    this.trackerRefreshCallbacks.set(filePath, callback2);
+  }
+  /**
+   * Unregister a refresh callback for a tracker
+   */
+  unregisterTrackerRefresh(filePath) {
+    this.trackerRefreshCallbacks.delete(filePath);
+  }
+  /**
+   * Directly call the refresh callback for a specific tracker
+   */
+  refreshTracker(filePath) {
+    const callback2 = this.trackerRefreshCallbacks.get(filePath);
+    if (callback2) {
+      callback2();
+    }
+  }
+  /**
+   * Update callback registration when a tracker file is renamed
+   */
+  updateTrackerRefreshPath(oldPath, newPath) {
+    const callback2 = this.trackerRefreshCallbacks.get(oldPath);
+    if (callback2) {
+      this.trackerRefreshCallbacks.delete(oldPath);
+      this.trackerRefreshCallbacks.set(newPath, callback2);
+    }
   }
   handleTrackerRenamed(oldPath, file) {
     this.vaultEventHandlers.handleTrackerRenamed(oldPath, file);
+    this.updateTrackerRefreshPath(oldPath, file.path);
+    this.iconizeService.updateIconPath(oldPath, file.path);
   }
   async getStartTrackingDateAsync(entries, file) {
     if (!file) {
@@ -21875,6 +22309,18 @@ var TrackerPlugin = class extends import_obsidian10.Plugin {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new import_obsidian10.Notice(`${ERROR_MESSAGES.WRITE_ERROR}: ${errorMsg}`);
       console.error("Tracker: write error", error);
+      throw error;
+    }
+  }
+  async deleteEntry(file, dateIso) {
+    try {
+      const state = await this.stateManager.ensureTrackerState(file);
+      state.entries.delete(dateIso);
+      await this.trackerFileService.deleteEntry(file, dateIso);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      new import_obsidian10.Notice(`${ERROR_MESSAGES.WRITE_ERROR}: ${errorMsg}`);
+      console.error("Tracker: delete entry error", error);
       throw error;
     }
   }

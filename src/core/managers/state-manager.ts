@@ -2,6 +2,7 @@ import type { TFile, TFolder, App } from "obsidian";
 import type { TrackerFileOptions } from "../../domain/types";
 import type { TrackerFileService } from "../../services/tracker-file-service";
 import type { FolderTreeService } from "../../services/folder-tree-service";
+import { MAX_CACHE_SIZE } from "../../constants";
 
 export interface TrackerState {
   entries: Map<string, string | number>;
@@ -9,13 +10,11 @@ export interface TrackerState {
 }
 
 /**
- * Manages tracker state caching
+ * Manages tracker state caching with LRU eviction policy
  */
 export class StateManager {
   private trackerState: Map<string, TrackerState> = new Map();
-  private currentNotePath: string | null = null;
-  // Track which files are referenced by which notes for selective cache invalidation
-  private noteFileReferences: Map<string, Set<string>> = new Map();
+  private accessOrder: string[] = []; // LRU tracking: most recently used at the end
 
   constructor(
     private readonly app: App,
@@ -24,70 +23,41 @@ export class StateManager {
   ) {}
 
   /**
-   * Check if note changed and selectively clear caches
-   * Only clears caches for files that are no longer referenced
+   * Update access order for LRU cache
    */
-  async checkNoteChange(notePath: string | null): Promise<boolean> {
-    if (notePath !== this.currentNotePath) {
-      const oldNotePath = this.currentNotePath;
-      
-      // Clear caches for files that were only referenced by the old note
-      if (oldNotePath) {
-        const oldNoteFiles = this.noteFileReferences.get(oldNotePath);
-        if (oldNoteFiles) {
-          // Check if any other note references these files
-          const filesToKeep = new Set<string>();
-          for (const [otherNotePath, files] of this.noteFileReferences.entries()) {
-            if (otherNotePath !== oldNotePath) {
-              for (const filePath of files) {
-                filesToKeep.add(filePath);
-              }
-            }
-          }
-          
-          // Clear caches for files that are no longer referenced
-          for (const filePath of oldNoteFiles) {
-            if (!filesToKeep.has(filePath)) {
-              this.clearTrackerState(filePath);
-            }
-          }
-          
-          // Remove old note's file references
-          this.noteFileReferences.delete(oldNotePath);
-        }
-      }
-      
-      this.currentNotePath = notePath;
-      return true;
+  private updateAccessOrder(filePath: string): void {
+    const index = this.accessOrder.indexOf(filePath);
+    if (index !== -1) {
+      this.accessOrder.splice(index, 1);
     }
-    return false;
+    this.accessOrder.push(filePath);
   }
 
   /**
-   * Register a file reference for the current note
+   * Evict least recently used cache entry if cache is full
    */
-  registerFileReference(filePath: string): void {
-    if (!this.currentNotePath) return;
-    
-    let fileSet = this.noteFileReferences.get(this.currentNotePath);
-    if (!fileSet) {
-      fileSet = new Set();
-      this.noteFileReferences.set(this.currentNotePath, fileSet);
+  private evictIfNeeded(): void {
+    if (this.trackerState.size >= MAX_CACHE_SIZE) {
+      const lruKey = this.accessOrder.shift();
+      if (lruKey) {
+        this.trackerState.delete(lruKey);
+      }
     }
-    fileSet.add(filePath);
   }
 
   /**
    * Ensure tracker state is loaded for a file
    */
   async ensureTrackerState(file: TFile): Promise<TrackerState> {
-    // Register file reference for current note
-    this.registerFileReference(file.path);
-    
     const existing = this.trackerState.get(file.path);
     if (existing) {
+      // Update access order for LRU
+      this.updateAccessOrder(file.path);
       return existing;
     }
+    
+    // Evict LRU entry if cache is full
+    this.evictIfNeeded();
     
     const [entries, fileOpts] = await Promise.all([
       this.trackerFileService.readAllEntries(file),
@@ -95,6 +65,7 @@ export class StateManager {
     ]);
     const state = { entries, fileOpts };
     this.trackerState.set(file.path, state);
+    this.updateAccessOrder(file.path);
     return state;
   }
 
@@ -103,6 +74,10 @@ export class StateManager {
    */
   clearTrackerState(path: string): void {
     this.trackerState.delete(path);
+    const index = this.accessOrder.indexOf(path);
+    if (index !== -1) {
+      this.accessOrder.splice(index, 1);
+    }
   }
 
   /**
@@ -111,7 +86,7 @@ export class StateManager {
    */
   async clearAllCaches(): Promise<void> {
     this.trackerState.clear();
-    this.noteFileReferences.clear();
+    this.accessOrder = [];
     this.folderTreeService.invalidate();
   }
 
@@ -149,8 +124,18 @@ export class StateManager {
     if (state) {
       this.trackerState.delete(oldPath);
       this.trackerState.set(newPath, state);
+      
+      // Update access order
+      const index = this.accessOrder.indexOf(oldPath);
+      if (index !== -1) {
+        this.accessOrder[index] = newPath;
+      }
     } else {
       this.trackerState.delete(newPath);
+      const index = this.accessOrder.indexOf(newPath);
+      if (index !== -1) {
+        this.accessOrder.splice(index, 1);
+      }
     }
   }
 

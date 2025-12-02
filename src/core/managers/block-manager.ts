@@ -66,27 +66,15 @@ export class BlockManager {
   }
 
   /**
-   * Refresh trackers for a specific file
+   * Refresh a specific tracker by calling its registered callback
    */
-  async refreshTrackersForFile(
+  refreshTrackersForFile(
     file: TFile,
-    invalidateCacheForFile: (file: TFile) => void
-  ): Promise<void> {
+    invalidateCacheForFile: (file: TFile) => void,
+    refreshTracker: (filePath: string) => void
+  ): void {
     invalidateCacheForFile(file);
-    
-    const renderPromises: Promise<void>[] = [];
-    for (const block of Array.from(this.activeBlocks)) {
-      const hasTracker = block.containerEl.querySelector(
-        `.tracker-notes__tracker[data-file-path="${file.path}"]`
-      );
-      if (hasTracker) {
-        renderPromises.push(block.render());
-      }
-    }
-    
-    if (renderPromises.length > 0) {
-      await Promise.allSettled(renderPromises);
-    }
+    refreshTracker(file.path);
   }
 
   /**

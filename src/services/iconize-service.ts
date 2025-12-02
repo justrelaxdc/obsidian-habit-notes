@@ -179,6 +179,63 @@ export class IconizeService {
   }
 
   /**
+   * Updates icon path when a file or folder is renamed
+   * This preserves the icon association after rename
+   */
+  updateIconPath(oldPath: string, newPath: string): void {
+    if (!this.iconData) {
+      return;
+    }
+
+    const oldNormalized = this.normalizePath(oldPath);
+    const newNormalized = this.normalizePath(newPath);
+
+    // Check all possible path formats that might be stored
+    const pathVariants = [
+      oldNormalized,
+      `/${oldNormalized}`,
+      oldNormalized.endsWith(".md") ? oldNormalized.slice(0, -3) : null,
+      oldNormalized.endsWith(".md") ? `/${oldNormalized.slice(0, -3)}` : null,
+    ].filter(Boolean) as string[];
+
+    // Find which variant has an icon
+    let iconValue: string | null = null;
+    let foundPath: string | null = null;
+    
+    for (const variant of pathVariants) {
+      if (this.iconData[variant] && typeof this.iconData[variant] === 'string') {
+        iconValue = this.iconData[variant];
+        foundPath = variant;
+        break;
+      }
+    }
+
+    // If we found an icon, update it to the new path
+    if (iconValue && foundPath) {
+      // Determine the new path format based on the old format
+      let newPathKey: string;
+      if (foundPath.startsWith('/')) {
+        newPathKey = `/${newNormalized}`;
+      } else {
+        newPathKey = newNormalized;
+      }
+      
+      // Handle .md extension
+      if (foundPath.endsWith('.md') || (!foundPath.includes('.') && newPath.endsWith('.md'))) {
+        // Keep consistent with old format
+      } else if (newPath.endsWith('.md') && !newPathKey.endsWith('.md')) {
+        newPathKey = newPathKey.slice(0, -3);
+      }
+
+      // Update the icon data in memory
+      this.iconData[newPathKey] = iconValue;
+      
+      // Remove old path entry
+      delete this.iconData[foundPath];
+    }
+  }
+
+  /**
    * Invalidates cached data (useful if Iconize data changes)
    */
   invalidateCache(): void {

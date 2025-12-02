@@ -185,9 +185,6 @@ export default class TrackerPlugin extends Plugin {
   // ---- Code blocks -----------------------------------------------------------
 
   async processTrackerBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
-    const notePath = ctx.sourcePath || null;
-    await this.stateManager.checkNoteChange(notePath);
-    
     const block = new TrackerBlockRenderChild(this, source, el, ctx);
     ctx.addChild(block);
     this.blockManager.addBlock(block);
@@ -202,8 +199,12 @@ export default class TrackerPlugin extends Plugin {
     await this.blockManager.refreshBlocksForFolder(folderPath, (p) => this.normalizePath(p));
   }
 
-  async refreshTrackersForFile(file: TFile) {
-    await this.blockManager.refreshTrackersForFile(file, (f) => this.invalidateCacheForFile(f));
+  refreshTrackersForFile(file: TFile): void {
+    this.blockManager.refreshTrackersForFile(
+      file, 
+      (f) => this.invalidateCacheForFile(f),
+      (path) => this.refreshTracker(path)
+    );
   }
 
   async refreshAllBlocks() {
@@ -226,8 +227,50 @@ export default class TrackerPlugin extends Plugin {
     this.trackerFileService.invalidateFileCache(file.path);
   }
 
+  // Simple callback registry for tracker refresh
+  private trackerRefreshCallbacks = new Map<string, () => void>();
+
+  /**
+   * Register a refresh callback for a tracker
+   */
+  registerTrackerRefresh(filePath: string, callback: () => void): void {
+    this.trackerRefreshCallbacks.set(filePath, callback);
+  }
+
+  /**
+   * Unregister a refresh callback for a tracker
+   */
+  unregisterTrackerRefresh(filePath: string): void {
+    this.trackerRefreshCallbacks.delete(filePath);
+  }
+
+  /**
+   * Directly call the refresh callback for a specific tracker
+   */
+  refreshTracker(filePath: string): void {
+    const callback = this.trackerRefreshCallbacks.get(filePath);
+    if (callback) {
+      callback();
+    }
+  }
+
+  /**
+   * Update callback registration when a tracker file is renamed
+   */
+  updateTrackerRefreshPath(oldPath: string, newPath: string): void {
+    const callback = this.trackerRefreshCallbacks.get(oldPath);
+    if (callback) {
+      this.trackerRefreshCallbacks.delete(oldPath);
+      this.trackerRefreshCallbacks.set(newPath, callback);
+    }
+  }
+
   handleTrackerRenamed(oldPath: string, file: TFile): void {
     this.vaultEventHandlers.handleTrackerRenamed(oldPath, file);
+    // Update callback registration for the renamed file
+    this.updateTrackerRefreshPath(oldPath, file.path);
+    // Update icon path in Iconize service to preserve icon after rename
+    this.iconizeService.updateIconPath(oldPath, file.path);
   }
 
   async getStartTrackingDateAsync(entries: Map<string, string | number>, file?: TFile): Promise<string | null> {
@@ -319,6 +362,19 @@ export default class TrackerPlugin extends Plugin {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new Notice(`${ERROR_MESSAGES.WRITE_ERROR}: ${errorMsg}`);
       console.error("Tracker: write error", error);
+      throw error;
+    }
+  }
+
+  async deleteEntry(file: TFile, dateIso: string): Promise<void> {
+    try {
+      const state = await this.stateManager.ensureTrackerState(file);
+      state.entries.delete(dateIso);
+      await this.trackerFileService.deleteEntry(file, dateIso);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      new Notice(`${ERROR_MESSAGES.WRITE_ERROR}: ${errorMsg}`);
+      console.error("Tracker: delete entry error", error);
       throw error;
     }
   }

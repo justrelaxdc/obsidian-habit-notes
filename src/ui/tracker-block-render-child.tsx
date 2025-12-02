@@ -52,7 +52,7 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
 
       const dateIso = DateService.resolveDateIso(initialDate, this.plugin.settings.dateFormat);
 
-      // Render Preact component
+      // Render Preact component - keep stable tree, use events for targeted updates
       render(
         <TrackerBlock
           plugin={this.plugin}

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "preact/hooks";
+import { useState, useEffect, useCallback, useMemo } from "preact/hooks";
+import { memo } from "preact/compat";
 import { CSS_CLASSES, TrackerType, ViewMode } from "../../constants";
 import type { TrackerItemProps } from "../types";
 import type { TrackerFileOptions, TrackerEntries } from "../../domain/types";
@@ -23,36 +24,36 @@ function TrackerItemComponent({ file, plugin, dateIso, viewMode, opts }: Tracker
   const [entries, setEntries] = useState<TrackerEntries>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load file options and entries
+  // Reload all data for this tracker
+  const loadData = useCallback(async () => {
+    try {
+      const [options, entriesData] = await Promise.all([
+        plugin.getFileTypeFromFrontmatter(file),
+        plugin.readAllEntries(file),
+      ]);
+      
+      setFileOptions(options);
+      setEntries(entriesData);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("TrackerItem: error loading data", error);
+      setIsLoading(false);
+    }
+  }, [plugin, file]);
+
+  // Load file options and entries on mount and date change
   useEffect(() => {
-    let mounted = true;
-    
-    const loadData = async () => {
-      try {
-        const [options, entriesData] = await Promise.all([
-          plugin.getFileTypeFromFrontmatter(file),
-          plugin.readAllEntries(file),
-        ]);
-        
-        if (mounted) {
-          setFileOptions(options);
-          setEntries(entriesData);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("TrackerItem: error loading data", error);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    
     loadData();
+  }, [loadData, dateIso]);
+
+  // Register refresh callback for this tracker
+  useEffect(() => {
+    plugin.registerTrackerRefresh(file.path, loadData);
     
     return () => {
-      mounted = false;
+      plugin.unregisterTrackerRefresh(file.path);
     };
-  }, [file, plugin, dateIso]);
+  }, [plugin, file.path, loadData]);
 
   // Refresh entries when value changes
   const handleValueChange = useCallback(async () => {

@@ -27,8 +27,27 @@ export function NumberControl({ file, dateIso, plugin, fileOptions, entries, onV
       debounceRef.current = null;
     }
 
-    const val = value === "" ? "0" : value;
-    const numVal = Number(val);
+    // If value is empty, delete the entry
+    if (value === "" || value.trim() === "") {
+      const doDelete = async () => {
+        try {
+          await plugin.deleteEntry(file, dateIso);
+          await onValueChange();
+        } catch (err) {
+          console.error("NumberControl: delete error", err);
+        }
+      };
+
+      if (immediate) {
+        await doDelete();
+      } else {
+        debounceRef.current = setTimeout(doDelete, DEBOUNCE_DELAY_MS);
+      }
+      return;
+    }
+
+    // Validate that it's a number
+    const numVal = Number(value);
     if (isNaN(numVal)) return;
 
     const doWrite = async () => {

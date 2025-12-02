@@ -199,6 +199,55 @@ export class TrackerFileService {
     }
   }
 
+  /**
+   * Delete entry for a specific date
+   */
+  async deleteEntry(file: TFile, dateIso: string): Promise<void> {
+    try {
+      const content = await this.getFileContent(file);
+      // Invalidate cache after delete
+      this.invalidateFileCache(file.path);
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+      if (!frontmatterMatch) {
+        throw new Error(ERROR_MESSAGES.NO_FRONTMATTER);
+      }
+
+      const frontmatter = frontmatterMatch[1];
+      const body = content.slice(frontmatterMatch[0].length);
+
+      const data = this.parseFrontmatterData(frontmatter);
+      
+      // Delete the entry
+      delete data[dateIso];
+
+      const dataYaml = this.formatDataToYaml(data);
+
+      let newFrontmatter = frontmatter.trim();
+      const dataMatch = newFrontmatter.match(/data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/);
+      if (dataMatch) {
+        const dataYamlTrimmed = dataYaml.endsWith("\n") ? dataYaml.slice(0, -1) : dataYaml;
+        newFrontmatter = newFrontmatter.replace(
+          /data:\s*(?:\{\}|(?:\n((?:\s+[^\n]+\n?)*)))/,
+          dataYamlTrimmed
+        );
+      } else {
+        newFrontmatter = newFrontmatter + "\n" + dataYaml.trimEnd();
+      }
+
+      if (!newFrontmatter.endsWith("\n")) {
+        newFrontmatter += "\n";
+      }
+
+      const newContent = `---\n${newFrontmatter}---${body}`;
+      await this.app.vault.modify(file, newContent);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("Tracker: delete entry error", error);
+      throw new Error(errorMsg);
+    }
+  }
+
   async getFileTypeFromFrontmatter(file: TFile): Promise<TrackerFileOptions> {
     const fileOpts: TrackerFileOptions = {};
     try {
