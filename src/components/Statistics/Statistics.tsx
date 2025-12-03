@@ -1,10 +1,12 @@
 import { useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, TrackerType, STATS_LABELS } from "../../constants";
 import { statisticsService } from "../../services/statistics-service";
 import { DateService } from "../../services/date-service";
 import type { StatisticsProps } from "../types";
 import type { StatisticsResult } from "../../domain/statistics-types";
 import { logError } from "../../utils/notifications";
+import { trackerStore } from "../../store";
 
 /**
  * Helper to get completion rate color class
@@ -219,6 +221,7 @@ function MetricStats({ result, unit }: MetricStatsProps) {
 
 /**
  * Main Statistics component
+ * Accesses entries via computed signal internally for proper reactivity
  */
 export function Statistics({ 
   file, 
@@ -226,17 +229,22 @@ export function Statistics({
   dateIso, 
   daysToShow, 
   trackerType, 
-  entries, 
   fileOptions 
 }: StatisticsProps) {
-  // Calculate statistics
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
+
+  // Calculate statistics - use useMemo to track dateIso prop changes
   const statisticsResult = useMemo<StatisticsResult | null>(() => {
     try {
       const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
-      const startTrackingDateStr = plugin.getStartTrackingDate(entries, fileOptions);
+      const startTrackingDateStr = plugin.getStartTrackingDate(entries.value, fileOptions);
       
       return statisticsService.calculateStatistics(
-        entries,
+        entries.value,
         plugin.settings,
         dateIso,
         daysToShow,
@@ -249,7 +257,7 @@ export function Statistics({
       logError("Statistics: error calculating statistics", error);
       return null;
     }
-  }, [file, plugin, dateIso, daysToShow, trackerType, entries, fileOptions]);
+  }, [file, plugin, dateIso, daysToShow, trackerType, entries.value, fileOptions]);
 
   if (!statisticsResult) return null;
 

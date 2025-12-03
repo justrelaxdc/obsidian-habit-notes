@@ -1,26 +1,35 @@
-import { useState, useCallback, useRef, useEffect } from "preact/hooks";
+import { useState, useCallback, useRef, useEffect, useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, ANIMATION_DURATION_MS, DEBOUNCE_DELAY_MS } from "../../constants";
 import type { NumberControlProps } from "../types";
 import { logError } from "../../utils/notifications";
+import { trackerStore } from "../../store";
 
 /**
  * Number input control with debounce
- * Note: No onValueChange callback needed - writeLogLine/deleteEntry already update the store
+ * Accesses entries via computed signal internally for proper reactivity
  */
-export function NumberControl({ file, dateIso, plugin, entries }: NumberControlProps) {
-  const currentValue = entries.get(dateIso);
-  const initialValue = currentValue != null && !isNaN(Number(currentValue)) ? String(currentValue) : "";
-  
-  const [inputValue, setInputValue] = useState(initialValue);
+export function NumberControl({ file, dateIso, plugin }: NumberControlProps) {
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
+
+  // Get current value - use useMemo to track dateIso prop changes
+  const currentValue = useMemo(() => {
+    const value = entries.value.get(dateIso);
+    return value != null && !isNaN(Number(value)) ? String(value) : "";
+  }, [entries.value, dateIso]);
+
+  const [inputValue, setInputValue] = useState(currentValue);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Update input when entries change externally
+  // Update input when entries or dateIso change
   useEffect(() => {
-    const newValue = entries.get(dateIso);
-    const newInputValue = newValue != null && !isNaN(Number(newValue)) ? String(newValue) : "";
-    setInputValue(newInputValue);
-  }, [entries, dateIso]);
+    setInputValue(currentValue);
+  }, [currentValue]);
 
   // Write value to file
   const writeValue = useCallback(async (value: string, immediate = false) => {

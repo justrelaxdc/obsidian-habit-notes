@@ -1,9 +1,11 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "preact/hooks";
+import { useCallback, useRef, useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, TrackerType } from "../../constants";
 import { DateService } from "../../services/date-service";
 import { isTrackerValueTrue } from "../../utils/validation";
 import type { HeatmapProps } from "../types";
 import { logError } from "../../utils/notifications";
+import { trackerStore } from "../../store";
 
 interface HeatmapDay {
   dateStr: string;
@@ -16,13 +18,12 @@ interface HeatmapDay {
 
 /**
  * Heatmap control for habits
- * Note: No onValueChange callback needed - writeLogLine already updates the store
+ * Accesses entries via computed signal internally for proper reactivity
  */
 export function Heatmap({ 
   file, 
   dateIso, 
   plugin, 
-  entries, 
   daysToShow,
   trackerType,
   startTrackingDate,
@@ -30,7 +31,27 @@ export function Heatmap({
   const heatmapRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef({ x: 0, y: 0, isScrolling: false });
 
-  // Generate heatmap days
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
+
+  // Generate heatmap days - optimized to only recalculate when relevant entries change
+  // Create a hash of entries for the date range to detect actual changes
+  // Use useMemo to track dateIso prop changes
+  const entriesHash = useMemo(() => {
+    const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
+    const dateStrs: string[] = [];
+    for (let i = 0; i < daysToShow; i++) {
+      const date = endDate.clone().subtract(i, "days");
+      const dateStr = DateService.format(date, plugin.settings.dateFormat);
+      dateStrs.push(dateStr);
+    }
+    // Create hash from relevant entries only
+    return dateStrs.map(d => `${d}:${entries.value.get(d) ?? ''}`).join('|');
+  }, [dateIso, daysToShow, entries.value, plugin.settings.dateFormat]);
+
   const days = useMemo<HeatmapDay[]>(() => {
     const endDate = DateService.parse(dateIso, plugin.settings.dateFormat);
     const today = DateService.now();
@@ -60,7 +81,7 @@ export function Heatmap({
       const dateStr = DateService.format(date, plugin.settings.dateFormat);
       const dayNum = date.getDate();
       
-      const value = entries.get(dateStr);
+      const value = entries.value.get(dateStr);
       const hasValue = isTrackerValueTrue(value);
       const isStartDay = dateStr === startTrackingDate;
       
@@ -88,7 +109,7 @@ export function Heatmap({
     }
     
     return result;
-  }, [dateIso, daysToShow, entries, plugin.settings.dateFormat, startTrackingDate]);
+  }, [dateIso, daysToShow, entriesHash, plugin.settings.dateFormat, startTrackingDate]);
 
   // Handle day click using event delegation for better performance
   const handleContainerClick = useCallback(async (e: MouseEvent) => {

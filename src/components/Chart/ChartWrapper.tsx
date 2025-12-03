@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { Chart, registerables } from "chart.js";
 import { CSS_CLASSES, CHART_CONFIG, TrackerType } from "../../constants";
 import { chartService } from "../../services/chart-service";
@@ -6,24 +7,31 @@ import { DateService } from "../../services/date-service";
 import { getThemeColors } from "../../utils/theme";
 import type { ChartWrapperProps } from "../types";
 import type { TrackerChartInstance } from "../../domain/chart-types";
+import { trackerStore } from "../../store";
 
 // Register Chart.js components
 Chart.register(...registerables);
 
 /**
  * Chart wrapper component for Chart.js integration
+ * Accesses entries via computed signal internally for proper reactivity
  */
 export function ChartWrapper({
   file,
   plugin,
   dateIso,
   daysToShow,
-  entries,
   fileOptions,
   onDateClick,
 }: ChartWrapperProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<TrackerChartInstance | null>(null);
+
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
 
   // Get tracker type and options
   const trackerType = (fileOptions?.mode ?? TrackerType.GOOD_HABIT).toLowerCase();
@@ -33,10 +41,10 @@ export function ChartWrapper({
   const scaleMinValue = fileOptions?.minValue ? parseFloat(fileOptions.minValue) : null;
   const scaleMaxValue = fileOptions?.maxValue ? parseFloat(fileOptions.maxValue) : null;
 
-  // Get start tracking date
+  // Get start tracking date - use useMemo to track entries and fileOptions changes
   const startTrackingDateStr = useMemo(() => {
-    return plugin.getStartTrackingDate(entries, fileOptions);
-  }, [plugin, entries, fileOptions]);
+    return plugin.getStartTrackingDate(entries.value, fileOptions);
+  }, [plugin, entries.value, fileOptions]);
 
   // Handle chart click
   const handleChartClick = useCallback((dateStr: string) => {
@@ -55,7 +63,6 @@ export function ChartWrapper({
     scaleMaxValue: number | null;
     dateIso: string;
     daysToShow: number;
-    entriesHash: string;
     yAxisMin: number;
     yAxisMax: number;
   } | null>(null);
@@ -84,7 +91,7 @@ export function ChartWrapper({
 
     // Prepare chart data
     const chartData = chartService.prepareChartData(
-      entries,
+      entries.value,
       file,
       plugin.settings,
       {
@@ -101,9 +108,6 @@ export function ChartWrapper({
       todayStr
     );
 
-    // Create hash of entries for change detection
-    const entriesHash = JSON.stringify(Array.from(entries.entries()).sort((a, b) => a[0].localeCompare(b[0])));
-
     const currentConfig = {
       trackerType,
       unit,
@@ -113,7 +117,6 @@ export function ChartWrapper({
       scaleMaxValue,
       dateIso,
       daysToShow,
-      entriesHash,
       yAxisMin: chartData.yAxisMin,
       yAxisMax: chartData.yAxisMax,
     };
@@ -146,6 +149,12 @@ export function ChartWrapper({
       }
       chartRef.current.data.labels = chartData.labels;
       chartRef.current.dateStrings = chartData.dateStrings;
+      
+      // Update annotation indices for vertical lines
+      chartRef.current.startTrackingIndex = chartData.startTrackingIndex;
+      chartRef.current.activeDateIndex = chartData.activeDateIndex;
+      chartRef.current.minLimit = minLimit;
+      chartRef.current.maxLimit = maxLimit;
       
       // Update chart with minimal animation
       chartRef.current.update('none');
@@ -189,8 +198,12 @@ export function ChartWrapper({
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
         chartRef.current = new Chart(ctx, config) as TrackerChartInstance;
-        // Store date strings for click handling
+        // Store date strings and annotation indices for click handling and annotations
         chartRef.current.dateStrings = chartData.dateStrings;
+        chartRef.current.startTrackingIndex = chartData.startTrackingIndex;
+        chartRef.current.activeDateIndex = chartData.activeDateIndex;
+        chartRef.current.minLimit = minLimit;
+        chartRef.current.maxLimit = maxLimit;
         
         // Setup ResizeObserver for responsive charts
         const chartContainer = canvasRef.current.parentElement;
@@ -215,7 +228,7 @@ export function ChartWrapper({
     plugin,
     dateIso,
     daysToShow,
-    entries,
+    entries.value,
     trackerType,
     unit,
     minLimit,

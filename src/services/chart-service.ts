@@ -310,13 +310,36 @@ export class ChartService {
           }
         },
         onResize: (chart: any) => {
-          this.drawChartAnnotations(chart, data, colors, minLimit, maxLimit);
+          const trackerChart = chart as TrackerChartInstance;
+          const currentColors = getThemeColors();
+          this.drawChartAnnotations(
+            trackerChart,
+            {
+              startTrackingIndex: trackerChart.startTrackingIndex ?? null,
+              activeDateIndex: trackerChart.activeDateIndex ?? null,
+            },
+            currentColors,
+            trackerChart.minLimit ?? null,
+            trackerChart.maxLimit ?? null
+          );
         }
       },
       plugins: [{
         id: 'startLinePlugin',
         beforeDraw: (chart: any) => {
-          this.drawChartAnnotations(chart, data, colors, minLimit, maxLimit);
+          // Read data from chart instance, not from closure
+          const trackerChart = chart as TrackerChartInstance;
+          const currentColors = getThemeColors();
+          this.drawChartAnnotations(
+            trackerChart,
+            {
+              startTrackingIndex: trackerChart.startTrackingIndex ?? null,
+              activeDateIndex: trackerChart.activeDateIndex ?? null,
+            },
+            currentColors,
+            trackerChart.minLimit ?? null,
+            trackerChart.maxLimit ?? null
+          );
         }
       }]
     };
@@ -329,7 +352,7 @@ export class ChartService {
    */
   private drawChartAnnotations(
     chart: TrackerChartInstance,
-    data: PreparedChartData,
+    data: { startTrackingIndex: number | null; activeDateIndex: number | null },
     colors: ThemeColors,
     minLimit: number | null,
     maxLimit: number | null

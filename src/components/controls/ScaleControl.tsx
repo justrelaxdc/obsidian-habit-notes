@@ -1,39 +1,43 @@
-import { useState, useCallback, useRef, useEffect } from "preact/hooks";
+import { useState, useCallback, useRef, useEffect, useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, DEFAULTS } from "../../constants";
 import type { ScaleControlProps } from "../types";
 import { logError } from "../../utils/notifications";
+import { trackerStore } from "../../store";
 
 /**
  * Scale/Progress bar control with drag support
- * Note: No onValueChange callback needed - writeLogLine already updates the store
+ * Accesses entries via computed signal internally for proper reactivity
  */
-export function ScaleControl({ file, dateIso, plugin, fileOptions, entries }: ScaleControlProps) {
+export function ScaleControl({ file, dateIso, plugin, fileOptions }: ScaleControlProps) {
   const minValue = parseFloat(fileOptions.minValue || String(DEFAULTS.MIN_VALUE)) || DEFAULTS.MIN_VALUE;
   const maxValue = parseFloat(fileOptions.maxValue || String(DEFAULTS.MAX_VALUE)) || DEFAULTS.MAX_VALUE;
   const step = parseFloat(fileOptions.step || String(DEFAULTS.STEP)) || DEFAULTS.STEP;
 
-  const currentValue = entries.get(dateIso);
-  let initialValue = minValue;
-  if (currentValue != null && !isNaN(Number(currentValue))) {
-    initialValue = Math.max(minValue, Math.min(maxValue, Number(currentValue)));
-  }
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
 
-  const [value, setValue] = useState(initialValue);
+  // Get current value - use useMemo to track dateIso prop changes
+  const currentValue = useMemo(() => {
+    const value = entries.value.get(dateIso);
+    if (value != null && !isNaN(Number(value))) {
+      return Math.max(minValue, Math.min(maxValue, Number(value)));
+    }
+    return minValue;
+  }, [entries.value, dateIso, minValue, maxValue]);
+
+  const [value, setValue] = useState(currentValue);
   const [isDragging, setIsDragging] = useState(false);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const hasMoved = useRef(false);
 
-  // Update value when entries change externally
+  // Update value when entries or dateIso change
   useEffect(() => {
-    const newValue = entries.get(dateIso);
-    if (newValue != null && !isNaN(Number(newValue))) {
-      const numVal = Math.max(minValue, Math.min(maxValue, Number(newValue)));
-      setValue(numVal);
-    } else {
-      // Reset to minValue when no value exists for the selected day
-      setValue(minValue);
-    }
-  }, [entries, dateIso, minValue, maxValue]);
+    setValue(currentValue);
+  }, [currentValue]);
 
   // Calculate value from click position
   const calculateValue = useCallback((clientX: number): number => {

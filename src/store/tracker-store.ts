@@ -39,8 +39,9 @@ class TrackerStore {
   // Loading state for individual trackers
   readonly loadingTrackers = signal<Set<string>>(new Set());
 
-  // Version counter to force re-renders when entries change
-  readonly entriesVersion = signal<number>(0);
+  // Per-file version counters to force re-renders when entries change
+  // Only the affected tracker re-renders, not all trackers
+  readonly entriesVersions = signal<Map<string, number>>(new Map());
 
   /**
    * Update settings
@@ -79,7 +80,7 @@ class TrackerStore {
         lastUpdated: Date.now(),
       });
       this.trackerStates.value = newMap;
-      this.entriesVersion.value++;
+      this.incrementEntriesVersion(filePath);
     }
   }
 
@@ -99,7 +100,7 @@ class TrackerStore {
         lastUpdated: Date.now(),
       });
       this.trackerStates.value = newMap;
-      this.entriesVersion.value++;
+      this.incrementEntriesVersion(filePath);
     }
   }
 
@@ -119,8 +120,25 @@ class TrackerStore {
         lastUpdated: Date.now(),
       });
       this.trackerStates.value = newMap;
-      this.entriesVersion.value++;
+      this.incrementEntriesVersion(filePath);
     }
+  }
+
+  /**
+   * Increment version counter for a specific file
+   */
+  private incrementEntriesVersion(filePath: string): void {
+    const newVersions = new Map(this.entriesVersions.value);
+    const currentVersion = newVersions.get(filePath) ?? 0;
+    newVersions.set(filePath, currentVersion + 1);
+    this.entriesVersions.value = newVersions;
+  }
+
+  /**
+   * Get version counter for a specific file
+   */
+  getEntriesVersion(filePath: string): number {
+    return this.entriesVersions.value.get(filePath) ?? 0;
   }
 
   /**
@@ -130,6 +148,10 @@ class TrackerStore {
     const newMap = new Map(this.trackerStates.value);
     newMap.delete(filePath);
     this.trackerStates.value = newMap;
+    // Also clear version counter
+    const newVersions = new Map(this.entriesVersions.value);
+    newVersions.delete(filePath);
+    this.entriesVersions.value = newVersions;
   }
 
   /**
@@ -225,7 +247,7 @@ class TrackerStore {
     this.trackerStates.value = new Map();
     this.loadingTrackers.value = new Set();
     this.iconizeData.value = null;
-    this.entriesVersion.value = 0;
+    this.entriesVersions.value = new Map();
   }
 }
 
@@ -237,8 +259,8 @@ export const trackerStore = new TrackerStore();
  */
 export function useTrackerEntries(filePath: string) {
   return computed(() => {
-    // Access version to trigger recomputation
-    trackerStore.entriesVersion.value;
+    // Access per-file version to trigger recomputation only for this tracker
+    trackerStore.getEntriesVersion(filePath);
     const state = trackerStore.trackerStates.value.get(filePath);
     return state?.entries ?? new Map();
   });

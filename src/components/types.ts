@@ -73,14 +73,13 @@ export interface DatePickerProps {
 
 /**
  * Props for control components
- * Note: onValueChange was removed - writeLogLine/deleteEntry already update the store
+ * Note: entries is accessed via computed signal internally, not passed as prop
  */
 export interface BaseControlProps {
   file: TFile;
   dateIso: string;
   plugin: TrackerPlugin;
   fileOptions: TrackerFileOptions;
-  entries: TrackerEntries;
 }
 
 /**
@@ -114,6 +113,7 @@ export interface ScaleControlProps extends BaseControlProps {}
 
 /**
  * Props for Statistics component
+ * Note: entries is accessed via computed signal internally, not passed as prop
  */
 export interface StatisticsProps {
   file: TFile;
@@ -121,19 +121,18 @@ export interface StatisticsProps {
   dateIso: string;
   daysToShow: number;
   trackerType: TrackerTypeValue;
-  entries: TrackerEntries;
   fileOptions: TrackerFileOptions;
 }
 
 /**
  * Props for ChartWrapper component
+ * Note: entries is accessed via computed signal internally, not passed as prop
  */
 export interface ChartWrapperProps {
   file: TFile;
   plugin: TrackerPlugin;
   dateIso: string;
   daysToShow: number;
-  entries: TrackerEntries;
   fileOptions: TrackerFileOptions;
   onDateClick?: (dateStr: string) => void;
 }

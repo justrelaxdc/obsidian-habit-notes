@@ -311,11 +311,6 @@ export default class TrackerPlugin extends Plugin {
     return this.trackerFileService.formatDataToJson(data);
   }
 
-  async readValueForDate(file: TFile, dateIso: string): Promise<string | number | null> {
-    const entries = await this.readAllEntries(file);
-    return entries.get(dateIso) ?? null;
-  }
-
   async writeLogLine(file: TFile, dateIso: string, value: string) {
     return this.writeQueueManager.executeWrite(file, async () => {
       try {

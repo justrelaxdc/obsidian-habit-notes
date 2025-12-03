@@ -1,28 +1,36 @@
-import { useState, useCallback, useRef, useEffect } from "preact/hooks";
+import { useState, useCallback, useEffect, useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, ANIMATION_DURATION_MS, DEFAULTS } from "../../constants";
 import type { PlusMinusControlProps } from "../types";
 import { logError } from "../../utils/notifications";
+import { trackerStore } from "../../store";
 
 /**
  * Plus/Minus counter control
- * Note: No onValueChange callback needed - writeLogLine already updates the store
+ * Accesses entries via computed signal internally for proper reactivity
  */
-export function PlusMinusControl({ file, dateIso, plugin, fileOptions, entries }: PlusMinusControlProps) {
+export function PlusMinusControl({ file, dateIso, plugin, fileOptions }: PlusMinusControlProps) {
   const step = parseFloat(fileOptions.step || String(DEFAULTS.STEP)) || DEFAULTS.STEP;
   
-  const currentValue = entries.get(dateIso);
-  const initialValue = currentValue != null && !isNaN(Number(currentValue)) ? Number(currentValue) : 0;
-  
-  const [value, setValue] = useState(initialValue);
-  const [isUpdated, setIsUpdated] = useState(false);
-  const valueRef = useRef<HTMLSpanElement>(null);
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
 
-  // Update value when entries change externally
+  // Get current value - use useMemo to track dateIso prop changes
+  const currentValue = useMemo(() => {
+    const value = entries.value.get(dateIso);
+    return value != null && !isNaN(Number(value)) ? Number(value) : 0;
+  }, [entries.value, dateIso]);
+  
+  const [value, setValue] = useState(currentValue);
+  const [isUpdated, setIsUpdated] = useState(false);
+
+  // Update value when entries or dateIso change
   useEffect(() => {
-    const newValue = entries.get(dateIso);
-    const newNumValue = newValue != null && !isNaN(Number(newValue)) ? Number(newValue) : 0;
-    setValue(newNumValue);
-  }, [entries, dateIso]);
+    setValue(currentValue);
+  }, [currentValue]);
 
   // Write value to file
   const writeValue = useCallback(async (newValue: number) => {
@@ -55,7 +63,6 @@ export function PlusMinusControl({ file, dateIso, plugin, fileOptions, entries }
     <div class={CSS_CLASSES.ROW}>
       <button type="button" onClick={handleMinus}>−</button>
       <span 
-        ref={valueRef}
         class={`${CSS_CLASSES.VALUE}${isUpdated ? ` ${CSS_CLASSES.VALUE_UPDATED}` : ""}`}
       >
         {value}

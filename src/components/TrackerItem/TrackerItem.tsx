@@ -2,7 +2,7 @@ import { useEffect, useCallback, useMemo } from "preact/hooks";
 import { useSignal, useComputed } from "@preact/signals";
 import { CSS_CLASSES, TrackerType, ViewMode } from "../../constants";
 import type { TrackerItemProps } from "../types";
-import type { TrackerFileOptions, TrackerEntries } from "../../domain/types";
+import type { TrackerFileOptions } from "../../domain/types";
 import { TrackerHeader } from "./TrackerHeader";
 import { useTrackerContext } from "../TrackerContext";
 import { trackerStore } from "../../store";
@@ -27,9 +27,9 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
   const isLoading = useSignal(true);
 
   // Get tracker state from the store (reactive)
-  // Access entriesVersion to trigger recomputation on any entry change
+  // Access per-file version to trigger recomputation only when this tracker's entries change
   const trackerState = useComputed(() => {
-    trackerStore.entriesVersion.value;
+    trackerStore.getEntriesVersion(file.path);
     return trackerStore.getTrackerState(file.path);
   });
 
@@ -97,6 +97,9 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
     return type === TrackerType.GOOD_HABIT || type === TrackerType.BAD_HABIT;
   });
 
+  // Memoize isMobileDevice() - window size changes are rare
+  const isMobile = useMemo(() => plugin.isMobileDevice(), []);
+
   // Calculate settings for visualization - use useComputed for reactivity
   const daysToShow = useComputed(() => {
     const settings = trackerStore.settings.value;
@@ -111,7 +114,7 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
     const settings = trackerStore.settings.value;
     const showChart = opts.showChart === "true" ||
       (opts.showChart === undefined && settings.showChartByDefault);
-    const hideOnMobile = plugin.isMobileDevice() && settings.hideChartOnMobile;
+    const hideOnMobile = isMobile && settings.hideChartOnMobile;
     return showChart && !hideOnMobile;
   });
 
@@ -119,7 +122,7 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
     const settings = trackerStore.settings.value;
     const showStats = opts.showStats === "true" ||
       (opts.showStats === undefined && settings.showStatsByDefault);
-    const hideOnMobile = plugin.isMobileDevice() && settings.hideStatsOnMobile;
+    const hideOnMobile = isMobile && settings.hideStatsOnMobile;
     return showStats && !hideOnMobile;
   });
 
@@ -144,7 +147,6 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
   });
 
   // Calculate limit progress for header - use useMemo to track dateIso prop changes
-  // Use computed signals to track signal changes, and useMemo to track prop changes
   const limitProgress = useMemo(() => {
     // Access computed signals to ensure reactivity
     const currentEntries = entries.value;
@@ -158,6 +160,7 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
 
     if (minLimit === null && maxLimit === null) return null;
 
+    // dateIso is a prop, accessed directly - component will re-render when prop changes
     const currentValue = currentEntries.get(dateIso);
     const value = currentValue != null ? Number(currentValue) : null;
 
@@ -195,26 +198,18 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
       width: `${progressPercent}%`,
       color: progressColor,
     };
-  }, [
-    dateIso, 
-    entries.value,
-    fileOptions.value,
-    trackerStore.settings.value?.disableLimitReaction
-  ]);
+  }, [dateIso, entries.value, fileOptions.value, trackerStore.settings.value?.disableLimitReaction]);
 
   // Render control based on tracker type
   const renderControl = () => {
-    const currentFileOptions = fileOptions.value;
-    if (isLoading.value || !currentFileOptions) return null;
+    if (isLoading.value || !fileOptions.value) return null;
 
-    // Note: No onValueChange callback needed - writeLogLine/deleteEntry 
-    // already update the store directly via trackerStore signals
+    // Controls access entries via computed signal internally - no need to pass as prop
     const controlProps = {
       file,
       dateIso,
       plugin,
-      fileOptions: currentFileOptions,
-      entries: entries.value,
+      fileOptions: fileOptions.value,
     };
 
     const type = trackerType.value;
@@ -245,12 +240,10 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
     }
   };
 
-  const currentFileOptions = fileOptions.value;
-  const currentEntries = entries.value;
-
   // Display mode - just show value
   if (viewMode === ViewMode.DISPLAY) {
-    const currentValue = currentEntries.get(dateIso);
+    const currentValue = entries.value.get(dateIso);
+    const currentFileOptions = fileOptions.value;
     return (
       <div class={CSS_CLASSES.TRACKER} data-file-path={file.path}>
         <TrackerHeader
@@ -266,7 +259,6 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
             plugin={plugin}
             dateIso={dateIso}
             daysToShow={daysToShow.value}
-            entries={currentEntries}
             fileOptions={currentFileOptions}
             onDateClick={onDateChange}
           />
@@ -279,7 +271,6 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
             dateIso={dateIso}
             daysToShow={daysToShow.value}
             trackerType={trackerType.value}
-            entries={currentEntries}
             fileOptions={currentFileOptions}
           />
         )}
@@ -288,6 +279,7 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
   }
 
   // Control mode - render interactive controls
+  const currentFileOptions = fileOptions.value;
   return (
     <div class={CSS_CLASSES.TRACKER} data-file-path={file.path}>
       <TrackerHeader
@@ -310,7 +302,6 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
           plugin={plugin}
           dateIso={dateIso}
           daysToShow={daysToShow.value}
-          entries={currentEntries}
           fileOptions={currentFileOptions}
           onDateClick={onDateChange}
         />
@@ -323,7 +314,6 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
           dateIso={dateIso}
           daysToShow={daysToShow.value}
           trackerType={trackerType.value}
-          entries={currentEntries}
           fileOptions={currentFileOptions}
         />
       )}

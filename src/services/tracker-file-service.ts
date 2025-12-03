@@ -264,11 +264,6 @@ export class TrackerFileService {
     return entries;
   }
 
-  async readValueForDate(file: TFile, dateIso: string): Promise<string | number | null> {
-    const entries = await this.readAllEntries(file);
-    return entries.get(dateIso) ?? null;
-  }
-
   /**
    * Write entry using state data (avoids re-reading file)
    * State entries should already be updated before calling this method

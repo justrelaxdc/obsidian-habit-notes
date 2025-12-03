@@ -1,28 +1,37 @@
-import { useState, useCallback, useRef, useEffect } from "preact/hooks";
+import { useState, useCallback, useRef, useEffect, useMemo } from "preact/hooks";
+import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, PLACEHOLDERS } from "../../constants";
 import type { TextControlProps } from "../types";
 import { logError } from "../../utils/notifications";
+import { trackerStore } from "../../store";
 
 // Debounce delay for text input (0.6 seconds)
 const TEXT_DEBOUNCE_DELAY_MS = 600;
 
 /**
  * Text input control with auto-save on input (debounced)
- * Note: No onValueChange callback needed - writeLogLine already updates the store
+ * Accesses entries via computed signal internally for proper reactivity
  */
-export function TextControl({ file, dateIso, plugin, entries }: TextControlProps) {
-  const currentValue = entries.get(dateIso);
-  const initialValue = currentValue != null && typeof currentValue === "string" ? currentValue : "";
-  
-  const [inputValue, setInputValue] = useState(initialValue);
+export function TextControl({ file, dateIso, plugin }: TextControlProps) {
+  // Access entries via computed signal - only re-renders when this tracker's entries change
+  const entries = useComputed(() => {
+    const state = trackerStore.getTrackerState(file.path);
+    return state?.entries ?? new Map();
+  });
+
+  // Get current value - use useMemo to track dateIso prop changes
+  const currentValue = useMemo(() => {
+    const value = entries.value.get(dateIso);
+    return value != null && typeof value === "string" ? value : "";
+  }, [entries.value, dateIso]);
+
+  const [inputValue, setInputValue] = useState(currentValue);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Update input when entries change externally
+  // Update input when entries or dateIso change
   useEffect(() => {
-    const newValue = entries.get(dateIso);
-    const newInputValue = newValue != null && typeof newValue === "string" ? newValue : "";
-    setInputValue(newInputValue);
-  }, [entries, dateIso]);
+    setInputValue(currentValue);
+  }, [currentValue]);
 
   // Write value to file
   const writeValue = useCallback(async (value: string, immediate = false) => {
