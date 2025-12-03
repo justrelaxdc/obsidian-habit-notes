@@ -127,6 +127,19 @@ export class TrackerSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Hide tracker title")
+      .addToggle((t) =>
+        t
+          .setValue(this.plugin.settings.hideTrackerTitle)
+          .onChange(async (v) => {
+            this.updateSettingImmediate(() => {
+              this.plugin.settings.hideTrackerTitle = v;
+            });
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
       .setName("Disable color reaction to range compliance")
       .setDesc("Disables color feedback when metric values are within or outside the defined limit range")
       .addToggle((t) =>

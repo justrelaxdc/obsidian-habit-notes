@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "preact/hooks";
-import { useSignal } from "@preact/signals";
+import { useSignal, useComputed } from "@preact/signals";
 import { CSS_CLASSES, ViewMode, ERROR_MESSAGES } from "../../constants";
 import { DateService } from "../../services/date-service";
+import { trackerStore } from "../../store";
 import type { TrackerBlockProps } from "../types";
 import { TrackerContext } from "../TrackerContext";
 import { DatePicker } from "./DatePicker";
@@ -56,13 +57,20 @@ export function TrackerBlock({
   // Get folder name for header
   const folderName = folderPath.split("/").pop() || folderPath;
 
+  // Reactive setting for hiding tracker title
+  const hideTrackerTitle = useComputed(() => {
+    return trackerStore.settings.value.hideTrackerTitle;
+  });
+
   return (
     <TrackerContext.Provider value={contextValue}>
       {viewMode === ViewMode.CONTROL && (
         <div class={CSS_CLASSES.TRACKER_NOTES_HEADER}>
-          <div class="tracker-notes__header-title">
-            <span class="tracker-notes__header-label">{folderName}</span>
-          </div>
+          {!hideTrackerTitle.value && (
+            <div class="tracker-notes__header-title">
+              <span class="tracker-notes__header-label">{folderName}</span>
+            </div>
+          )}
           <DatePicker
             dateIso={dateIso.value}
             onDateChange={handleDateChange}

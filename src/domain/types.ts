@@ -9,6 +9,7 @@ export type TrackerSettings = {
   showStatsByDefault: boolean;
   hideChartOnMobile: boolean;
   hideStatsOnMobile: boolean;
+  hideTrackerTitle: boolean;
   disableLimitReaction: boolean;
   customSortOrder?: Record<string, string[]>;
 };
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: TrackerSettings = {
   showStatsByDefault: false,
   hideChartOnMobile: false,
   hideStatsOnMobile: false,
+  hideTrackerTitle: false,
   disableLimitReaction: false,
 };
 
