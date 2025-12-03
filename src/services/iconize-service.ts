@@ -3,6 +3,7 @@ import { trackerStore } from "../store";
 import type { IconizeData } from "../store";
 
 // Polling interval for checking icon data changes (0.5 seconds)
+// We use thid method until Iconize plugin implements API for reactive updates
 const ICONIZE_POLL_INTERVAL_MS = 500;
 
 /**
