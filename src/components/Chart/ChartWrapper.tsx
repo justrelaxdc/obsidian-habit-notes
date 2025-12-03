@@ -56,6 +56,8 @@ export function ChartWrapper({
     dateIso: string;
     daysToShow: number;
     entriesHash: string;
+    yAxisMin: number;
+    yAxisMax: number;
   } | null>(null);
 
   // Cleanup chart on unmount only - separate from create/update
@@ -112,10 +114,13 @@ export function ChartWrapper({
       dateIso,
       daysToShow,
       entriesHash,
+      yAxisMin: chartData.yAxisMin,
+      yAxisMax: chartData.yAxisMax,
     };
 
     // Check if we can update existing chart or need to recreate
     // Only config changes require recreation; data changes can be updated
+    // Also recreate when Y-axis bounds change (e.g., value exceeds current limits)
     const canUpdate = chartRef.current && prevConfigRef.current &&
       prevConfigRef.current.trackerType === currentConfig.trackerType &&
       prevConfigRef.current.unit === currentConfig.unit &&
@@ -124,7 +129,9 @@ export function ChartWrapper({
       prevConfigRef.current.scaleMinValue === currentConfig.scaleMinValue &&
       prevConfigRef.current.scaleMaxValue === currentConfig.scaleMaxValue &&
       prevConfigRef.current.dateIso === currentConfig.dateIso &&
-      prevConfigRef.current.daysToShow === currentConfig.daysToShow;
+      prevConfigRef.current.daysToShow === currentConfig.daysToShow &&
+      prevConfigRef.current.yAxisMin === currentConfig.yAxisMin &&
+      prevConfigRef.current.yAxisMax === currentConfig.yAxisMax;
 
     if (canUpdate && chartRef.current) {
       // Only entries changed - update data directly

@@ -143,15 +143,15 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
     return plugin.getStartTrackingDate(entries.value, opts);
   });
 
-  // Calculate limit progress for header - use useComputed for reactivity
-  const limitProgress = useComputed(() => {
-    // Access trackerState to ensure reactivity
-    const state = trackerState.value;
-    const opts = state?.fileOptions ?? null;
-    const currentEntries = state?.entries ?? new Map();
+  // Calculate limit progress for header - use useMemo to track dateIso prop changes
+  // Use computed signals to track signal changes, and useMemo to track prop changes
+  const limitProgress = useMemo(() => {
+    // Access computed signals to ensure reactivity
+    const currentEntries = entries.value;
+    const opts = fileOptions.value;
     const settings = trackerStore.settings.value;
     
-    if (!opts || settings.disableLimitReaction) return null;
+    if (!opts || !settings || settings.disableLimitReaction) return null;
 
     const minLimit = opts.minLimit ? parseFloat(opts.minLimit) : null;
     const maxLimit = opts.maxLimit ? parseFloat(opts.maxLimit) : null;
@@ -195,7 +195,12 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
       width: `${progressPercent}%`,
       color: progressColor,
     };
-  });
+  }, [
+    dateIso, 
+    entries.value,
+    fileOptions.value,
+    trackerStore.settings.value?.disableLimitReaction
+  ]);
 
   // Render control based on tracker type
   const renderControl = () => {
@@ -292,7 +297,7 @@ export function TrackerItem({ file, plugin, dateIso, viewMode, opts }: TrackerIt
         onEdit={handleEdit}
         onMoveUp={handleMoveUp}
         onMoveDown={handleMoveDown}
-        limitProgress={limitProgress.value}
+        limitProgress={limitProgress}
       />
 
       <div class={CSS_CLASSES.TRACKER_CONTROLS}>

@@ -29,6 +29,9 @@ export function ScaleControl({ file, dateIso, plugin, fileOptions, entries }: Sc
     if (newValue != null && !isNaN(Number(newValue))) {
       const numVal = Math.max(minValue, Math.min(maxValue, Number(newValue)));
       setValue(numVal);
+    } else {
+      // Reset to minValue when no value exists for the selected day
+      setValue(minValue);
     }
   }, [entries, dateIso, minValue, maxValue]);
 

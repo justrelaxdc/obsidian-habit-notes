@@ -707,7 +707,7 @@
 }
 
 .tracker-notes__text-input:hover {
-  border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+  background: var(--background-primary) !important;
 }
 
 .tracker-notes__text-input:focus { 
