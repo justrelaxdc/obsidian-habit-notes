@@ -144,15 +144,8 @@ export class BlockManager {
     };
     
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        restoreScroll();
-        setTimeout(() => {
-          restoreScroll();
-        }, IMMEDIATE_TIMEOUT_MS);
-        setTimeout(() => {
-          restoreScroll();
-        }, SCROLL_RESTORE_DELAY_2_MS);
-      });
+      restoreScroll();
+      setTimeout(restoreScroll, SCROLL_RESTORE_DELAY_2_MS);
     });
   }
 

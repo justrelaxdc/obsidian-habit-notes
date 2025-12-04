@@ -1,4 +1,4 @@
-import type { Chart, Plugin } from "chart.js";
+import type { Chart, Plugin, ChartConfiguration, ChartData, ChartOptions } from "chart.js";
 
 /**
  * Theme colors extracted from Obsidian CSS variables
@@ -89,4 +89,15 @@ export interface ChartPluginContext {
  * Custom Chart.js plugin for tracker visualizations
  */
 export type TrackerChartPlugin = Plugin<"line">;
+
+/**
+ * Chart.js configuration for tracker visualizations
+ * Extends Chart.js ChartConfiguration with line chart type
+ */
+export interface ChartJsConfig extends ChartConfiguration<"line"> {
+  type: "line";
+  data: ChartData<"line">;
+  options: ChartOptions<"line">;
+  plugins?: Plugin<"line">[];
+}
 

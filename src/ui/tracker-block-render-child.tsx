@@ -7,7 +7,7 @@ import { render } from "preact";
 import type TrackerPlugin from "../core/tracker-plugin";
 import { parseOptions } from "../utils/options";
 import { DateService } from "../services/date-service";
-import { ViewMode, ERROR_MESSAGES } from "../constants";
+import { ViewMode, ERROR_MESSAGES, DATE_FORMATS_ARRAY } from "../constants";
 import { TrackerBlock } from "../components/TrackerBlock";
 import type { ViewModeValue } from "../constants";
 import { logError } from "../utils/notifications";
@@ -94,11 +94,10 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       const fileName = noteFile.basename;
       if (!fileName) return undefined;
 
-      // Try various date formats
+      // Try various date formats - use DATE_FORMATS_ARRAY from constants
+      // Also try formats with time for notes that include timestamps
       const dateFormats = [
-        "YYYY-MM-DD",
-        "YYYY/MM/DD",
-        "DD.MM.YYYY",
+        ...DATE_FORMATS_ARRAY,
         "YYYY-MM-DD HH:mm",
         "YYYY/MM/DD HH:mm",
       ];
@@ -119,7 +118,8 @@ export class TrackerBlockRenderChild extends MarkdownRenderChild {
       const match = fileName.match(datePattern);
       if (match) {
         const dateStr = match[0];
-        const parsedDate = DateService.parseMultiple(dateStr, ["YYYY-MM-DD", "YYYY/MM/DD", "DD.MM.YYYY"]);
+        // Use DATE_FORMATS_ARRAY from constants for parsing
+        const parsedDate = DateService.parseMultiple(dateStr, DATE_FORMATS_ARRAY);
         if (parsedDate.isValid()) {
           return DateService.format(parsedDate, this.plugin.settings.dateFormat);
         }

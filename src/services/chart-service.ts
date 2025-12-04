@@ -4,7 +4,8 @@ import type {
   PreparedChartData, 
   ChartConfigOptions, 
   ThemeColors,
-  TrackerChartInstance 
+  TrackerChartInstance,
+  ChartJsConfig
 } from "../domain/chart-types";
 import { CHART_CONFIG, DATE_FORMAT, TrackerType } from "../constants";
 import { getThemeColors, colorToRgba } from "../utils/theme";
@@ -162,8 +163,7 @@ export class ChartService {
     colors: ThemeColors,
     options: ChartConfigOptions,
     onChartClick: (dateStr: string) => void
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Chart.js config type is complex
-  ): any {
+  ): ChartJsConfig {
     const { metricType, unit, minLimit, maxLimit, scaleMinValue, scaleMaxValue } = options;
     
     // Determine chart label
@@ -174,8 +174,7 @@ export class ChartService {
       chartLabel = metricType === TrackerType.TEXT ? "Word count" : "Value";
     }
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Chart.js config structure
-    const config: any = {
+    const config: ChartJsConfig = {
       type: 'line',
       data: {
         labels: data.labels,

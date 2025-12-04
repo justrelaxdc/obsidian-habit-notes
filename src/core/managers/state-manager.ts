@@ -83,9 +83,9 @@ export class StateManager {
   invalidateCacheForFolder(folderPath: string, normalizePath: (p: string) => string): void {
     const normalizedPath = normalizePath(folderPath);
     const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
-    // Use duck typing to check if it's a folder
-    if (folder && 'children' in folder) {
-      this.clearCacheForFolder(folder as TFolder);
+    // Use instanceof for type safety instead of duck typing
+    if (folder instanceof TFolder) {
+      this.clearCacheForFolder(folder);
     }
   }
 

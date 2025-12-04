@@ -15,7 +15,7 @@ import trackerStyles from "../styles/index.css";
 import { DateService } from "../services/date-service";
 import { TrackerOrderService } from "../services/tracker-order-service";
 import { IconizeService } from "../services/iconize-service";
-import { MOBILE_BREAKPOINT, ERROR_MESSAGES, MODAL_LABELS, DEBOUNCE_DELAY_MS } from "../constants";
+import { MOBILE_BREAKPOINT, ERROR_MESSAGES, MODAL_LABELS, DEBOUNCE_DELAY_MS, ARCHIVE_FOLDER_NAME } from "../constants";
 import { trackerStore } from "../store";
 import { logError } from "../utils/notifications";
 
@@ -26,6 +26,22 @@ import { DomReorderManager } from "./managers/dom-reorder";
 import { BlockManager } from "./managers/block-manager";
 import { WriteQueueManager } from "./managers/write-queue-manager";
 
+/**
+ * Main plugin class for Tracker Habits & Metrics
+ * 
+ * NOTE: This class currently handles multiple responsibilities (SRP violation):
+ * - CRUD operations (create/delete/edit trackers)
+ * - Navigation operations (move up/down)
+ * - File system operations
+ * - UI orchestration
+ * 
+ * Future refactoring consideration:
+ * - Consider splitting into TrackerCrudService (create/delete/edit operations)
+ * - Consider splitting into TrackerNavigationService (move up/down operations)
+ * - Keep plugin as orchestrator only
+ * 
+ * This is a larger refactor - evaluate effort vs benefit before proceeding.
+ */
 export default class TrackerPlugin extends Plugin {
   settings!: TrackerSettings;
   
@@ -500,8 +516,8 @@ export default class TrackerPlugin extends Plugin {
       ) as TFolder[];
     }
 
-    // Ignore folders containing "archive" in name (case-insensitive)
-    folders = folders.filter(f => !f.name.toLowerCase().includes("archive"));
+    // Ignore folders containing archive folder name in name (case-insensitive)
+    folders = folders.filter(f => !f.name.toLowerCase().includes(ARCHIVE_FOLDER_NAME));
 
     const sortedFolders = this.sortOrderManager.sortItemsByOrder(
       folders, parentFolderPath || '', normalizePath
@@ -538,8 +554,8 @@ export default class TrackerPlugin extends Plugin {
       ) as TFolder[];
     }
 
-    // Ignore folders containing "archive" in name (case-insensitive)
-    folders = folders.filter(f => !f.name.toLowerCase().includes("archive"));
+    // Ignore folders containing archive folder name in name (case-insensitive)
+    folders = folders.filter(f => !f.name.toLowerCase().includes(ARCHIVE_FOLDER_NAME));
 
     const sortedFolders = this.sortOrderManager.sortItemsByOrder(
       folders, parentFolderPath || '', normalizePath

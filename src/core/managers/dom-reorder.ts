@@ -54,11 +54,14 @@ export class DomReorderManager {
         }
 
         for (const element of sortedTrackerElements) {
+          // Check if element is still connected to DOM before removal
+          if (!element.isConnected) continue;
           if (element.parentElement) {
             element.remove();
           }
         }
 
+        // Re-add elements in new order (no isConnected check needed - elements were just removed)
         for (const element of sortedTrackerElements) {
           trackersContainer.appendChild(element);
         }
@@ -160,6 +163,8 @@ export class DomReorderManager {
       }
 
       for (const element of sortedFolderElements) {
+        // Check if element is still connected to DOM before removal
+        if (!element.isConnected) continue;
         if (element.parentElement) {
           element.remove();
         }
@@ -175,6 +180,7 @@ export class DomReorderManager {
         }
       }
 
+      // Re-add elements in new order (no isConnected check needed - elements were just removed)
       if (insertBefore) {
         for (const element of sortedFolderElements) {
           parentContainer.insertBefore(element, insertBefore);

@@ -2,7 +2,7 @@ import { App, TFile } from "obsidian";
 import type { TrackerSettings, TrackerFileOptions } from "../domain/types";
 import type { DateWrapper } from "../domain/date-types";
 import { parseMaybeNumber } from "../utils/misc";
-import { ERROR_MESSAGES, MAX_DAYS_BACK, TrackerType, MAX_FILE_CONTENT_CACHE_SIZE, CACHE_TTL_MS } from "../constants";
+import { ERROR_MESSAGES, MAX_DAYS_BACK, TrackerType, TrackerTypeValue, MAX_FILE_CONTENT_CACHE_SIZE, CACHE_TTL_MS, DATA_PREFIX_LENGTH } from "../constants";
 import { DateService } from "./date-service";
 import { getEntryValueByDate, determineStartTrackingDate, isDaySuccessful } from "./entry-utils";
 import { logError } from "../utils/notifications";
@@ -97,7 +97,7 @@ export class TrackerFileService {
     }
     
     // Find the start of JSON object after "data:"
-    let jsonStart = dataIndex + 5; // length of "data:"
+    let jsonStart = dataIndex + DATA_PREFIX_LENGTH;
     // Skip whitespace
     while (jsonStart < frontmatter.length && /\s/.test(frontmatter[jsonStart])) {
       jsonStart++;
@@ -168,6 +168,11 @@ export class TrackerFileService {
     
     try {
       const parsed = JSON.parse(jsonString);
+      // Validate that parsed result is an object (not array or null)
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        logError("Tracker: parsed JSON is not an object", new Error("Invalid JSON structure"));
+        return {};
+      }
       // Convert all values through parseMaybeNumber to maintain type consistency
       const result: Record<string, string | number> = {};
       for (const [key, value] of Object.entries(parsed)) {
@@ -399,6 +404,13 @@ export class TrackerFileService {
   }
 
   /**
+   * Type guard to check if a string is a valid TrackerTypeValue
+   */
+  private isValidTrackerType(value: string): value is TrackerTypeValue {
+    return Object.values(TrackerType).includes(value as TrackerTypeValue);
+  }
+
+  /**
    * Parse file options from frontmatter string
    * Can be used without reading the file if frontmatter is already available
    */
@@ -406,8 +418,10 @@ export class TrackerFileService {
     const fileOpts: TrackerFileOptions = {};
     try {
       const typeMatch = frontmatter.match(/^type:\s*["']?([^"'\s\n]+)["']?/m);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TrackerType enum cast
-      fileOpts.mode = (typeMatch && typeMatch[1] ? typeMatch[1].trim() : TrackerType.GOOD_HABIT) as any;
+      const typeValue = typeMatch?.[1]?.trim() ?? '';
+      fileOpts.mode = this.isValidTrackerType(typeValue)
+        ? typeValue
+        : TrackerType.GOOD_HABIT;
       const minValueMatch = frontmatter.match(/^minValue:\s*([\d.]+)/m);
       if (minValueMatch) fileOpts.minValue = minValueMatch[1];
       const maxValueMatch = frontmatter.match(/^maxValue:\s*([\d.]+)/m);

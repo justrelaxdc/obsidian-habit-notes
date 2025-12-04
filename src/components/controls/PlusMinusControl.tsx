@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "preact/hooks";
+import { useState, useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { useComputed } from "@preact/signals";
 import { CSS_CLASSES, ANIMATION_DURATION_MS, DEFAULTS } from "../../constants";
 import type { PlusMinusControlProps } from "../types";
@@ -26,11 +26,22 @@ export function PlusMinusControl({ file, dateIso, plugin, fileOptions }: PlusMin
   
   const [value, setValue] = useState(currentValue);
   const [isUpdated, setIsUpdated] = useState(false);
+  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update value when entries or dateIso change
   useEffect(() => {
     setValue(currentValue);
   }, [currentValue]);
+
+  // Cleanup animation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Write value to file
   const writeValue = useCallback(async (newValue: number) => {
@@ -47,7 +58,11 @@ export function PlusMinusControl({ file, dateIso, plugin, fileOptions }: PlusMin
     setValue(newValue);
     setIsUpdated(true);
     await writeValue(newValue);
-    setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
+    // Clear previous timer if exists
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+    }
+    animationTimerRef.current = setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
   }, [value, step, writeValue]);
 
   // Handle plus click
@@ -56,7 +71,11 @@ export function PlusMinusControl({ file, dateIso, plugin, fileOptions }: PlusMin
     setValue(newValue);
     setIsUpdated(true);
     await writeValue(newValue);
-    setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
+    // Clear previous timer if exists
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+    }
+    animationTimerRef.current = setTimeout(() => setIsUpdated(false), ANIMATION_DURATION_MS);
   }, [value, step, writeValue]);
 
   return (

@@ -1,6 +1,6 @@
 import { App, TFile, TFolder } from "obsidian";
 import type { FolderNode, TrackerSettings } from "../domain/types";
-import { SORT_ORDER_CLEANUP_DELAY_MS } from "../constants";
+import { SORT_ORDER_CLEANUP_DELAY_MS, ARCHIVE_FOLDER_NAME } from "../constants";
 import { normalizePath } from "../utils/path";
 
 export class FolderTreeService {
@@ -221,8 +221,8 @@ export class FolderTreeService {
     if (currentLevel < maxDepth) {
       for (const child of folder.children) {
         if (child instanceof TFolder) {
-          // Ignore folders containing "archive" in name (case-insensitive)
-          if (child.name.toLowerCase().includes("archive")) {
+          // Ignore folders containing archive folder name in name (case-insensitive)
+          if (child.name.toLowerCase().includes(ARCHIVE_FOLDER_NAME)) {
             continue;
           }
           const childNode = this.buildFolderTree(child, maxDepth, currentLevel + 1);
@@ -246,7 +246,8 @@ export class FolderTreeService {
       return;
     }
     const normalized = normalizePath(folderPath);
-    for (const key of Array.from(this.cache.keys())) {
+    // Use iterator directly instead of Array.from to avoid temporary array allocation
+    for (const key of this.cache.keys()) {
       const [cachedPath] = key.split("::");
       if (
         cachedPath === normalized ||

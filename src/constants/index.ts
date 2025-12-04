@@ -8,6 +8,10 @@ export const MAX_FILE_CONTENT_CACHE_SIZE = 50; // Max number of files to cache
 export const SCROLL_RESTORE_DELAY_MS = 50;
 export const DEBOUNCE_DELAY_MS = 300;
 
+// String constants
+export const DATA_PREFIX_LENGTH = 5; // "data:".length
+export const ARCHIVE_FOLDER_NAME = "archive";
+
 // Timeout and delay constants
 export const FILE_UPDATE_DELAY_MS = 300; // Delay for file update after create/rename
 export const ANIMATION_DURATION_MS = 300; // Animation duration for UI updates
