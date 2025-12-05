@@ -1,6 +1,6 @@
 <div align="center">
 
-<img width="240" height="240" alt="image" src="assets/logo" />
+<img width="240" height="240" alt="image" src="assets/logo.png" />
 
 # Tracker: Habits and Metrics 
 
