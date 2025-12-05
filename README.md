@@ -204,6 +204,7 @@ Available in **Ctrl+P / Cmd+P**:
 
 ## 🎯 Roadmap
 
+- [ ] Compact mode
 - [ ] Reminders & notifications  
 - [ ] Period comparison (week-over-week, month-over-month)  
 - [ ] Data export/import
