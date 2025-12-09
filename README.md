@@ -210,6 +210,7 @@ Available in **Ctrl+P / Cmd+P**:
 - [ ] Data export/import
 - [ ] Additional chart types
 - [ ] Cross‑tracker analytics (correlations, trends)  
+- [ ] And much, much more...
 
 ---
 
