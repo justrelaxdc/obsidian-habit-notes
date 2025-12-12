@@ -11,6 +11,7 @@
 ![GitHub License](https://img.shields.io/github/license/justrelaxdc/tracker-habits-metrics?style=flat&color=yellow)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/vladross)
 
+
 </div>
 
 > Transform your Obsidian vault into a powerful tracking system. Track everything from simple daily habits to complex numeric metrics — all stored as human‑readable Markdown inside your vault. No external databases, no cloud, no telemetry.
@@ -231,7 +232,8 @@ Feedback, ideas, and bug reports are very welcome:
 - Issues & feature requests:  
   https://github.com/justrelaxdc/tracker-habits-metrics/issues  
 - Telegram: https://t.me/vladrosss  
-- Donate: https://buymeacoffee.com/vladross
+
+[![Ko-fi](https://img.shields.io/badge/Support%20Me%20on%20Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/vladross)
 
 ---
 
